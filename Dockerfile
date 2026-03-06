@@ -12,6 +12,7 @@ RUN ./install-scripts/nodejs.sh
 RUN ./install-scripts/aws-cli.sh
 RUN ./install-scripts/aws-cdk.sh
 RUN ./install-scripts/aws-sam.sh
+RUN ./install-scripts/claude.sh
 
 WORKDIR /root
 
