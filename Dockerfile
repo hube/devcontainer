@@ -2,14 +2,16 @@ FROM ubuntu:rolling
 
 WORKDIR /tmp
 
+# Install additional utilities not included in Ubuntu by default
 RUN apt update
-RUN apt install curl -y
+RUN apt install curl unzip -y
 
 COPY ./install-scripts/* ./install-scripts/.
 
 RUN ./install-scripts/nodejs.sh
 RUN ./install-scripts/aws-cli.sh
 RUN ./install-scripts/aws-cdk.sh
+RUN ./install-scripts/aws-sam.sh
 
 WORKDIR /root
 
