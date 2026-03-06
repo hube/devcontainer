@@ -4,7 +4,7 @@ WORKDIR /tmp
 
 # Install additional utilities not included in Ubuntu by default
 RUN apt update
-RUN apt install curl unzip -y
+RUN apt install curl git unzip -y
 
 COPY ./install-scripts/* ./install-scripts/.
 
