@@ -4,7 +4,12 @@ WORKDIR /tmp
 
 # Install additional utilities not included in Ubuntu by default
 RUN apt update
-RUN apt install curl git unzip -y
+RUN apt install \
+  curl \
+  git \
+  python3 python3-pip python3-venv \
+  unzip \
+  -y
 
 COPY ./install-scripts/* ./install-scripts/.
 
