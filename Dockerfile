@@ -14,6 +14,9 @@ RUN ./install-scripts/aws-cdk.sh
 RUN ./install-scripts/aws-sam.sh
 RUN ./install-scripts/claude.sh
 
+# Update PATH for all shells
+ENV PATH="/root/.local/bin:$PATH"
+
 WORKDIR /root
 
 # Start the container and keep it running
