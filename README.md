@@ -10,7 +10,7 @@ create a container named `dev-machine` from the image. Then show all containers
 
 ```bash
 docker build -t dev-machine-img .
-docker create --name dev-machine -v .:/root/code dev-machine-img
+docker create --name dev-machine -v ../docker-code:/root/code dev-machine-img
 docker ps -a
 ```
 
