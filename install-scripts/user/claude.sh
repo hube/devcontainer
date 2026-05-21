@@ -4,3 +4,5 @@
 # https://docs.anthropic.com/en/docs/claude-code/getting-started
 
 curl -fsSL https://claude.ai/install.sh | bash
+
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc

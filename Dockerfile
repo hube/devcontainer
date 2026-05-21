@@ -1,6 +1,6 @@
 FROM ubuntu:rolling
 
-WORKDIR /tmp
+ARG USERNAME=ubuntu
 
 # Install additional utilities not included in Ubuntu by default
 RUN apt update
@@ -8,21 +8,52 @@ RUN apt install \
   curl \
   git \
   python3 python3-pip python3-venv \
+  sudo \
   unzip \
+  vim \
+  zsh \
   -y
 
-COPY ./install-scripts/* ./install-scripts/.
+# Set `DEVCONTAINER` environment variable to help with orientation
+ENV DEVCONTAINER=true
 
-RUN ./install-scripts/nodejs.sh
-RUN ./install-scripts/aws-cli.sh
-RUN ./install-scripts/aws-cdk.sh
-RUN ./install-scripts/aws-sam.sh
-RUN ./install-scripts/claude.sh
+# Persist bash history.
+RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
+  && mkdir /commandhistory \
+  && touch /commandhistory/.bash_history \
+  && chown -R $USERNAME /commandhistory
 
-# Update PATH for all shells
-ENV PATH="/root/.local/bin:$PATH"
+# Create workspace and config directories and set permissions
+RUN mkdir -p /workspace
+RUN chown -R $USERNAME:$USERNAME /workspace
 
-WORKDIR /root
+# Install tools that require root permissions
+WORKDIR /tmp
+COPY ./install-scripts/root/* ./install-scripts/root/.
+
+WORKDIR /tmp/install-scripts/root
+RUN ./aws-cli.sh
+RUN ./aws-sam.sh
+RUN ./git-delta.sh
+
+# Setup non-root user
+USER $USERNAME
+
+ENV SHELL=/bin/zsh
+ENV EDITOR=vim
+ENV VISUAL=vim
+
+# Install additional tools
+WORKDIR /tmp
+COPY ./install-scripts/user/* ./install-scripts/user/.
+
+WORKDIR /tmp/install-scripts/user
+RUN ./oh-my-zsh.sh
+RUN ./nodejs.sh
+RUN ./aws-cdk.sh
+RUN ./claude.sh
+
+WORKDIR /workspace
 
 # Start the container and keep it running
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["sleep", "infinity"]

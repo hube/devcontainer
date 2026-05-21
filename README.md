@@ -10,15 +10,15 @@ create a container named `dev-machine` from the image. Then show all containers
 
 ```bash
 docker build -t dev-machine-img .
-docker create --name dev-machine -v ../docker-code:/root/code dev-machine-img
+docker create --name dev-machine -v ../docker-code:/workspace/code dev-machine-img
 docker ps -a
 ```
 
-Start the container, execute an interactive bash shell
+Start the container, execute an interactive shell
 
 ```bash
 docker start dev-machine
-docker exec -it dev-machine bash
+docker exec -it dev-machine zsh
 ```
 
 Stop the container, remove it, show all containers
