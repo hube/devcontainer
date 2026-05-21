@@ -50,6 +50,7 @@ COPY ./install-scripts/user/* ./install-scripts/user/.
 WORKDIR /tmp/install-scripts/user
 RUN ./oh-my-zsh.sh
 RUN ./nodejs.sh
+RUN ./yarn.sh
 RUN ./aws-cdk.sh
 RUN ./claude.sh
 
