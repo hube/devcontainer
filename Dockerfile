@@ -53,6 +53,9 @@ RUN ./nodejs.sh
 RUN ./aws-cdk.sh
 RUN ./claude.sh
 
+# Copy config files
+COPY .gitconfig /home/$USERNAME
+
 WORKDIR /workspace
 
 # Start the container and keep it running
