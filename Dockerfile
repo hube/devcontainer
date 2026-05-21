@@ -54,7 +54,7 @@ RUN ./aws-cdk.sh
 RUN ./claude.sh
 
 # Copy config files
-COPY .gitconfig /home/$USERNAME
+COPY home /home/$USERNAME
 
 WORKDIR /workspace
 
