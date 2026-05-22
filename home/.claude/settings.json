@@ -1,0 +1,10 @@
+{
+  "autoMode": {
+    "environment": [
+      "$defaults",
+    ]
+  },
+  "permissions": {
+    "defaultMode": "auto"
+  }
+}
