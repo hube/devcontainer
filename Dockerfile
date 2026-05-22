@@ -24,8 +24,8 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
   && chown -R $USERNAME /commandhistory
 
 # Create workspace and config directories and set permissions
-RUN mkdir -p /workspace
-RUN chown -R $USERNAME:$USERNAME /workspace
+RUN mkdir -p /workspaces
+RUN chown -R $USERNAME:$USERNAME /workspaces
 
 # Install tools that require root permissions
 WORKDIR /tmp
@@ -57,7 +57,7 @@ RUN ./claude.sh
 # Copy config files
 COPY home /home/$USERNAME
 
-WORKDIR /workspace
+WORKDIR /workspaces
 
 # Start the container and keep it running
 ENTRYPOINT ["sleep", "infinity"]
