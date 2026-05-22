@@ -7,6 +7,7 @@ RUN apt update
 RUN apt install \
   curl \
   git \
+  iptables ipset \
   python3 python3-pip python3-venv \
   sudo \
   unzip \
@@ -56,6 +57,13 @@ RUN ./claude.sh
 
 # Copy config files
 COPY home /home/$USERNAME
+
+# Copy and set up firewall script
+COPY firewall.sh /usr/local/bin/
+USER root
+RUN echo "${USERNAME} ALL=(root) NOPASSWD: /usr/local/bin/firewall.sh" > /etc/sudoers.d/${USERNAME}-firewall
+RUN chmod 0440 /etc/sudoers.d/${USERNAME}-firewall
+USER $USERNAME
 
 WORKDIR /workspaces
 
