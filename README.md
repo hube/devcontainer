@@ -5,27 +5,27 @@ dependencies so that they do not need to be installed on a physical machine
 
 # Getting started
 
-Build a Docker image tagged `dev-machine-img` from the Dockerfile and
-create a container named `dev-machine` from the image. Then show all containers
+Build a Docker image tagged `devcontainer-img` from the Dockerfile and
+create a container named `<project-name>` from the image. Then show all containers
 
 ```bash
-docker build -t dev-machine-img .
-docker create --name dev-machine -v ../docker-code:/workspace/code dev-machine-img
+docker build -t devcontainer-img .
+docker create --name <project-name> -v ../docker-code:/workspace/code devcontainer-img
 docker ps -a
 ```
 
 Start the container, execute an interactive shell
 
 ```bash
-docker start dev-machine
-docker exec -it dev-machine zsh
+docker start devcontainer
+docker exec -it devcontainer zsh
 ```
 
 Stop the container, remove it, show all containers
 
 ```bash
-docker stop dev-machine
-docker rm dev-machine
+docker stop devcontainer
+docker rm devcontainer
 docker ps -a
 ```
 
