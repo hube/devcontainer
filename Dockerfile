@@ -55,7 +55,7 @@ RUN ./aws-cdk.sh
 RUN ./claude.sh
 
 # Copy config files
-COPY home /home/$USERNAME
+COPY --chown=$USERNAME:$USERNAME home /home/$USERNAME
 
 WORKDIR /workspaces
 
