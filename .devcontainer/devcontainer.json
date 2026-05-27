@@ -1,6 +1,6 @@
 {
   "build": {
-    "dockerfile": "../Dockerfile",
+    "dockerfile": "Dockerfile",
     "args": {
       "WORKSPACE_DIR": "${containerWorkspaceFolder}"
     }
@@ -9,12 +9,12 @@
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true,
       "username": "${localEnv:USERNAME:devcontainer}"
-    }
+    },
+    "./local-features/claude": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "containerEnv": {
     "EDITOR": "vi",
     "VISUAL": "vi"
-  },
-  "postCreateCommand": "${containerWorkspaceFolder}/install-scripts/postCreate.sh"
+  }
 }
