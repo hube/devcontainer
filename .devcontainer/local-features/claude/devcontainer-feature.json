@@ -2,5 +2,12 @@
   "id": "claude",
   "name": "Claude",
   "version": "1.0.0",
-  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "mounts": [
+    {
+      "type": "volume",
+      "source": "claude-code-config-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude"
+    }
+  ]
 }

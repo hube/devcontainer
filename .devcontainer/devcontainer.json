@@ -11,8 +11,5 @@
   "containerEnv": {
     "EDITOR": "vi",
     "VISUAL": "vi"
-  },
-  "mounts": [
-    "type=bind,src=${localEnv:HOME}/.claude,dst=/home/${localEnv:USERNAME:devcontainer}/.claude"
-  ]
+  }
 }
