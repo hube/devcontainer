@@ -7,8 +7,10 @@ if [[ $EUID -ne $(id -u ${_CONTAINER_USER}) ]]
 then
   echo ">Copying config to the remote user's home directory"
 
-  # rsync allows copying files over while changing ownership
-  rsync -r --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+  # copy files over while setting ownership and permissions
+  rsync -rp \
+      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chmod=D755,F644 \
       config/. /home/${_CONTAINER_USER}
 
   exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)"
