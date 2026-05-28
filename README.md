@@ -1,42 +1,41 @@
 # About
 
-This repo provides a Docker container containing general development
-dependencies so that they do not need to be installed on a physical machine
+This repo provides a [development container][1] Docker image with general
+development dependencies so that they can be used across projects and
+development machines. The devcontainer in this repo includes:
+* Zsh and Oh My Zsh
+* Git
+* Claude Code
+
+Code is mounted in the `/workspaces` dir.
+
+This devcontainer can be further customized on a per-project basis by creating a
+`.devcontainer` directory in the project directory with a
+[devcontainer.json file][4] and adding [Dev Container Features][2]
 
 # Getting started
 
-Build a Docker image tagged `devcontainer-img` from the Dockerfile and
-create a container named `<project-name>` from the image. Then show all containers
+Install the [Dev Container CLI][3], then run:
+
+```sh
+devcontainer up # builds a devcontainer Docker container and then starts it
+```
+
+Execute an interactive shell in the container:
 
 ```bash
-docker build -t devcontainer-img .
-docker create --name <project-name> -v ../docker-code:/workspace/code devcontainer-img
+docker exec -it <container ID> zsh
+```
+
+Stop the container, remove it, and show all containers:
+
+```bash
+docker stop <container ID>
+docker rm <container ID>
 docker ps -a
 ```
 
-Start the container, execute an interactive shell
-
-```bash
-docker start devcontainer
-docker exec -it devcontainer zsh
-```
-
-Stop the container, remove it, show all containers
-
-```bash
-docker stop devcontainer
-docker rm devcontainer
-docker ps -a
-```
-
-## Configure AWS CLI
-
-https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html
-
-```bash
-aws login --remote
-```
-
-```bash
-aws logout
-```
+[1]: https://containers.dev
+[2]: https://containers.dev/features
+[3]: https://containers.dev/implementors/reference
+[4]: https://containers.dev/implementors/json_schema
