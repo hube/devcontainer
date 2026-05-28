@@ -1,5 +1,0 @@
-FROM ubuntu:rolling
-
-ARG WORKSPACE_DIR=/
-
-WORKDIR $WORKSPACE_DIR

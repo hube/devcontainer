@@ -24,7 +24,7 @@ devcontainer up # builds a devcontainer Docker container and then starts it
 Execute an interactive shell in the container:
 
 ```bash
-docker exec -it <container ID> zsh
+devcontainer exec zsh
 ```
 
 Stop the container, remove it, and show all containers:
