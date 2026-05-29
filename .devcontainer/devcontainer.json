@@ -10,10 +10,6 @@
     "./local-features/claude": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
-  "containerEnv": {
-    "EDITOR": "vi",
-    "VISUAL": "vi"
-  },
   "remoteEnv": {
     "GH_TOKEN": "${localEnv:GH_TOKEN}"
   },
