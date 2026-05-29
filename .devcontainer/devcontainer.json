@@ -5,11 +5,22 @@
       "configureZshAsDefaultShell": true,
       "username": "${localEnv:USERNAME:devcontainer}"
     },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/python:1": {},
     "./local-features/claude": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "containerEnv": {
     "EDITOR": "vi",
     "VISUAL": "vi"
+  },
+  "remoteEnv": {
+    "GH_TOKEN": "${localEnv:GH_TOKEN}"
+  },
+  "secrets": {
+    "GH_TOKEN": {
+      "description": "Provide an authentication token for the GitHub CLI to use",
+      "documentationUrl": "https://cli.github.com/manual/gh_auth_login"
+    }
   }
 }
