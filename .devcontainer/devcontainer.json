@@ -5,6 +5,9 @@
       "configureZshAsDefaultShell": true,
       "username": "${localEnv:USERNAME:devcontainer}"
     },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": false
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/python:1": {},
     "./local-features/claude": {}
