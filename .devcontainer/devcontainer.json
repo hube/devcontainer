@@ -10,20 +10,13 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/python:1": {},
-    "./local-features/claude": {}
+    "./local-features/claude": {},
+    "./local-features/ssh": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "remoteEnv": {
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
-    "SSH_AUTH_SOCK": "/run/host-services/ssh-auth.sock"
   },
-  "mounts": [
-    // Mount socket to share SSH identities between host and dev container
-    // This host mount point is specific to Docker Desktop on MacOS
-    "type=bind,source=/run/host-services/ssh-auth.sock,target=/run/host-services/ssh-auth.sock"
-    "type=bind,readonly,source=${localEnv:HOME}/.ssh/known_hosts,target=/home/${localEnv:USERNAME:devcontainer}/.ssh-host/known_hosts"
-  ],
-  "postStartCommand": "echo `pwd` && .devcontainer/postStartScript.sh",
   "secrets": {
     "GH_TOKEN": {
       "description": "Provide an authentication token for the GitHub CLI to use",
