@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# SSH configuration
-
 ## Enable rw permissions on the SSH auth socket
 sudo chmod 666 /run/host-services/ssh-auth.sock
 
