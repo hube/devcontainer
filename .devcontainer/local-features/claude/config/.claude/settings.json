@@ -8,5 +8,6 @@
   "permissions": {
     "defaultMode": "auto"
   },
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "remoteControlAtStartup": true
 }
