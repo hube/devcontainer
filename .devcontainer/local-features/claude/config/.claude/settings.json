@@ -5,6 +5,7 @@
       "$defaults"
     ]
   },
+  "model": "opusplan",
   "permissions": {
     "defaultMode": "auto"
   },
