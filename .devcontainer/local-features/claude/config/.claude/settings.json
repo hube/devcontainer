@@ -5,6 +5,11 @@
       "$defaults"
     ]
   },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  },
   "model": "opusplan",
   "permissions": {
     "defaultMode": "auto"
