@@ -16,6 +16,7 @@
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "remoteEnv": {
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
+    "TZ": "${localEnv:TZ:America/Los_Angeles}",
   },
   "secrets": {
     "GH_TOKEN": {
