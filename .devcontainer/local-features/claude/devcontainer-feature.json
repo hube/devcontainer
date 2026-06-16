@@ -8,6 +8,16 @@
       "type": "volume",
       "source": "claude-code-config-${devcontainerId}",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/skills",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/skills"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/CLAUDE.md",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/CLAUDE.md"
     }
   ]
 }
