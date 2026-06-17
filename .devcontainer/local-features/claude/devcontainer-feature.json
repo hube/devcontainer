@@ -11,6 +11,16 @@
     },
     {
       "type": "bind",
+      "source": "${localEnv:HOME}/.claude/projects",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/projects"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/rules",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/rules"
+    },
+    {
+      "type": "bind",
       "source": "${localEnv:HOME}/.claude/skills",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/skills"
     },
