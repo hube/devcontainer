@@ -10,8 +10,8 @@
   "mounts": [
     {
       "type": "bind",
-      "source": "${localEnv:HOME}/.config/ccstatusline/settings.json",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.config/ccstatusline/settings.json"
+      "source": "${localEnv:HOME}/.config/ccstatusline",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.config/ccstatusline"
     }
   ]
 }
