@@ -9,7 +9,6 @@
       "moby": false
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/python:1": {},
     "./local-features/claude": {},
     "./local-features/ssh": {}
   },

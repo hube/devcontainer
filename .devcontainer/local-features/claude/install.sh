@@ -16,6 +16,8 @@ then
   exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)"
 fi
 
+echo ">Switched to the container user"
+
 echo ">Installing Claude Code"
 
 curl -fsSL https://claude.ai/install.sh | bash
