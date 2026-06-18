@@ -13,10 +13,13 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "remoteControlAtStartup": true,
   "skipAutoPermissionPrompt": true,
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh"
+    "command": "ccstatusline",
+    "padding": 0,
+    "refreshInterval": 10
   },
-  "remoteControlAtStartup": true
+  "theme": "dark"
 }
