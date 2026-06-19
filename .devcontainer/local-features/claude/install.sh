@@ -13,7 +13,7 @@ then
   rsync -rp \
       --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
       --chmod=D755,F644 \
-      config/. /home/${_CONTAINER_USER}
+      home/. /home/${_CONTAINER_USER}
 
   exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)" $CLAUDE_CONFIG_DIR
 fi
