@@ -15,15 +15,10 @@
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "remoteEnv": {
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
     "TZ": "${localEnv:TZ:America/Los_Angeles}",
   },
   "secrets": {
-    "ANTHROPIC_API_KEY": {
-      "description": "Provide an API key for Claude Code to use",
-      "documentationUrl": "https://code.claude.com/docs/en/devcontainer#persist-authentication-and-settings-across-rebuilds"
-    },
     "GH_TOKEN": {
       "description": "Provide an authentication token for the GitHub CLI to use",
       "documentationUrl": "https://cli.github.com/manual/gh_auth_login"
