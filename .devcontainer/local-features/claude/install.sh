@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+CLAUDE_CONFIG_DIR=${CLAUDECONFIGDIR:-$1}
+
 # Install Claude Code. Installation location originally copied from
 # https://docs.anthropic.com/en/docs/claude-code/getting-started
 
@@ -13,7 +15,7 @@ then
       --chmod=D755,F644 \
       config/. /home/${_CONTAINER_USER}
 
-  exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)"
+  exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)" $CLAUDE_CONFIG_DIR
 fi
 
 echo ">Switched to the container user"
@@ -23,3 +25,10 @@ echo ">Installing Claude Code"
 curl -fsSL https://claude.ai/install.sh | bash
 
 echo ">Done installing Claude code"
+
+if [ -n "$CLAUDE_CONFIG_DIR" ]
+then
+  echo ">CLAUDE_CONFIG_DIR is set. Removing unused default ~/.claude.json"
+
+  rm -f ~/.claude.json
+fi
