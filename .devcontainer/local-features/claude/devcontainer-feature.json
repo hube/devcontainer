@@ -6,13 +6,6 @@
     "ghcr.io/devcontainers/features/python:1": {}
   },
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
-  "options": {
-    "claudeConfigDir": {
-      "type": "string",
-      "description": "Configuration dir for Claude Code",
-      "default": "/home/${_CONTAINER_USER}/.claude"
-    }
-  },
   "mounts": [
     {
       "type": "volume",
