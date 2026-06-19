@@ -14,11 +14,11 @@
     {
       "type": "bind,readonly",
       "source": "${localEnv:HOME}/.ssh/known_hosts",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.ssh-host/known_hosts"
+      "target": "/home/${localEnv:USERNAME:devcontainer}/host-readonly/home/.ssh/known_hosts"
     }
   ],
   "containerEnv": {
     "SSH_AUTH_SOCK": "/run/host-services/ssh-auth.sock"
   },
-  "postStartCommand": "~/bin/postStartScript.sh"
+  "postStartCommand": "~/bin/devcontainer-feature/ssh/postStartScript.sh"
 }
