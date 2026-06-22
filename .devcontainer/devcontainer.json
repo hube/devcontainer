@@ -11,6 +11,7 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "./local-features/ccstatusline": {},
     "./local-features/claude": {},
+    "./local-features/direnv": {},
     "./local-features/ssh": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",

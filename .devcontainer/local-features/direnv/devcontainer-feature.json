@@ -1,0 +1,13 @@
+{
+  "id": "direnv",
+  "name": "direnv",
+  "version": "1.0.0",
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "mounts": [
+    {
+      "type": "volume",
+      "source": "direnv-config-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.local/share/direnv"
+    }
+  ]
+}
