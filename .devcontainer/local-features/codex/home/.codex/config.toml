@@ -1,0 +1,19 @@
+approvals_reviewer = "auto_review"
+project_doc_fallback_filenames = ["CLAUDE.md"]
+service_tier = "default"
+
+[tui]
+status_line = ["model-with-reasoning", "current-dir", "project-name", "git-branch", "pull-request-number", "permissions", "approval-mode", "weekly-limit", "five-hour-limit", "task-progress", "codex-version"]
+status_line_use_colors = true
+
+[marketplaces.claude-plugins-official]
+last_updated = "2026-07-06T04:01:25Z"
+last_revision = "06b291803d65afb86b6264e03d5968926afddc90"
+source_type = "git"
+source = "https://github.com/anthropics/claude-plugins-official.git"
+
+# The OpenAI marketplace is pinned to a stale version of this plugin. Pull from
+# Claude's marketplace instead for now
+# https://github.com/openai/codex/issues/29517
+[plugins."superpowers@claude-plugins-official"]
+enabled = true
