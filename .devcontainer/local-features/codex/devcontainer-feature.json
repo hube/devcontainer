@@ -1,0 +1,13 @@
+{
+  "id": "codex",
+  "name": "Codex",
+  "version": "1.0.0",
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "mounts": [
+    {
+      "type": "volume",
+      "source": "codex-code-config-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.codex"
+    }
+  ]
+}
