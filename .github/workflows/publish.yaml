@@ -19,9 +19,18 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and run Dev Container task
+      - name: Build and publish devcontainer image
+        if: ${{ github.run_attempt == 1 }}
         uses: devcontainers/ci@v0.3
         with:
           imageName: ghcr.io/hube/devcontainer
           cacheFrom: ghcr.io/hube/devcontainer
+          push: always
+
+      - name: Build with no cache and publish devcontainer image
+        if: ${{ github.run_attempt > 1 }}
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/hube/devcontainer
+          noCache: true
           push: always
