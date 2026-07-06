@@ -8,6 +8,16 @@
       "type": "volume",
       "source": "codex-code-config-${devcontainerId}",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.codex"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/skills",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/skills"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/CLAUDE.md",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.codex/AGENTS.md"
     }
   ]
 }
