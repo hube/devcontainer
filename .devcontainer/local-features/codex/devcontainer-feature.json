@@ -2,6 +2,9 @@
   "id": "codex",
   "name": "Codex",
   "version": "1.0.0",
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
   "mounts": [
     {
