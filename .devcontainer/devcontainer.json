@@ -9,6 +9,7 @@
       "moby": false
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
+    "./local-features/agent-skills": {},
     "./local-features/ccstatusline": {},
     "./local-features/claude": {},
     "./local-features/codex": {},
