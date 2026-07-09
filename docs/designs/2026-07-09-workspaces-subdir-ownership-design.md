@@ -1,6 +1,6 @@
 # Workspaces Subdirectory Ownership Design
 
-Status: Approved for implementation planning
+Status: Implemented
 
 Issue: https://github.com/hube/devcontainer/issues/16
 
