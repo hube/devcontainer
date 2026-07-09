@@ -7,7 +7,13 @@ development machines. The devcontainer in this repo includes:
 * Git
 * Claude Code
 
-Code is mounted in the `/workspaces` dir.
+Code is mounted in the `/workspaces` dir. The devcontainer image makes the
+`/workspaces` parent directory writable by the configured container user so that
+interactive shells can create sibling project directories, such as
+`/workspaces/other-repo`.
+
+Configurations that mount a volume over `/workspaces` itself are responsible for
+that mount's permissions.
 
 This devcontainer can be further customized on a per-project basis by creating a
 `.devcontainer` directory in the project directory with a
