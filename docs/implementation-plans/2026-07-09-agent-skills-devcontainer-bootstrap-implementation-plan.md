@@ -515,7 +515,7 @@ npx -y @devcontainers/cli@latest build \
   --workspace-folder "$REPO_ROOT" --image-name "$IMAGE" >/dev/null 2>&1
 
 docker inspect "$IMAGE" --format '{{ index .Config.Labels "devcontainer.metadata" }}' \
-  | python3 - <<'PY'
+  | python3 -c '
 import json, sys
 meta = json.load(sys.stdin)
 ids = [e["id"] for e in meta if e.get("id")]
@@ -525,9 +525,10 @@ for dep in ("./local-features/ssh", "./local-features/workspaces-permissions"):
         f"{dep} must install before ./local-features/agent-skills, got {ids}"
 hook = next(e for e in meta if e.get("id") == "./local-features/agent-skills")
 expected = "~/bin/devcontainer-feature/agent-skills/postStartScript.sh"
-assert hook.get("postStartCommand") == expected, f"bad hook: {hook.get('postStartCommand')}"
+actual = hook.get("postStartCommand")
+assert actual == expected, f"bad hook: {actual}"
 print("install order and postStartCommand verified")
-PY
+'
 ```
 
 Make it executable:

@@ -1,6 +1,6 @@
 # Agent Skills Devcontainer Bootstrap Design
 
-Status: Planned
+Status: Implemented
 
 Issue: https://github.com/hube/devcontainer/issues/26
 
