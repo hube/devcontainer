@@ -24,11 +24,6 @@
     },
     {
       "type": "bind",
-      "source": "${localEnv:HOME}/.claude/skills",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/skills"
-    },
-    {
-      "type": "bind",
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/CLAUDE.md"
     }
