@@ -108,5 +108,18 @@ out="$("$HOOK" 2>&1)"; rc=$?
 [[ "$out" == *"$AGENT_SKILLS_ENV_FILE"* ]] && pass "no env file: names the file" || fail "no env file: names the file" "$out"
 rm -rf "$WORLD"
 
+# --- install.sh reports every bad option at once, not just the first
+INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
+out="$(REPO='' CLONEDIR='relative/path' _CONTAINER_USER='nosuchuser-xyz' bash "$INSTALL" 2>&1)"; rc=$?
+[[ $rc -ne 0 ]] && pass "install: fails on bad options" || fail "install: fails on bad options" "exit $rc"
+[[ "$out" == *"'repo' must not be empty"* ]] && pass "install: reports empty repo" || fail "install: reports empty repo" "$out"
+[[ "$out" == *"must be an absolute path"* ]] && pass "install: reports relative cloneDir" || fail "install: reports relative cloneDir" "$out"
+[[ "$out" == *"nosuchuser-xyz"* ]] && pass "install: reports unknown container user" || fail "install: reports unknown container user" "$out"
+
+# --- an empty cloneDir reports "must not be empty", not a bogus absolute-path error
+out="$(REPO='git@example.com:x/y.git' CLONEDIR='' _CONTAINER_USER="$(id -un)" bash "$INSTALL" 2>&1)"; rc=$?
+[[ "$out" == *"'cloneDir' must not be empty"* ]] && pass "install: reports empty cloneDir" || fail "install: reports empty cloneDir" "$out"
+[[ "$out" != *"must be an absolute path"* ]] && pass "install: no spurious absolute-path error" || fail "install: no spurious absolute-path error" "$out"
+
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [[ $failed -eq 0 ]]

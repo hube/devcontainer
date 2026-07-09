@@ -1,0 +1,23 @@
+{
+  "id": "agent-skills",
+  "name": "Agent skills",
+  "version": "1.0.0",
+  "dependsOn": {
+    "./local-features/ssh": {},
+    "./local-features/workspaces-permissions": {}
+  },
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "options": {
+    "repo": {
+      "type": "string",
+      "description": "Git remote to clone",
+      "default": "git@github.com:hube/agent-skills.git"
+    },
+    "cloneDir": {
+      "type": "string",
+      "description": "Absolute path the repo is cloned to",
+      "default": "/workspaces/agent-skills"
+    }
+  },
+  "postStartCommand": "~/bin/devcontainer-feature/agent-skills/postStartScript.sh"
+}
