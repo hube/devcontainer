@@ -13,7 +13,8 @@
     "./local-features/claude": {},
     "./local-features/codex": {},
     "./local-features/direnv": {},
-    "./local-features/ssh": {}
+    "./local-features/ssh": {},
+    "./local-features/workspaces-permissions": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "remoteEnv": {

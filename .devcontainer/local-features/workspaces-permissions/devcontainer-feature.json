@@ -1,0 +1,6 @@
+{
+  "id": "workspaces-permissions",
+  "name": "Workspace parent directory permissions",
+  "version": "1.0.0",
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
+}

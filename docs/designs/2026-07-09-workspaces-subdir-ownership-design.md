@@ -1,6 +1,6 @@
 # Workspaces Subdirectory Ownership Design
 
-Status: Approved for implementation planning
+Status: Implemented
 
 Issue: https://github.com/hube/devcontainer/issues/16
 
@@ -29,7 +29,7 @@ image-layer directory metadata.
 - Avoid recursive ownership changes that could touch mounted repositories or
   volumes.
 - Keep the implementation consistent with the repo's existing local Feature
-  pattern.
+  pattern. List local Features alphabetically in `.devcontainer/devcontainer.json`.
 
 ## Non-Goals
 
@@ -100,7 +100,7 @@ Expected implementation changes:
 - Add `.devcontainer/local-features/workspaces-permissions/devcontainer-feature.json`.
 - Add `.devcontainer/local-features/workspaces-permissions/install.sh`.
 - Add `"./local-features/workspaces-permissions": {}` to
-  `.devcontainer/devcontainer.json`.
+  `.devcontainer/devcontainer.json`, keeping local Feature entries in alphabetical order.
 - Update `README.md` to document that the container user can create sibling
   directories under `/workspaces`.
 
