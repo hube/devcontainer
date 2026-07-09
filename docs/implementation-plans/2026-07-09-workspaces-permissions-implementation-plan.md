@@ -16,6 +16,8 @@
 - Do not hardcode the username as `devcontainer`; use `_CONTAINER_USER`.
 - Use `install -d -o "${_CONTAINER_USER}" -g "${_CONTAINER_USER}" -m 0755 /workspaces` rather than separate `mkdir`, `chown`, and `chmod` calls.
 - Follow the repo's existing local Feature pattern under `.devcontainer/local-features/`.
+- List local Feature entries alphabetically in `.devcontainer/devcontainer.json`.
+- Keep `.gitignore` entries alphabetized.
 - Keep design docs and README content in sync with implementation behavior.
 - Before each commit in this devcontainer, run `ssh-add -l` and verify an identity is available for SSH commit signing.
 - Every commit must include `Harness`, `Harness-Version`, `Model`, `Skills` when skills contributed, and `Co-Authored-By` trailers in one contiguous trailer block.
@@ -26,7 +28,7 @@
 
 - Create `.devcontainer/local-features/workspaces-permissions/devcontainer-feature.json`: local Feature manifest with id, name, version, and install ordering after `common-utils`.
 - Create `.devcontainer/local-features/workspaces-permissions/install.sh`: root-phase installer that validates `_CONTAINER_USER` and sets `/workspaces` ownership/mode without recursion.
-- Modify `.devcontainer/devcontainer.json`: include `./local-features/workspaces-permissions` in the existing `features` object.
+- Modify `.devcontainer/devcontainer.json`: include `./local-features/workspaces-permissions` in the existing `features` object, sorted alphabetically with the other local Features.
 - Modify `README.md`: document that the normal image-layer `/workspaces` parent is writable by the configured container user, and that mount-over-`/workspaces` configurations manage their own mount permissions.
 
 ### Task 1: Add the `workspaces-permissions` local Feature
@@ -176,12 +178,12 @@ Modify the `features` object so this section becomes exactly:
 
 ```json
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "./local-features/workspaces-permissions": {},
     "./local-features/ccstatusline": {},
     "./local-features/claude": {},
     "./local-features/codex": {},
     "./local-features/direnv": {},
-    "./local-features/ssh": {}
+    "./local-features/ssh": {},
+    "./local-features/workspaces-permissions": {}
 ```
 
 Keep the rest of `.devcontainer/devcontainer.json` unchanged.

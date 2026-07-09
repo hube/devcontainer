@@ -9,12 +9,12 @@
       "moby": false
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "./local-features/workspaces-permissions": {},
     "./local-features/ccstatusline": {},
     "./local-features/claude": {},
     "./local-features/codex": {},
     "./local-features/direnv": {},
-    "./local-features/ssh": {}
+    "./local-features/ssh": {},
+    "./local-features/workspaces-permissions": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "remoteEnv": {
