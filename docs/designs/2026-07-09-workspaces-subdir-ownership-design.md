@@ -43,14 +43,14 @@ image-layer directory metadata.
 ## Recommended Approach
 
 Add a small local Dev Container Feature, for example
-`.devcontainer/local-features/workspaces`, and include it in
+`.devcontainer/local-features/workspaces-permissions`, and include it in
 `.devcontainer/devcontainer.json`.
 
 The Feature should declare:
 
 ```json
 {
-  "id": "workspaces",
+  "id": "workspaces-permissions",
   "version": "1.0.0",
   "name": "Workspace parent directory ownership",
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
@@ -97,9 +97,9 @@ change.
 
 Expected implementation changes:
 
-- Add `.devcontainer/local-features/workspaces/devcontainer-feature.json`.
-- Add `.devcontainer/local-features/workspaces/install.sh`.
-- Add `"./local-features/workspaces": {}` to
+- Add `.devcontainer/local-features/workspaces-permissions/devcontainer-feature.json`.
+- Add `.devcontainer/local-features/workspaces-permissions/install.sh`.
+- Add `"./local-features/workspaces-permissions": {}` to
   `.devcontainer/devcontainer.json`.
 - Update `README.md` to document that the container user can create sibling
   directories under `/workspaces`.
