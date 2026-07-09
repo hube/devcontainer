@@ -154,6 +154,7 @@ setup_world 2
 out="$("$HOOK" 2>&1)"; rc=$?
 [[ $rc -eq 0 ]] && pass "unreachable: exits 0" || fail "unreachable: exits 0" "got $rc"
 [[ "$out" == *"unreachable"* ]] && pass "unreachable: distinct message" || fail "unreachable: distinct message" "$out"
+[[ ! -d "$CLONE_DIR" ]] && pass "unreachable: does not clone" || fail "unreachable: does not clone" "$out"
 teardown_world
 
 # --- a dangling skills symlink is called out on the skip path
@@ -170,7 +171,8 @@ WORLD="$(mktemp -d)"; export HOME="$WORLD/home"; mkdir -p "$HOME"
 export AGENT_SKILLS_ENV_FILE="$WORLD/absent.env"
 out="$("$HOOK" 2>&1)"; rc=$?
 [[ $rc -eq 0 ]] && pass "no env file: exits 0" || fail "no env file: exits 0" "got $rc"
-[[ "$out" == *"$AGENT_SKILLS_ENV_FILE"* ]] && pass "no env file: names the file" || fail "no env file: names the file" "$out"
+[[ "$out" == *"$AGENT_SKILLS_ENV_FILE"* && "$out" == *"is missing or unreadable"* ]] \
+  && pass "no env file: names the file" || fail "no env file: names the file" "$out"
 rm -rf "$WORLD"
 
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
@@ -270,7 +272,7 @@ chmod +x .devcontainer/local-features/agent-skills/bin/devcontainer-feature/agen
 
 Run: `bash .devcontainer/local-features/agent-skills/test/test-poststart.sh`
 
-Expected: PASS. Final line reads `16 passed, 0 failed` and the exit status is 0.
+Expected: PASS. Final line reads `17 passed, 0 failed` and the exit status is 0.
 
 - [ ] **Step 5: Commit**
 
@@ -332,7 +334,7 @@ out="$(REPO='git@example.com:x/y.git' CLONEDIR='' _CONTAINER_USER="$(id -un)" ba
 
 Run: `bash .devcontainer/local-features/agent-skills/test/test-poststart.sh`
 
-Expected: FAIL. The six new assertions fail with `bash: .../install.sh: No such file or directory`; the sixteen from Task 1 still pass.
+Expected: FAIL. The six new assertions fail with `bash: .../install.sh: No such file or directory`; the seventeen from Task 1 still pass.
 
 - [ ] **Step 3: Write the manifest and the installer**
 
@@ -422,7 +424,7 @@ echo ">Done installing agent-skills bootstrap"
 
 Run: `bash .devcontainer/local-features/agent-skills/test/test-poststart.sh`
 
-Expected: PASS. Final line reads `22 passed, 0 failed`.
+Expected: PASS. Final line reads `23 passed, 0 failed`.
 
 - [ ] **Step 5: Verify the Feature builds and bakes the hook into image metadata**
 
@@ -510,23 +512,39 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 IMAGE="dc-order-assert:latest"
+BUILD_LOG="$(mktemp)"
+trap 'rm -f "$BUILD_LOG"' EXIT
 
-npx -y @devcontainers/cli@latest build \
-  --workspace-folder "$REPO_ROOT" --image-name "$IMAGE" >/dev/null 2>&1
+if ! npx -y @devcontainers/cli@latest build \
+  --workspace-folder "$REPO_ROOT" --image-name "$IMAGE" >"$BUILD_LOG" 2>&1; then
+  cat "$BUILD_LOG"
+  exit 1
+fi
 
 docker inspect "$IMAGE" --format '{{ index .Config.Labels "devcontainer.metadata" }}' \
   | python3 -c '
 import json, sys
+
+def check(cond, msg):
+    # Bare assert is stripped under PYTHONOPTIMIZE/-O, which would make this
+    # script print success unconditionally on a real ordering regression.
+    if not cond:
+        raise SystemExit(msg)
+
 meta = json.load(sys.stdin)
 ids = [e["id"] for e in meta if e.get("id")]
+check("./local-features/agent-skills" in ids,
+      f"./local-features/agent-skills missing from metadata: {ids}")
 for dep in ("./local-features/ssh", "./local-features/workspaces-permissions"):
-    assert dep in ids, f"{dep} missing from metadata: {ids}"
-    assert ids.index(dep) < ids.index("./local-features/agent-skills"), \
-        f"{dep} must install before ./local-features/agent-skills, got {ids}"
-hook = next(e for e in meta if e.get("id") == "./local-features/agent-skills")
+    check(dep in ids, f"{dep} missing from metadata: {ids}")
+    check(ids.index(dep) < ids.index("./local-features/agent-skills"),
+          f"{dep} must install before ./local-features/agent-skills, got {ids}")
+hooks = [e for e in meta if e.get("id") == "./local-features/agent-skills"]
+check(len(hooks) == 1, f"expected exactly one agent-skills metadata entry, got {len(hooks)}")
+hook = hooks[0]
 expected = "~/bin/devcontainer-feature/agent-skills/postStartScript.sh"
 actual = hook.get("postStartCommand")
-assert actual == expected, f"bad hook: {actual}"
+check(actual == expected, f"bad hook: {actual}")
 print("install order and postStartCommand verified")
 '
 ```

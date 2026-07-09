@@ -89,6 +89,7 @@ setup_world 2
 out="$("$HOOK" 2>&1)"; rc=$?
 [[ $rc -eq 0 ]] && pass "unreachable: exits 0" || fail "unreachable: exits 0" "got $rc"
 [[ "$out" == *"unreachable"* ]] && pass "unreachable: distinct message" || fail "unreachable: distinct message" "$out"
+[[ ! -d "$CLONE_DIR" ]] && pass "unreachable: does not clone" || fail "unreachable: does not clone" "$out"
 teardown_world
 
 # --- a dangling skills symlink is called out on the skip path
@@ -105,7 +106,8 @@ WORLD="$(mktemp -d)"; export HOME="$WORLD/home"; mkdir -p "$HOME"
 export AGENT_SKILLS_ENV_FILE="$WORLD/absent.env"
 out="$("$HOOK" 2>&1)"; rc=$?
 [[ $rc -eq 0 ]] && pass "no env file: exits 0" || fail "no env file: exits 0" "got $rc"
-[[ "$out" == *"$AGENT_SKILLS_ENV_FILE"* ]] && pass "no env file: names the file" || fail "no env file: names the file" "$out"
+[[ "$out" == *"$AGENT_SKILLS_ENV_FILE"* && "$out" == *"is missing or unreadable"* ]] \
+  && pass "no env file: names the file" || fail "no env file: names the file" "$out"
 rm -rf "$WORLD"
 
 # --- install.sh reports every bad option at once, not just the first
