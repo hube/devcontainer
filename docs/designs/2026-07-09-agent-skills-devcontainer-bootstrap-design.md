@@ -278,9 +278,9 @@ no-special-case property described above.
   feature entries in alphabetical order. No `overrideFeatureInstallOrder` entry is needed; the
   feature's own `dependsOn` establishes the order.
 - Add `.devcontainer/local-features/agent-skills/NOTES.md` documenting the feature's behavior and
-  the ephemeral-clone caveat. `NOTES.md` rather than `README.md`: published Features generate their
+  the ephemeral-clone caveat. `NOTES.md` rather than `README.md`: published features generate their
   `README.md` from `devcontainer-feature.json` and append `NOTES.md` to it, which is why every
-  Feature in upstream `devcontainers/features` ships both. These local Features are never published,
+  feature in upstream `devcontainers/features` ships both. These local features are never published,
   so only the hand-written half exists.
 - Update `README.md` with a one-line pointer to that `NOTES.md`. The top-level README does not carry
   per-feature detail.
