@@ -4,9 +4,9 @@
 
 **Goal:** Add a local Dev Container Feature that clones the `agent-skills` repository and runs its idempotent `setup.sh` on every container start, so a rebuilt container comes up with `hube-agent` skills loaded.
 
-**Architecture:** A local Feature named `agent-skills` declares `repo` and `cloneDir` options and contributes a `postStartCommand`. Its root-phase `install.sh` validates the options, copies a hook script into the container user's home, and persists the resolved option values to an environment file, because the Dev Containers specification exposes Feature options to `install.sh` only. The hook script sources that file at start time, clones the repository if absent, fetches if present, and runs `setup.sh`. `dependsOn` guarantees the `ssh` and `workspaces-permissions` Features install first, which orders their lifecycle hooks first.
+**Architecture:** A local feature named `agent-skills` declares `repo` and `cloneDir` options and contributes a `postStartCommand`. Its root-phase `install.sh` validates the options, copies a hook script into the container user's home, and persists the resolved option values to an environment file, because the Dev Containers specification exposes feature options to `install.sh` only. The hook script sources that file at start time, clones the repository if absent, fetches if present, and runs `setup.sh`. `dependsOn` guarantees the `ssh` and `workspaces-permissions` features install first, which orders their lifecycle hooks first.
 
-**Tech Stack:** Dev Containers local Features, Bash, `@devcontainers/cli` (via `npx`), Docker (via the `docker-outside-of-docker` Feature), Ubuntu base image.
+**Tech Stack:** Dev Containers local features, Bash, `@devcontainers/cli` (via `npx`), Docker (via the `docker-outside-of-docker` feature), Ubuntu base image.
 
 Design: [`docs/designs/2026-07-09-agent-skills-devcontainer-bootstrap-design.md`](../designs/2026-07-09-agent-skills-devcontainer-bootstrap-design.md)
 
@@ -14,9 +14,9 @@ Issue: https://github.com/hube/devcontainer/issues/26
 
 ## Global Constraints
 
-- Follow the repo's existing local Feature pattern under `.devcontainer/local-features/`.
-- List local Feature entries alphabetically in `.devcontainer/devcontainer.json`. `agent-skills` sorts first.
-- Do not hardcode the username as `devcontainer`; use `_CONTAINER_USER`. The container user's home is `/home/${_CONTAINER_USER}`, matching the `ssh` and `claude` Features.
+- Follow the repo's existing local feature pattern under `.devcontainer/local-features/`.
+- List local feature entries alphabetically in `.devcontainer/devcontainer.json`. `agent-skills` sorts first.
+- Do not hardcode the username as `devcontainer`; use `_CONTAINER_USER`. The container user's home is `/home/${_CONTAINER_USER}`, matching the `ssh` and `claude` features.
 - Feature option defaults: `repo` is `git@github.com:hube/agent-skills.git`; `cloneDir` is `/workspaces/agent-skills`.
 - Use `dependsOn` for `./local-features/ssh` and `./local-features/workspaces-permissions`. Do not use `overrideFeatureInstallOrder`. A mistyped `installsAfter` id is silently ignored; a mistyped `dependsOn` id fails the build.
 - `install.sh` validates every option and reports **all** problems before exiting non-zero.
@@ -34,15 +34,17 @@ Issue: https://github.com/hube/devcontainer/issues/26
 
 ## File Structure
 
-- Create `.devcontainer/local-features/agent-skills/devcontainer-feature.json`: Feature manifest declaring `repo` and `cloneDir` options, `dependsOn` on the `ssh` and `workspaces-permissions` local Features, and the `postStartCommand`.
+- Create `.devcontainer/local-features/agent-skills/devcontainer-feature.json`: feature manifest declaring `repo` and `cloneDir` options, `dependsOn` on the `ssh` and `workspaces-permissions` local features, and the `postStartCommand`.
 - Create `.devcontainer/local-features/agent-skills/install.sh`: root-phase installer. Validates options, copies `bin/` into the container user's home, writes the resolved options to `~/.config/devcontainer-feature/agent-skills.env`.
 - Create `.devcontainer/local-features/agent-skills/bin/devcontainer-feature/agent-skills/postStartScript.sh`: start-time hook. Sources the environment file, clones or fetches, runs `setup.sh`, and never fails container start.
 - Create `.devcontainer/local-features/agent-skills/test/test-poststart.sh`: self-contained Bash test harness for the hook's branching. Uses a local bare git repository as the remote and a stub `ssh-add` on `PATH`, so it needs neither network nor an SSH agent.
-- Modify `.devcontainer/devcontainer.json`: add `"./local-features/agent-skills": {}` as the first local Feature entry.
-- Modify `README.md`: document the bootstrap and the ephemeral-clone caveat.
+- Modify `.devcontainer/devcontainer.json`: add `"./local-features/agent-skills": {}` as the first local feature entry.
+- Create `.devcontainer/local-features/agent-skills/README.md`: the feature's own documentation —
+  behavior, options, SSH agent requirement, ephemeral-clone caveat. Follows `ccstatusline`'s pattern.
+- Modify `README.md`: a one-line pointer to that README. The top-level README carries no per-feature detail.
 - Modify `docs/designs/2026-07-09-agent-skills-devcontainer-bootstrap-design.md`: update `Status`.
 
-Task 1 builds the hook and its tests. Task 2 builds the manifest and installer, asserting the baked metadata. Task 3 wires the Feature in and asserts install order in a real build. Task 4 updates the docs.
+Task 1 builds the hook and its tests. Task 2 builds the manifest and installer, asserting the baked metadata. Task 3 wires the feature in and asserts install order in a real build. Task 4 updates the docs.
 
 ---
 
@@ -166,6 +168,35 @@ out="$("$HOOK" 2>&1)"; rc=$?
 [[ "$out" == *"dangling symlink"* ]] && pass "dangling: warns about the stale symlink" || fail "dangling: warns about the stale symlink" "$out"
 teardown_world
 
+# --- a failed clone surfaces git's own error, not just ours
+setup_world 0
+sed -i "s|^AGENT_SKILLS_REPO=.*|AGENT_SKILLS_REPO=$WORLD/no-such-remote.git|" "$AGENT_SKILLS_ENV_FILE"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "clone failure: exits 0" || fail "clone failure: exits 0" "got $rc"
+# Assert on "git said: fatal:", not bare "fatal:" -- git writes to stderr on its
+# own, so a bare match would pass even if the hook relayed nothing.
+[[ "$out" == *"git said: fatal:"* ]] && pass "clone failure: relays git's message" || fail "clone failure: relays git's message" "$out"
+teardown_world
+
+# --- a failing setup.sh surfaces its own stderr
+setup_world 0
+out="$("$HOOK" 2>&1)"   # first run clones and installs
+printf '#!/usr/bin/env bash\necho "setup exploded" >&2\nexit 1\n' > "$CLONE_DIR/setup.sh"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "setup failure: exits 0" || fail "setup failure: exits 0" "got $rc"
+[[ "$out" == *"setup.sh said: setup exploded"* ]] && pass "setup failure: relays setup.sh's message" || fail "setup failure: relays setup.sh's message" "$out"
+teardown_world
+
+# --- undefined options name the offending values
+setup_world 0
+printf 'AGENT_SKILLS_REPO=\nAGENT_SKILLS_CLONE_DIR=\n' > "$AGENT_SKILLS_ENV_FILE"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "undefined options: exits 0" || fail "undefined options: exits 0" "got $rc"
+[[ "$out" == *"AGENT_SKILLS_REPO=''"* && "$out" == *"AGENT_SKILLS_CLONE_DIR=''"* ]] \
+  && pass "undefined options: echoes both values" || fail "undefined options: echoes both values" "$out"
+[[ "$out" == *"Set both in"* ]] && pass "undefined options: remedy is not only rebuild" || fail "undefined options: remedy is not only rebuild" "$out"
+teardown_world
+
 # --- a missing environment file is survivable
 WORLD="$(mktemp -d)"; export HOME="$WORLD/home"; mkdir -p "$HOME"
 export AGENT_SKILLS_ENV_FILE="$WORLD/absent.env"
@@ -174,6 +205,19 @@ out="$("$HOOK" 2>&1)"; rc=$?
 [[ "$out" == *"$AGENT_SKILLS_ENV_FILE"* && "$out" == *"is missing or unreadable"* ]] \
   && pass "no env file: names the file" || fail "no env file: names the file" "$out"
 rm -rf "$WORLD"
+
+# --- install.sh reports every bad option at once, not just the first
+INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
+out="$(REPO='' CLONEDIR='relative/path' _CONTAINER_USER='nosuchuser-xyz' bash "$INSTALL" 2>&1)"; rc=$?
+[[ $rc -ne 0 ]] && pass "install: fails on bad options" || fail "install: fails on bad options" "exit $rc"
+[[ "$out" == *"'repo' must not be empty"* ]] && pass "install: reports empty repo" || fail "install: reports empty repo" "$out"
+[[ "$out" == *"must be an absolute path"* ]] && pass "install: reports relative cloneDir" || fail "install: reports relative cloneDir" "$out"
+[[ "$out" == *"nosuchuser-xyz"* ]] && pass "install: reports unknown container user" || fail "install: reports unknown container user" "$out"
+
+# --- an empty cloneDir reports "must not be empty", not a bogus absolute-path error
+out="$(REPO='git@example.com:x/y.git' CLONEDIR='' _CONTAINER_USER="$(id -un)" bash "$INSTALL" 2>&1)"; rc=$?
+[[ "$out" == *"'cloneDir' must not be empty"* ]] && pass "install: reports empty cloneDir" || fail "install: reports empty cloneDir" "$out"
+[[ "$out" != *"must be an absolute path"* ]] && pass "install: no spurious absolute-path error" || fail "install: no spurious absolute-path error" "$out"
 
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [[ $failed -eq 0 ]]
@@ -221,14 +265,13 @@ if [[ ! -r "$ENV_FILE" ]]; then
   bail "the options file $ENV_FILE is missing or unreadable, so the bootstrap cannot run. hube-agent skills will not load. Rebuild the container to reinstall the Feature."
 fi
 
-# shellcheck source=/dev/null
 source "$ENV_FILE"
 
 repo="${AGENT_SKILLS_REPO:-}"
 clone_dir="${AGENT_SKILLS_CLONE_DIR:-}"
 
 if [[ -z "$repo" || -z "$clone_dir" ]]; then
-  bail "the options file $ENV_FILE does not define AGENT_SKILLS_REPO and AGENT_SKILLS_CLONE_DIR, so the bootstrap cannot run. hube-agent skills will not load. Rebuild the container to reinstall the Feature."
+  bail "the options file $ENV_FILE must define both AGENT_SKILLS_REPO and AGENT_SKILLS_CLONE_DIR, but AGENT_SKILLS_REPO='$repo' and AGENT_SKILLS_CLONE_DIR='$clone_dir', so the bootstrap cannot run. hube-agent skills will not load. Set both in $ENV_FILE, or rebuild the container to reinstall the feature."
 fi
 
 if [[ -e "$clone_dir" && ! -d "$clone_dir" ]]; then
@@ -236,8 +279,9 @@ if [[ -e "$clone_dir" && ! -d "$clone_dir" ]]; then
 fi
 
 if [[ -d "$clone_dir/.git" ]]; then
-  git -C "$clone_dir" fetch --quiet \
-    || warn "git fetch failed in $clone_dir, so its remote refs are stale. Skills still load from the existing clone."
+  if ! output="$(git -C "$clone_dir" fetch --quiet 2>&1)"; then
+    warn "git fetch failed in $clone_dir, so its remote refs are stale. Skills still load from the existing clone. git said: ${output:-no output}"
+  fi
 elif [[ -d "$clone_dir" && -n "$(ls -A "$clone_dir" 2>/dev/null)" ]]; then
   bail "$clone_dir is not empty and is not a git repository, so it will not be cloned over. hube-agent skills will not load. Move it aside, then restart the container."
 else
@@ -248,16 +292,20 @@ else
     *) bail "the SSH agent is unreachable at SSH_AUTH_SOCK=${SSH_AUTH_SOCK:-unset}, so $repo cannot be cloned. hube-agent skills will not load. Check SSH agent forwarding on the host, then restart the container." ;;
   esac
 
-  git clone --quiet "$repo" "$clone_dir" \
-    || bail "cloning $repo into $clone_dir failed, so no skills are installed. hube-agent skills will not load. Check network access and repository permissions, then restart the container."
+  if ! output="$(git clone --quiet "$repo" "$clone_dir" 2>&1)"; then
+    bail "cloning $repo into $clone_dir failed, so no skills are installed. hube-agent skills will not load. Check network access and repository permissions, then restart the container. git said: ${output:-no output}"
+  fi
 fi
 
 if [[ ! -f "$clone_dir/setup.sh" ]]; then
   bail "$clone_dir/setup.sh is missing, so the installer cannot run. hube-agent skills will not load. Check that $repo still ships setup.sh."
 fi
 
-bash "$clone_dir/setup.sh" \
-  || warn "$clone_dir/setup.sh failed, so hube-agent skills may not load. Re-run it by hand to see the error."
+# Captured so a failure and its cause arrive as one message. Discards setup.sh's
+# success chatter, which nobody reads in container start logs.
+if ! output="$(bash "$clone_dir/setup.sh" 2>&1)"; then
+  warn "$clone_dir/setup.sh failed, so hube-agent skills may not load. setup.sh said: ${output:-no output}"
+fi
 
 exit 0
 ```
@@ -272,7 +320,7 @@ chmod +x .devcontainer/local-features/agent-skills/bin/devcontainer-feature/agen
 
 Run: `bash .devcontainer/local-features/agent-skills/test/test-poststart.sh`
 
-Expected: PASS. Final line reads `17 passed, 0 failed` and the exit status is 0.
+Expected: PASS. Final line reads `24 passed, 0 failed` and the exit status is 0.
 
 - [ ] **Step 5: Commit**
 
@@ -299,17 +347,17 @@ git log -1 --pretty=%B | git interpret-trailers --parse
 
 ---
 
-### Task 2: The Feature manifest and installer
+### Task 2: The feature manifest and installer
 
 **Files:**
 - Create: `.devcontainer/local-features/agent-skills/devcontainer-feature.json`
 - Create: `.devcontainer/local-features/agent-skills/install.sh`
 
 **Interfaces:**
-- Consumes: `postStartScript.sh` from Task 1, at `bin/devcontainer-feature/agent-skills/postStartScript.sh` relative to the Feature directory.
-- Produces: `~/.config/devcontainer-feature/agent-skills.env`, defining `AGENT_SKILLS_REPO` and `AGENT_SKILLS_CLONE_DIR`. The Feature contributes `postStartCommand` = `~/bin/devcontainer-feature/agent-skills/postStartScript.sh`.
+- Consumes: `postStartScript.sh` from Task 1, at `bin/devcontainer-feature/agent-skills/postStartScript.sh` relative to the feature directory.
+- Produces: `~/.config/devcontainer-feature/agent-skills.env`, defining `AGENT_SKILLS_REPO` and `AGENT_SKILLS_CLONE_DIR`. The feature contributes `postStartCommand` = `~/bin/devcontainer-feature/agent-skills/postStartScript.sh`.
 
-The Dev Containers specification emits Feature options to `install.sh` as uppercased environment variables (`repo` → `REPO`, `cloneDir` → `CLONEDIR`) and to nothing else, which is why the installer persists them to a file.
+The Dev Containers specification emits feature options to `install.sh` as uppercased environment variables (`repo` → `REPO`, `cloneDir` → `CLONEDIR`) and to nothing else, which is why the installer persists them to a file.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -334,7 +382,7 @@ out="$(REPO='git@example.com:x/y.git' CLONEDIR='' _CONTAINER_USER="$(id -un)" ba
 
 Run: `bash .devcontainer/local-features/agent-skills/test/test-poststart.sh`
 
-Expected: FAIL. The six new assertions fail with `bash: .../install.sh: No such file or directory`; the seventeen from Task 1 still pass.
+Expected: FAIL. The six new assertions fail with `bash: .../install.sh: No such file or directory`; the twenty-four from Task 1 still pass.
 
 - [ ] **Step 3: Write the manifest and the installer**
 
@@ -372,7 +420,7 @@ Create `.devcontainer/local-features/agent-skills/install.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# Feature options reach install.sh and nothing else, so persist them for the
+# feature options reach install.sh and nothing else, so persist them for the
 # postStart hook to source.
 set -euo pipefail
 
@@ -424,11 +472,11 @@ echo ">Done installing agent-skills bootstrap"
 
 Run: `bash .devcontainer/local-features/agent-skills/test/test-poststart.sh`
 
-Expected: PASS. Final line reads `23 passed, 0 failed`.
+Expected: PASS. Final line reads `30 passed, 0 failed`.
 
-- [ ] **Step 5: Verify the Feature builds and bakes the hook into image metadata**
+- [ ] **Step 5: Verify the feature builds and bakes the hook into image metadata**
 
-The `docker-outside-of-docker` Feature supplies a working daemon, so this runs from inside the devcontainer.
+The `docker-outside-of-docker` feature supplies a working daemon, so this runs from inside the devcontainer.
 
 ```bash
 npx -y @devcontainers/cli@latest build \
@@ -448,12 +496,12 @@ git add .devcontainer/local-features/agent-skills/devcontainer-feature.json \
         .devcontainer/local-features/agent-skills/install.sh \
         .devcontainer/local-features/agent-skills/test/test-poststart.sh
 git commit -F - <<'EOF'
-Add agent-skills Feature manifest and installer
+Add agent-skills feature manifest and installer
 
 Options reach install.sh and nothing else, so the installer persists the
 resolved repo and cloneDir to an env file the postStart hook sources.
 Validate every option and report all problems at once. Depend on the ssh
-and workspaces-permissions Features so their hooks run first.
+and workspaces-permissions features so their hooks run first.
 
 Harness: <harness>
 Harness-Version: <version>
@@ -466,18 +514,18 @@ git log -1 --pretty=%B | git interpret-trailers --parse
 
 ---
 
-### Task 3: Wire the Feature into `devcontainer.json`
+### Task 3: Wire the feature into `devcontainer.json`
 
 **Files:**
 - Modify: `.devcontainer/devcontainer.json`
 
 **Interfaces:**
-- Consumes: the `agent-skills` Feature from Task 2.
+- Consumes: the `agent-skills` feature from Task 2.
 - Produces: an image whose `devcontainer.metadata` label lists `./local-features/ssh` and `./local-features/workspaces-permissions` before `./local-features/agent-skills`.
 
-- [ ] **Step 1: Add the Feature entry**
+- [ ] **Step 1: Add the feature entry**
 
-In `.devcontainer/devcontainer.json`, add `"./local-features/agent-skills": {}` as the first local Feature, keeping the list alphabetical. The `features` object becomes:
+In `.devcontainer/devcontainer.json`, add `"./local-features/agent-skills": {}` as the first local feature, keeping the list alphabetical. The `features` object becomes:
 
 ```json
   "features": {
@@ -576,9 +624,9 @@ ssh-add -l
 git add .devcontainer/devcontainer.json \
         .devcontainer/local-features/agent-skills/test/test-install-order.sh
 git commit -F - <<'EOF'
-Enable the agent-skills bootstrap Feature
+Enable the agent-skills bootstrap feature
 
-Wire the Feature into devcontainer.json and assert from the built image's
+Wire the feature into devcontainer.json and assert from the built image's
 metadata label that ssh and workspaces-permissions install ahead of it, so
 their postStart hooks run first. A mistyped installsAfter id is silently
 ignored, so the order is asserted rather than assumed.
@@ -615,11 +663,11 @@ In `README.md`, extend the bulleted list of what the devcontainer includes so it
 Then add this section immediately after the paragraph beginning "Configurations that mount a volume over `/workspaces` itself":
 
 ```markdown
-On container start, the `agent-skills` Feature clones
+On container start, the `agent-skills` feature clones
 `git@github.com:hube/agent-skills.git` into `/workspaces/agent-skills` if it is
 absent, refreshes its remote refs if it is present, and runs the repository's
 own idempotent `setup.sh`. Cloning uses the forwarded SSH agent. If the agent
-holds no identities the container still starts, and the Feature explains on
+holds no identities the container still starts, and the feature explains on
 stderr that skills will not load until you run `ssh-add` on the host and
 restart.
 
@@ -629,7 +677,7 @@ live on the container filesystem and are destroyed on rebuild. Edit
 `agent-skills` from its own workspace, where the repository is bind-mounted from
 the host.
 
-Both the remote and the clone path are Feature options, `repo` and `cloneDir`.
+Both the remote and the clone path are feature options, `repo` and `cloneDir`.
 ```
 
 - [ ] **Step 2: Update the design document status**

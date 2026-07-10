@@ -101,6 +101,35 @@ out="$("$HOOK" 2>&1)"; rc=$?
 [[ "$out" == *"dangling symlink"* ]] && pass "dangling: warns about the stale symlink" || fail "dangling: warns about the stale symlink" "$out"
 teardown_world
 
+# --- a failed clone surfaces git's own error, not just ours
+setup_world 0
+sed -i "s|^AGENT_SKILLS_REPO=.*|AGENT_SKILLS_REPO=$WORLD/no-such-remote.git|" "$AGENT_SKILLS_ENV_FILE"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "clone failure: exits 0" || fail "clone failure: exits 0" "got $rc"
+# Assert on "git said: fatal:", not bare "fatal:" -- git writes to stderr on its
+# own, so a bare match would pass even if the hook relayed nothing.
+[[ "$out" == *"git said: fatal:"* ]] && pass "clone failure: relays git's message" || fail "clone failure: relays git's message" "$out"
+teardown_world
+
+# --- a failing setup.sh surfaces its own stderr
+setup_world 0
+out="$("$HOOK" 2>&1)"   # first run clones and installs
+printf '#!/usr/bin/env bash\necho "setup exploded" >&2\nexit 1\n' > "$CLONE_DIR/setup.sh"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "setup failure: exits 0" || fail "setup failure: exits 0" "got $rc"
+[[ "$out" == *"setup.sh said: setup exploded"* ]] && pass "setup failure: relays setup.sh's message" || fail "setup failure: relays setup.sh's message" "$out"
+teardown_world
+
+# --- undefined options name the offending values
+setup_world 0
+printf 'AGENT_SKILLS_REPO=\nAGENT_SKILLS_CLONE_DIR=\n' > "$AGENT_SKILLS_ENV_FILE"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "undefined options: exits 0" || fail "undefined options: exits 0" "got $rc"
+[[ "$out" == *"AGENT_SKILLS_REPO=''"* && "$out" == *"AGENT_SKILLS_CLONE_DIR=''"* ]] \
+  && pass "undefined options: echoes both values" || fail "undefined options: echoes both values" "$out"
+[[ "$out" == *"Set both in"* ]] && pass "undefined options: remedy is not only rebuild" || fail "undefined options: remedy is not only rebuild" "$out"
+teardown_world
+
 # --- a missing environment file is survivable
 WORLD="$(mktemp -d)"; export HOME="$WORLD/home"; mkdir -p "$HOME"
 export AGENT_SKILLS_ENV_FILE="$WORLD/absent.env"

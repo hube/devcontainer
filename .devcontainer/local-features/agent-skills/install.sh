@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Feature options reach install.sh and nothing else, so persist them for the
+# feature options reach install.sh and nothing else, so persist them for the
 # postStart hook to source.
 set -euo pipefail
 

@@ -23,14 +23,13 @@ if [[ ! -r "$ENV_FILE" ]]; then
   bail "the options file $ENV_FILE is missing or unreadable, so the bootstrap cannot run. hube-agent skills will not load. Rebuild the container to reinstall the Feature."
 fi
 
-# shellcheck source=/dev/null
 source "$ENV_FILE"
 
 repo="${AGENT_SKILLS_REPO:-}"
 clone_dir="${AGENT_SKILLS_CLONE_DIR:-}"
 
 if [[ -z "$repo" || -z "$clone_dir" ]]; then
-  bail "the options file $ENV_FILE does not define AGENT_SKILLS_REPO and AGENT_SKILLS_CLONE_DIR, so the bootstrap cannot run. hube-agent skills will not load. Rebuild the container to reinstall the Feature."
+  bail "the options file $ENV_FILE must define both AGENT_SKILLS_REPO and AGENT_SKILLS_CLONE_DIR, but AGENT_SKILLS_REPO='$repo' and AGENT_SKILLS_CLONE_DIR='$clone_dir', so the bootstrap cannot run. hube-agent skills will not load. Set both in $ENV_FILE, or rebuild the container to reinstall the feature."
 fi
 
 if [[ -e "$clone_dir" && ! -d "$clone_dir" ]]; then
@@ -38,8 +37,9 @@ if [[ -e "$clone_dir" && ! -d "$clone_dir" ]]; then
 fi
 
 if [[ -d "$clone_dir/.git" ]]; then
-  git -C "$clone_dir" fetch --quiet \
-    || warn "git fetch failed in $clone_dir, so its remote refs are stale. Skills still load from the existing clone."
+  if ! output="$(git -C "$clone_dir" fetch --quiet 2>&1)"; then
+    warn "git fetch failed in $clone_dir, so its remote refs are stale. Skills still load from the existing clone. git said: ${output:-no output}"
+  fi
 elif [[ -d "$clone_dir" && -n "$(ls -A "$clone_dir" 2>/dev/null)" ]]; then
   bail "$clone_dir is not empty and is not a git repository, so it will not be cloned over. hube-agent skills will not load. Move it aside, then restart the container."
 else
@@ -50,15 +50,19 @@ else
     *) bail "the SSH agent is unreachable at SSH_AUTH_SOCK=${SSH_AUTH_SOCK:-unset}, so $repo cannot be cloned. hube-agent skills will not load. Check SSH agent forwarding on the host, then restart the container." ;;
   esac
 
-  git clone --quiet "$repo" "$clone_dir" \
-    || bail "cloning $repo into $clone_dir failed, so no skills are installed. hube-agent skills will not load. Check network access and repository permissions, then restart the container."
+  if ! output="$(git clone --quiet "$repo" "$clone_dir" 2>&1)"; then
+    bail "cloning $repo into $clone_dir failed, so no skills are installed. hube-agent skills will not load. Check network access and repository permissions, then restart the container. git said: ${output:-no output}"
+  fi
 fi
 
 if [[ ! -f "$clone_dir/setup.sh" ]]; then
   bail "$clone_dir/setup.sh is missing, so the installer cannot run. hube-agent skills will not load. Check that $repo still ships setup.sh."
 fi
 
-bash "$clone_dir/setup.sh" \
-  || warn "$clone_dir/setup.sh failed, so hube-agent skills may not load. Re-run it by hand to see the error."
+# Captured so a failure and its cause arrive as one message. Discards setup.sh's
+# success chatter, which nobody reads in container start logs.
+if ! output="$(bash "$clone_dir/setup.sh" 2>&1)"; then
+  warn "$clone_dir/setup.sh failed, so hube-agent skills may not load. setup.sh said: ${output:-no output}"
+fi
 
 exit 0
