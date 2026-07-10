@@ -50,6 +50,15 @@ run_hook
 [[ "$out" == *"no GitHub CLI auth changes"* ]] && pass "empty tokens: warns" || fail "empty tokens: warns" "$out"
 teardown_world
 
+# Unset tokens leave existing credentials alone by never invoking gh.
+setup_world
+unset GH_TOKEN GITHUB_TOKEN
+run_hook
+[[ $rc -eq 0 ]] && pass "unset tokens: exits 0" || fail "unset tokens: exits 0" "got $rc"
+[[ ! -e "$GH_LOG" ]] && pass "unset tokens: does not invoke gh" || fail "unset tokens: does not invoke gh" "$out"
+[[ "$out" == *"no GitHub CLI auth changes"* ]] && pass "unset tokens: warns" || fail "unset tokens: warns" "$out"
+teardown_world
+
 # GITHUB_TOKEN is used when GH_TOKEN is empty.
 setup_world
 export GH_TOKEN=""

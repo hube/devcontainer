@@ -36,6 +36,9 @@ def main() -> None:
     assert manifest["mounts"] == [MOUNT]
     assert manifest["postStartCommand"] == POST_START_COMMAND
 
+    installer = INSTALLER_PATH.read_text(encoding="utf-8")
+    assert 'install -d -o "${_CONTAINER_USER}" -g "${_CONTAINER_USER}" -m 0755 "$user_home/.config/gh"' in installer
+
     features = devcontainer["features"]
     assert OFFICIAL_GITHUB_CLI_FEATURE in features
     assert LOCAL_GITHUB_CLI_CONFIG_FEATURE in features
