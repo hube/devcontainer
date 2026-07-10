@@ -5,6 +5,7 @@
   "dependsOn": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
   "mounts": [
     {
       "type": "volume",

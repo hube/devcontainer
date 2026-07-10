@@ -124,6 +124,14 @@ constraints:
 - `gh auth login --with-token` is best suited for classic personal access
   tokens. Fine-grained tokens may work for scoped commands but GitHub CLI
   documentation recommends `GH_TOKEN` for fine-grained token usage.
+- `gh auth login --with-token` rejects classic tokens missing GitHub CLI's
+  minimum scopes (currently `repo` and `read:org`); such tokens surface as a
+  non-fatal startup warning.
+- The stored credential serves `gh` subcommands only. The script does not run
+  `gh auth setup-git`, so `git` over HTTPS does not use the stored credential;
+  the devcontainer relies on SSH agent forwarding for `git` remote operations.
+- How to remove a stale stored credential: `gh auth logout` inside the
+  container, or delete the `github-cli-config-${devcontainerId}` volume.
 - If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script warns and
   makes no GitHub CLI auth changes.
 - If either token is set, the script attempts to store the selected token with
@@ -153,6 +161,12 @@ devcontainer-specific Docker named volume. This is not as strong as a system
 credential store, but it avoids broadening `GH_TOKEN` into Codex-spawned command
 environments and keeps auth available to all `gh` processes in the container.
 
+A stored token outlives the host's decision to stop supplying it: once
+`GH_TOKEN`/`GITHUB_TOKEN` are no longer set, the previously stored credential
+remains in the volume until it expires, is revoked, or is removed with
+`gh auth logout` or by deleting the volume. The README must document this
+remediation path.
+
 ## Error Handling
 
 - If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script prints a
@@ -163,8 +177,12 @@ environments and keeps auth available to all `gh` processes in the container.
   `GITHUB_TOKEN`.
 - If a token is selected, the script attempts to store it with `gh auth login
   --with-token --insecure-storage`.
-- If `gh auth login` fails because the token is invalid, lacks required scopes,
-  or cannot be stored, the script prints a warning and exits successfully.
+- If `gh auth login` fails because the token is invalid, lacks required scopes
+  (including classic tokens below GitHub CLI's minimum scopes), or cannot be
+  stored, the script prints a warning and exits successfully. `gh`'s own stderr
+  passes through to the postStart log so the underlying cause is visible.
+- If `gh` is not on `PATH`, the pipeline fails the same way: the script prints
+  a warning and exits successfully.
 - The script must not remove or change other existing stored credentials.
 - The script must not call `gh auth switch`; any active-account side effects are
   limited to GitHub CLI behavior while storing the selected-token account.

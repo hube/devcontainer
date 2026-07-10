@@ -24,3 +24,9 @@ Design: docs/designs/2026-07-09-github-cli-auth-design.md
 - Add an installer that validates _CONTAINER_USER and copies bin into that user's home with executable ownership/modes.
 - Add a Python json static test for manifest fields, official dependency, mount, hook, both remoteEnv token values, containerEnv.TZ, absent remoteEnv.TZ, and absent Codex shell_environment_policy.
 - Wire the local Feature alphabetically after direnv; retain tokens only in remoteEnv and move TZ to containerEnv. Run syntax/static checks, then commit and validate trailers.
+
+### Task 3: Code review fixes
+
+- Seed both `~/.config` and `~/.config/gh` user-owned in the installer, since `install -d` applies ownership only to the directories it is told to create and a root-owned `~/.config` blocks other user tooling.
+- Declare `installsAfter` common-utils in the Feature manifest, document `GITHUB_TOKEN` alongside `GH_TOKEN` in the devcontainer `secrets` metadata, and make the static test tolerate JSONC comments in devcontainer JSON files.
+- Cover the missing-`gh` startup path in the hermetic tests, and document in the README and design: credential scope (`gh` subcommands only, no `gh auth setup-git`), classic-token minimum scopes, and stale stored-token removal.

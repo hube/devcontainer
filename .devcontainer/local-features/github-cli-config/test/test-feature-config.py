@@ -23,8 +23,10 @@ POST_START_COMMAND = "~/bin/devcontainer-feature/github-cli-config/postStartScri
 
 
 def load_json(path: Path) -> dict:
-    with path.open(encoding="utf-8") as source:
-        return json.load(source)
+    # devcontainer JSON files are JSONC; drop whole-line // comments before parsing.
+    text = path.read_text(encoding="utf-8")
+    lines = [line for line in text.splitlines() if not line.lstrip().startswith("//")]
+    return json.loads("\n".join(lines))
 
 
 def main() -> None:
@@ -33,11 +35,18 @@ def main() -> None:
 
     assert manifest["id"] == "github-cli-config"
     assert manifest["dependsOn"] == {OFFICIAL_GITHUB_CLI_FEATURE: {}}
+    assert manifest["installsAfter"] == ["ghcr.io/devcontainers/features/common-utils"]
     assert manifest["mounts"] == [MOUNT]
     assert manifest["postStartCommand"] == POST_START_COMMAND
 
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
-    assert 'install -d -o "${_CONTAINER_USER}" -g "${_CONTAINER_USER}" -m 0755 "$user_home/.config/gh"' in installer
+    # Both directory levels must be named: install -d applies ownership only to
+    # the directories it is told to create, so naming only .config/gh leaves a
+    # freshly created ~/.config root-owned.
+    assert (
+        'install -d -o "${_CONTAINER_USER}" -g "${_CONTAINER_USER}" -m 0755'
+        ' "$user_home/.config" "$user_home/.config/gh"'
+    ) in installer
 
     features = devcontainer["features"]
     assert OFFICIAL_GITHUB_CLI_FEATURE in features
@@ -47,6 +56,7 @@ def main() -> None:
 
     assert devcontainer["remoteEnv"]["GH_TOKEN"] == "${localEnv:GH_TOKEN}"
     assert devcontainer["remoteEnv"]["GITHUB_TOKEN"] == "${localEnv:GITHUB_TOKEN}"
+    assert set(devcontainer["secrets"]) >= {"GH_TOKEN", "GITHUB_TOKEN"}
     assert "TZ" not in devcontainer["remoteEnv"]
     assert devcontainer["containerEnv"]["TZ"] == "${localEnv:TZ:America/Los_Angeles}"
 

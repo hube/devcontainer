@@ -30,6 +30,10 @@
     "GH_TOKEN": {
       "description": "Provide an authentication token for the GitHub CLI to use",
       "documentationUrl": "https://cli.github.com/manual/gh_auth_login"
+    },
+    "GITHUB_TOKEN": {
+      "description": "Fallback authentication token for the GitHub CLI, used when GH_TOKEN is not set",
+      "documentationUrl": "https://cli.github.com/manual/gh_auth_login"
     }
   },
   "appPort": ["127.0.0.1:2222:2222"]

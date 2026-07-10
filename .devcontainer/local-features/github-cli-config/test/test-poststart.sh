@@ -82,6 +82,20 @@ args_line="$(sed -n '1p' "$GH_LOG")"
 [[ "$args_line" != *"preferred-token"* ]] && pass "arguments: token is stdin-only" || fail "arguments: token is stdin-only" "$log"
 teardown_world
 
+# A missing gh binary must not prevent container startup.
+setup_world
+export GH_TOKEN="orphan-token"
+unset GITHUB_TOKEN
+mkdir -p "$WORLD/bin"
+ln -s "$(command -v bash)" "$WORLD/bin/bash"
+ln -s "$(command -v env)" "$WORLD/bin/env"
+out="$(PATH="$WORLD/bin" "$HOOK" 2>&1)"
+rc=$?
+[[ $rc -eq 0 ]] && pass "missing gh: exits 0" || fail "missing gh: exits 0" "got $rc"
+[[ ! -e "$GH_LOG" ]] && pass "missing gh: never reaches a gh binary" || fail "missing gh: never reaches a gh binary" "$out"
+[[ "$out" == *"failed"* ]] && pass "missing gh: warns" || fail "missing gh: warns" "$out"
+teardown_world
+
 # gh login failures must not prevent container startup.
 setup_world
 export GH_TOKEN="failing-token"
