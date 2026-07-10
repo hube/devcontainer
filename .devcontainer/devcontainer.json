@@ -14,13 +14,17 @@
     "./local-features/claude": {},
     "./local-features/codex": {},
     "./local-features/direnv": {},
+    "./local-features/github-cli-config": {},
     "./local-features/ssh": {},
     "./local-features/workspaces-permissions": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
   "remoteEnv": {
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
-    "TZ": "${localEnv:TZ:America/Los_Angeles}",
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+  },
+  "containerEnv": {
+    "TZ": "${localEnv:TZ:America/Los_Angeles}"
   },
   "secrets": {
     "GH_TOKEN": {
