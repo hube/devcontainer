@@ -116,8 +116,8 @@ what enables it, so there is no `enabled` option.
 sources. The environment file exists because the specification exposes options to `install.sh` only:
 
 > A supporting tool will parse the `options` object provided by the user. If a value is provided for
-> a feature, it will be emitted to a file named `devcontainer-features.env` [...] This file is
-> sourced at build-time for the feature `install.sh` entrypoint script to handle.
+> a Feature, it will be emitted to a file named `devcontainer-features.env` [...] This file is
+> sourced at build-time for the Feature `install.sh` entrypoint script to handle.
 
 The environment file is sourced explicitly rather than delegated to `direnv`, even though `direnv` is
 installed by another local feature. `direnv` is wired as an oh-my-zsh plugin in `~/.zshrc`, so its
@@ -157,7 +157,7 @@ directory under `/workspaces`, which that feature makes writable by the containe
 Ordering follows from the dependency. The specification orders lifecycle hooks by feature
 installation order:
 
-> For each lifecycle hook (in feature installation order), each command contributed by a feature is
+> For each lifecycle hook (in Feature installation order), each command contributed by a Feature is
 > executed in sequence (blocking the next command from executing).
 
 `dependsOn` is preferred over both `installsAfter` and `overrideFeatureInstallOrder`. It is a hard
@@ -277,9 +277,12 @@ no-special-case property described above.
 - Add `"./local-features/agent-skills": {}` to `.devcontainer/devcontainer.json`, keeping local
   feature entries in alphabetical order. No `overrideFeatureInstallOrder` entry is needed; the
   feature's own `dependsOn` establishes the order.
-- Add `.devcontainer/local-features/agent-skills/README.md` documenting the feature's behavior and
-  the ephemeral-clone caveat, following the `ccstatusline` feature's README pattern.
-- Update `README.md` with a one-line pointer to that README. The top-level README does not carry
+- Add `.devcontainer/local-features/agent-skills/NOTES.md` documenting the feature's behavior and
+  the ephemeral-clone caveat. `NOTES.md` rather than `README.md`: published Features generate their
+  `README.md` from `devcontainer-feature.json` and append `NOTES.md` to it, which is why every
+  Feature in upstream `devcontainers/features` ships both. These local Features are never published,
+  so only the hand-written half exists.
+- Update `README.md` with a one-line pointer to that `NOTES.md`. The top-level README does not carry
   per-feature detail.
 
 In `agent-skills`, update the README's manual install section to describe the automatic bootstrap,

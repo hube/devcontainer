@@ -15,7 +15,7 @@ interactive shells can create sibling project directories, such as
 Configurations that mount a volume over `/workspaces` itself are responsible for
 that mount's permissions.
 
-The [`agent-skills`](.devcontainer/local-features/agent-skills/README.md) local
+The [`agent-skills`](.devcontainer/local-features/agent-skills/NOTES.md) local
 feature clones a repo that provides skills for AI agents to use, and installs
 them on container start.
 
