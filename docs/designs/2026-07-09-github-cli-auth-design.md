@@ -1,6 +1,6 @@
 # GitHub CLI Auth Design
 
-Status: Proposed
+Status: Planned
 
 Issue: https://github.com/hube/devcontainer/issues/19
 
