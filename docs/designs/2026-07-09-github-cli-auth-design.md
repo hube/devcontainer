@@ -26,13 +26,13 @@ container-wide.
 - Persist GitHub CLI auth across container restarts using a named Docker volume.
 - Avoid changing Codex `shell_environment_policy`.
 - Move `TZ` to `containerEnv`.
-- Keep `GH_TOKEN` as a runtime bootstrap input, not a build-time Feature option.
+- Keep `GH_TOKEN` and `GITHUB_TOKEN` as runtime bootstrap inputs, not build-time Feature options.
 
 ## Non-Goals
 
 - Do not add a Linux Secret Service or keyring daemon stack to the container.
-- Do not store `GH_TOKEN` in Codex config.
-- Do not make `GH_TOKEN` a container-wide `containerEnv` value.
+- Do not store `GH_TOKEN` or `GITHUB_TOKEN` in Codex config.
+- Do not make `GH_TOKEN` or `GITHUB_TOKEN` container-wide `containerEnv` values.
 - Do not introduce a `codex` wrapper.
 - Do not solve non-GitHub secret forwarding for arbitrary tools.
 
@@ -75,30 +75,32 @@ known user path, following the existing local Feature pattern:
 "postStartCommand": "~/bin/devcontainer-feature/github-cli-config/postStartScript.sh"
 ```
 
-The post-start script treats `GH_TOKEN` as the only trigger for GitHub CLI auth
-changes. If `GH_TOKEN` is unset or empty, the script prints a warning that no
-GitHub CLI auth changes are being made and exits successfully. It must not run
-`gh auth status`, `gh auth login`, `gh auth logout`, delete `hosts.yml`, or
-otherwise inspect or mutate existing stored credentials in this path. Existing
-`gh` credentials remain available for later `gh` commands to use naturally.
+The post-start script treats the GitHub CLI token environment variables as the
+only trigger for GitHub CLI auth changes. It selects `GH_TOKEN` when set,
+otherwise falls back to `GITHUB_TOKEN`, matching `gh` precedence for github.com.
+If neither token is set, the script prints a warning that no GitHub CLI auth
+changes are being made and exits successfully. It must not run `gh auth status`,
+`gh auth login`, `gh auth logout`, delete `hosts.yml`, or otherwise inspect or
+mutate existing stored credentials in this path. Existing `gh` credentials
+remain available for later `gh` commands to use naturally.
 
-If `GH_TOKEN` is set, the script always attempts to add that token to GitHub
-CLI's stored credentials using plaintext storage in the mounted GitHub CLI
-config volume, regardless of whether other credentials already exist:
+If either token is set, the script always attempts to add the selected token to
+GitHub CLI's stored credentials using plaintext storage in the mounted GitHub
+CLI config volume, regardless of whether other credentials already exist:
 
 ```bash
-printf '%s\n' "${GH_TOKEN}" | env -u GH_TOKEN -u GITHUB_TOKEN gh auth login \
+printf '%s\n' "${selected_token}" | env -u GH_TOKEN -u GITHUB_TOKEN gh auth login \
   --hostname github.com \
   --with-token \
   --insecure-storage
 ```
 
-`GH_TOKEN` remains in top-level `remoteEnv` because Dev Container Features do
-not provide an idiomatic runtime secret requirement declaration. Feature
-`options` are build/install-time inputs and are not appropriate for tokens.
-`containerEnv` would make the token static and visible to all container
-processes. `remoteEnv` is the least-broad supported path for a host-provided
-runtime secret used by lifecycle hooks.
+`GH_TOKEN` and `GITHUB_TOKEN` remain in top-level `remoteEnv` because Dev
+Container Features do not provide an idiomatic runtime secret requirement
+declaration. Feature `options` are build/install-time inputs and are not
+appropriate for tokens. `containerEnv` would make tokens static and visible to
+all container processes. `remoteEnv` is the least-broad supported path for
+host-provided runtime secrets used by lifecycle hooks.
 
 `TZ` moves from `remoteEnv` to `containerEnv` because it is non-secret,
 container-wide configuration.
@@ -108,8 +110,10 @@ container-wide configuration.
 The local `github-cli-config` Feature must include a README that documents these
 constraints:
 
-- `GH_TOKEN` is consumed only as a runtime bootstrap token.
-- `GH_TOKEN` must be supplied through top-level `remoteEnv`; Feature options are
+- `GH_TOKEN` and `GITHUB_TOKEN` are consumed only as runtime bootstrap tokens.
+- `GH_TOKEN` takes precedence over `GITHUB_TOKEN` when both are set, matching
+  GitHub CLI behavior for github.com.
+- Tokens must be supplied through top-level `remoteEnv`; Feature options are
   intentionally not used for secrets.
 - The Feature stores GitHub CLI auth with `--insecure-storage` in
   `~/.config/gh/hosts.yml`.
@@ -120,9 +124,9 @@ constraints:
 - `gh auth login --with-token` is best suited for classic personal access
   tokens. Fine-grained tokens may work for scoped commands but GitHub CLI
   documentation recommends `GH_TOKEN` for fine-grained token usage.
-- If `GH_TOKEN` is unset or empty, the script warns and makes no GitHub CLI
-  auth changes.
-- If `GH_TOKEN` is set, the script attempts to store that token with
+- If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script warns and
+  makes no GitHub CLI auth changes.
+- If either token is set, the script attempts to store the selected token with
   `gh auth login --with-token --insecure-storage` even when other credentials
   already exist.
 - The script must unset `GH_TOKEN` and `GITHUB_TOKEN` for `gh auth login`;
@@ -131,8 +135,9 @@ constraints:
   not install or replace the `gh` binary itself.
 - The Feature must not remove, log out, overwrite unrelated accounts, delete
   `hosts.yml`, or call `gh auth switch`.
-- GitHub CLI may create or update the account associated with `GH_TOKEN`; that
-  account is the only stored credential the Feature is allowed to change.
+- GitHub CLI may create or update the account associated with the selected
+  token; that account is the only stored credential the Feature is allowed to
+  change.
 
 ## Security
 
@@ -150,15 +155,19 @@ environments and keeps auth available to all `gh` processes in the container.
 
 ## Error Handling
 
-- If `GH_TOKEN` is unset or empty, the script prints a warning that no GitHub
-  CLI auth changes are being made and exits successfully.
-- If `GH_TOKEN` is set, the script attempts to store it with `gh auth login
+- If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script prints a
+  warning that no GitHub CLI auth changes are being made and exits
+  successfully.
+- If `GH_TOKEN` is set, the script selects it.
+- If `GH_TOKEN` is unset or empty and `GITHUB_TOKEN` is set, the script selects
+  `GITHUB_TOKEN`.
+- If a token is selected, the script attempts to store it with `gh auth login
   --with-token --insecure-storage`.
 - If `gh auth login` fails because the token is invalid, lacks required scopes,
   or cannot be stored, the script prints a warning and exits successfully.
 - The script must not remove or change other existing stored credentials.
 - The script must not call `gh auth switch`; any active-account side effects are
-  limited to GitHub CLI behavior while storing the `GH_TOKEN` account.
+  limited to GitHub CLI behavior while storing the selected-token account.
 
 ## Verification
 
@@ -167,7 +176,7 @@ Static checks should confirm:
 - `.devcontainer/devcontainer.json` references both
   `ghcr.io/devcontainers/features/github-cli:1` and
   `./local-features/github-cli-config`.
-- `GH_TOKEN` remains in `remoteEnv`.
+- `GH_TOKEN` and `GITHUB_TOKEN` remain in `remoteEnv`.
 - `TZ` is present in `containerEnv` and absent from `remoteEnv`.
 - `.devcontainer/local-features/github-cli-config/devcontainer-feature.json`
   declares `ghcr.io/devcontainers/features/github-cli:1` in `dependsOn`.
@@ -175,10 +184,12 @@ Static checks should confirm:
   `~/.config/gh`.
 - The local Feature declares the post-start script.
 - The post-start script warns and performs no GitHub CLI auth mutation when
-  `GH_TOKEN` is unset or empty.
+  both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty.
 - The post-start script unsets `GH_TOKEN` and `GITHUB_TOKEN` for `gh auth login`.
-- The post-start script attempts to store `GH_TOKEN` even when other credentials
-  already exist.
+- The post-start script selects `GH_TOKEN` over `GITHUB_TOKEN` when both are
+  present.
+- The post-start script attempts to store the selected token even when other
+  credentials already exist.
 - The post-start script does not remove, log out, switch, or overwrite unrelated
   stored credentials.
 - No Codex `shell_environment_policy` change is required.
@@ -188,6 +199,7 @@ Runtime checks should include:
 
 - `bash -n` for the post-start script.
 - A temporary-home simulation that stubs `gh` and verifies the script warns and
-  does not invoke `gh` when `GH_TOKEN` is unset, passes the token on stdin when
-  `GH_TOKEN` is set, and does not put the token in command-line arguments.
+  does not invoke `gh` when both token variables are unset, selects `GH_TOKEN`
+  over `GITHUB_TOKEN`, passes the selected token on stdin, and does not put the
+  token in command-line arguments.
 - Rebuilt devcontainer verification when `devcontainer` CLI is available.
