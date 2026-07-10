@@ -101,6 +101,41 @@ out="$("$HOOK" 2>&1)"; rc=$?
 [[ "$out" == *"dangling symlink"* ]] && pass "dangling: warns about the stale symlink" || fail "dangling: warns about the stale symlink" "$out"
 teardown_world
 
+# --- an empty, unwritable ~/.claude/skills is a leftover bind-mount point: remove it
+# Docker creates a nested bind mount's target inside the parent volume owned by
+# root. The bind is gone but the directory persists in the volume, and setup.sh
+# cannot symlink into it. chmod 500 reproduces the unwritability without needing
+# root here; the hook keys on -w, not on ownership.
+setup_world 0
+mkdir -p "$HOME/.claude/skills"
+chmod 500 "$HOME/.claude/skills"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass "stale skills dir: exits 0" || fail "stale skills dir: exits 0" "got $rc"
+[[ ! -d "$HOME/.claude/skills" ]] && pass "stale skills dir: removed so setup.sh can recreate it" || fail "stale skills dir: removed so setup.sh can recreate it" "$out"
+[[ -f "$HOME/setup-ran" ]] && pass "stale skills dir: setup.sh still runs" || fail "stale skills dir: setup.sh still runs" "$out"
+[[ "$out" == *"bind mount"* ]] && pass "stale skills dir: explains where it came from" || fail "stale skills dir: explains where it came from" "$out"
+teardown_world
+
+# --- an unwritable skills dir holding other skills is never touched
+setup_world 0
+mkdir -p "$HOME/.claude/skills/some-other-skill"
+chmod 500 "$HOME/.claude/skills"
+out="$("$HOOK" 2>&1)"; rc=$?
+chmod 700 "$HOME/.claude/skills"
+[[ $rc -eq 0 ]] && pass "occupied skills dir: exits 0" || fail "occupied skills dir: exits 0" "got $rc"
+[[ -d "$HOME/.claude/skills/some-other-skill" ]] && pass "occupied skills dir: leaves its contents alone" || fail "occupied skills dir: leaves its contents alone" "$out"
+[[ ! -f "$HOME/setup-ran" ]] && pass "occupied skills dir: does not run setup.sh" || fail "occupied skills dir: does not run setup.sh" "$out"
+[[ "$out" == *"chown"* ]] && pass "occupied skills dir: remedy names chown" || fail "occupied skills dir: remedy names chown" "$out"
+teardown_world
+
+# --- a writable skills dir is left exactly as it was
+setup_world 0
+mkdir -p "$HOME/.claude/skills"
+out="$("$HOOK" 2>&1)"; rc=$?
+[[ -d "$HOME/.claude/skills" ]] && pass "writable skills dir: untouched" || fail "writable skills dir: untouched" "$out"
+[[ "$out" != *"bind mount"* ]] && pass "writable skills dir: no spurious repair warning" || fail "writable skills dir: no spurious repair warning" "$out"
+teardown_world
+
 # --- a failed clone surfaces git's own error, not just ours
 setup_world 0
 sed -i "s|^AGENT_SKILLS_REPO=.*|AGENT_SKILLS_REPO=$WORLD/no-such-remote.git|" "$AGENT_SKILLS_ENV_FILE"

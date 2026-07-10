@@ -59,6 +59,21 @@ if [[ ! -f "$clone_dir/setup.sh" ]]; then
   bail "$clone_dir/setup.sh is missing, so the installer cannot run. hube-agent skills will not load. Check that $repo still ships setup.sh."
 fi
 
+# Docker creates a nested bind mount's target directory inside the parent volume
+# owned by root. ~/.claude/skills was such a target until the mount was removed,
+# and the ~/.claude volume outlives rebuilds, so the root-owned directory is
+# still there in any volume created before then. setup.sh's `mkdir -p` succeeds
+# against it and its `ln` then fails. Removing it needs no privilege, because
+# ~/.claude belongs to us; setup.sh recreates it.
+skills_dir="$HOME/.claude/skills"
+if [[ -d "$skills_dir" && ! -w "$skills_dir" ]]; then
+  if rmdir "$skills_dir" 2>/dev/null; then
+    warn "$skills_dir was an empty directory left behind by a bind mount that no longer exists, and it was not writable. Removed it so setup.sh can recreate it."
+  else
+    bail "$skills_dir is not writable and is not empty, so setup.sh cannot create the skills symlink. hube-agent skills will not load. Run: sudo chown -R $(id -un) $skills_dir"
+  fi
+fi
+
 # Captured so a failure and its cause arrive as one message. Discards setup.sh's
 # success chatter, which nobody reads in container start logs.
 if ! output="$(bash "$clone_dir/setup.sh" 2>&1)"; then

@@ -236,6 +236,20 @@ re-clones and heals it before Claude Code starts. On the warn-and-skip path the 
 with a dangling symlink instead, so the hook should detect that case and warn that skills will not
 load. It must not delete the symlink, which is user state.
 
+The same volume also holds a stale `~/.claude/skills` *directory*. Docker creates a nested bind
+mount's target directory inside the parent volume owned by root, and `~/.claude/skills` was such a
+target until `d0005e4` removed the mount. Every volume created before that commit therefore contains
+an empty, root-owned `skills` directory that no longer corresponds to any mount. `setup.sh`'s
+`mkdir -p` succeeds against it and its `ln` fails with `Permission denied`. A volume created after
+`d0005e4` has no such directory, which is why no test caught this.
+
+The hook removes that directory when it is unwritable and empty. This needs no privilege: `~/.claude`
+itself belongs to the container user, and removing a directory entry requires write permission on the
+parent, not on the directory. `setup.sh` then recreates it with the right owner. When the directory is
+unwritable but not empty it is left untouched — it may hold skills this design does not own — and the
+hook explains that `sudo chown` is required. Repairing rather than working around the bad state is
+deliberate: a fallback skills location would leave every existing volume permanently broken.
+
 ## Alternatives Considered
 
 ### Per-repository lifecycle command
