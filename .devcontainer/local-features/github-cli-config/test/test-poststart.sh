@@ -14,6 +14,7 @@ setup_world() {
   export HOME="$WORLD/home"
   mkdir -p "$HOME" "$WORLD/stub"
   export GH_LOG="$WORLD/gh.log"
+  export GH_EXIT_CODE=0
   export PATH="$WORLD/stub:$PATH"
 
   cat > "$WORLD/stub/gh" <<'GH'
@@ -39,18 +40,19 @@ run_hook() {
   rc=$?
 }
 
-# No token leaves existing credentials alone by never invoking gh.
+# Empty tokens leave existing credentials alone by never invoking gh.
 setup_world
-unset GH_TOKEN GITHUB_TOKEN
+export GH_TOKEN=""
+export GITHUB_TOKEN=""
 run_hook
-[[ $rc -eq 0 ]] && pass "no token: exits 0" || fail "no token: exits 0" "got $rc"
-[[ ! -e "$GH_LOG" ]] && pass "no token: does not invoke gh" || fail "no token: does not invoke gh" "$out"
-[[ "$out" == *"no GitHub CLI auth changes"* ]] && pass "no token: warns" || fail "no token: warns" "$out"
+[[ $rc -eq 0 ]] && pass "empty tokens: exits 0" || fail "empty tokens: exits 0" "got $rc"
+[[ ! -e "$GH_LOG" ]] && pass "empty tokens: does not invoke gh" || fail "empty tokens: does not invoke gh" "$out"
+[[ "$out" == *"no GitHub CLI auth changes"* ]] && pass "empty tokens: warns" || fail "empty tokens: warns" "$out"
 teardown_world
 
-# GITHUB_TOKEN is used when GH_TOKEN is unset or empty.
+# GITHUB_TOKEN is used when GH_TOKEN is empty.
 setup_world
-unset GH_TOKEN
+export GH_TOKEN=""
 export GITHUB_TOKEN="fallback-token"
 run_hook
 [[ $rc -eq 0 ]] && pass "fallback: exits 0" || fail "fallback: exits 0" "got $rc"
