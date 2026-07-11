@@ -14,17 +14,25 @@
     "./local-features/claude": {},
     "./local-features/codex": {},
     "./local-features/direnv": {},
+    "./local-features/github-cli-config": {},
     "./local-features/ssh": {},
     "./local-features/workspaces-permissions": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
+  "containerEnv": {
+    "TZ": "${localEnv:TZ:America/Los_Angeles}"
+  },
   "remoteEnv": {
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
-    "TZ": "${localEnv:TZ:America/Los_Angeles}",
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
   },
   "secrets": {
     "GH_TOKEN": {
       "description": "Provide an authentication token for the GitHub CLI to use",
+      "documentationUrl": "https://cli.github.com/manual/gh_auth_login"
+    },
+    "GITHUB_TOKEN": {
+      "description": "Fallback authentication token for the GitHub CLI, used when GH_TOKEN is not set",
       "documentationUrl": "https://cli.github.com/manual/gh_auth_login"
     }
   },

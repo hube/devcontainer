@@ -1,0 +1,17 @@
+{
+  "id": "github-cli-config",
+  "name": "GitHub CLI configuration",
+  "version": "1.0.0",
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "mounts": [
+    {
+      "type": "volume",
+      "source": "github-cli-config-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.config/gh"
+    }
+  ],
+  "postStartCommand": "~/bin/devcontainer-feature/github-cli-config/postStartScript.sh"
+}
