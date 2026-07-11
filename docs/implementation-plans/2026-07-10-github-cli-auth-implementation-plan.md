@@ -160,3 +160,68 @@ bash -n .devcontainer/local-features/github-cli-config/install.sh .devcontainer/
 ```
 
 Expected: every suite passes and all Bash files are syntactically valid. Stage only task files, commit with required metadata/co-author trailers, and verify them with `git interpret-trailers --parse`.
+
+### Task 6: Re-review follow-up
+
+**Files:**
+- Modify: `.devcontainer/local-features/github-cli-config/NOTES.md`
+- Modify: `.devcontainer/local-features/github-cli-config/test/test-documentation.sh`
+- Modify: `.devcontainer/local-features/github-cli-config/test/test-feature-config.py`
+- Modify: `.devcontainer/local-features/github-cli-config/test/test-poststart.sh`
+- Modify: `docs/designs/2026-07-09-github-cli-auth-design.md`
+- Modify: `docs/implementation-plans/2026-07-10-github-cli-auth-implementation-plan.md`
+
+**Interfaces:**
+- Consumes: the rendered feature notes, Codex `config.toml`, and missing-`gh` hook output.
+- Produces: a preserved paragraph boundary, a non-vacuous no-policy-change contract, and one wrapper-proof missing-`gh` diagnostic assertion.
+
+- [ ] **Step 1: Write failing paragraph and Codex-policy tests**
+
+Require the exact paragraph separator in the documentation test:
+
+```bash
+require_lines $'restarting the container.\n\nWhen a token is supplied' "$NOTES"
+```
+
+Add a detector contract to the Python test and call it before reading repository configuration:
+
+```python
+def test_shell_environment_policy_detection() -> None:
+    try:
+        assert_no_shell_environment_policy('shell_environment_policy = {}')
+    except AssertionError:
+        return
+    raise AssertionError("shell_environment_policy was not detected")
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run the documentation and Python static tests. Expected: documentation fails because the paragraph separator is absent; Python fails because `assert_no_shell_environment_policy` is undefined.
+
+- [ ] **Step 3: Implement the minimal fixes**
+
+Restore the blank line in `NOTES.md`. Define the detector and retarget the repository assertion:
+
+```python
+def assert_no_shell_environment_policy(config: str) -> None:
+    assert "shell_environment_policy" not in config
+
+codex_config = (ROOT / ".devcontainer/local-features/codex/home/.codex/config.toml").read_text(encoding="utf-8")
+assert_no_shell_environment_policy(codex_config)
+```
+
+Update the design verification section to name the exact `config.toml` path.
+
+- [ ] **Step 4: Consolidate the missing-executable assertion**
+
+Replace the separate wrapper-prefix and raw-detail checks with one ordered glob that requires the diagnostic detail after the wrapper prefix:
+
+```bash
+[[ "$out" == *"github-cli-config: GitHub CLI is unavailable: env:"*"No such file or directory"* ]]
+```
+
+Run the head test against the pre-fix hook and confirm this assertion fails, then run against the current hook and confirm it passes.
+
+- [ ] **Step 5: Verify, synchronize, and commit**
+
+Run all three feature suites and Bash syntax checks. Mark Task 6 complete, set design status to `Implemented`, stage only Task 6 files, create a signed attributed commit, and verify its trailers with `git interpret-trailers --parse`.
