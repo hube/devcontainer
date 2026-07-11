@@ -1,6 +1,6 @@
 # GitHub CLI Auth Design
 
-Status: Owner review fixes in progress
+Status: Implemented
 
 Issue: https://github.com/hube/devcontainer/issues/19
 
@@ -21,12 +21,12 @@ container-wide.
 - Make `gh` commands work consistently for all container processes, including
   Dev Container and Codex App SSH sessions.
 - Keep GitHub CLI authentication behavior in a local `github-cli-config`
-  Feature because it extends the official `github-cli` Feature with
+  feature because it extends the official `github-cli` feature with
   repo-specific auth persistence.
 - Persist GitHub CLI auth across container restarts using a named Docker volume.
 - Avoid changing Codex `shell_environment_policy`.
 - Move `TZ` to `containerEnv`.
-- Keep `GH_TOKEN` and `GITHUB_TOKEN` as runtime bootstrap inputs, not build-time Feature options.
+- Keep `GH_TOKEN` and `GITHUB_TOKEN` as runtime bootstrap inputs, not build-time feature options.
 
 ## Non-Goals
 
@@ -38,18 +38,18 @@ container-wide.
 
 ## Design
 
-Keep the existing official GitHub CLI Feature entry and add a separate local
-`github-cli-config` Feature. The devcontainer depends on both features:
+Keep the existing official GitHub CLI feature entry and add a separate local
+`github-cli-config` feature. The devcontainer depends on both features:
 
 ```json
 "ghcr.io/devcontainers/features/github-cli:1": {},
 "./local-features/github-cli-config": {}
 ```
 
-The local Feature extends the installed GitHub CLI with configuration,
+The local feature extends the installed GitHub CLI with configuration,
 persistent auth storage, and startup-time auth bootstrapping. It does not
-replace or wrap the official GitHub CLI Feature. The local Feature declares the
-official GitHub CLI Feature as a dependency because its post-start script
+replace or wrap the official GitHub CLI feature. The local feature declares the
+official GitHub CLI feature as a dependency because its post-start script
 requires the `gh` command:
 
 ```json
@@ -58,7 +58,7 @@ requires the `gh` command:
 }
 ```
 
-The local Feature mounts a named volume at the GitHub CLI config directory:
+The local feature mounts a named volume at the GitHub CLI config directory:
 
 ```json
 {
@@ -68,8 +68,8 @@ The local Feature mounts a named volume at the GitHub CLI config directory:
 }
 ```
 
-The Feature declares a `postStartCommand` that runs a script installed to a
-known user path, following the existing local Feature pattern:
+The feature declares a `postStartCommand` that runs a script installed to a
+known user path, following the existing local feature pattern:
 
 ```json
 "postStartCommand": "~/bin/devcontainer-feature/github-cli-config/postStartScript.sh"
@@ -96,55 +96,54 @@ printf '%s\n' "${selected_token}" | env -u GH_TOKEN -u GITHUB_TOKEN gh auth logi
 ```
 
 `GH_TOKEN` and `GITHUB_TOKEN` remain in top-level `remoteEnv` because Dev
-Container Features do not provide an idiomatic runtime secret requirement
-declaration. Feature `options` are build/install-time inputs and are not
-appropriate for tokens. `containerEnv` would make tokens static and visible to
-all container processes. `remoteEnv` is the least-broad supported path for
-host-provided runtime secrets used by lifecycle hooks.
+Container features do not provide an idiomatic runtime secret requirement
+declaration. Build-time feature `options` are not appropriate for tokens.
+`containerEnv` would make tokens static and visible to all container processes.
+`remoteEnv` is the least-broad supported path for host-provided runtime secrets
+used by lifecycle hooks.
 
 `TZ` moves from `remoteEnv` to `containerEnv` because it is non-secret,
 container-wide configuration.
 
-## Local Feature README
+## Local feature notes
 
-The local `github-cli-config` Feature must include a README that documents these
+The local `github-cli-config` feature must include `NOTES.md` documenting these
 constraints:
 
 - `GH_TOKEN` and `GITHUB_TOKEN` are consumed only as runtime bootstrap tokens.
 - `GH_TOKEN` takes precedence over `GITHUB_TOKEN` when both are set, matching
   GitHub CLI behavior for github.com.
-- Tokens must be supplied through top-level `remoteEnv`; Feature options are
+- Tokens must be supplied through top-level `remoteEnv`; feature options are
   intentionally not used for secrets.
-- The Feature stores GitHub CLI auth with `--insecure-storage` in
+- The feature stores GitHub CLI auth with `--insecure-storage` in
   `~/.config/gh/hosts.yml`.
 - `~/.config/gh` is backed by the `github-cli-config-${devcontainerId}` named
   volume.
 - Credentials persist until the Docker volume is deleted or the underlying
   GitHub token expires, is revoked, or loses required access.
-- `gh auth login --with-token` is best suited for classic personal access
-  tokens. Fine-grained tokens may work for scoped commands but GitHub CLI
-  documentation recommends `GH_TOKEN` for fine-grained token usage.
-- `gh auth login --with-token` rejects classic tokens missing GitHub CLI's
-  minimum scopes (currently `repo` and `read:org`); such tokens surface as a
-  non-fatal startup warning.
+- Classic personal access tokens are preferred for `gh auth login
+  --with-token` and require `repo`, `read:org`, and `gist`. Missing any required
+  permission produces a non-fatal startup warning. Fine-grained tokens may work
+  for scoped commands, but GitHub CLI recommends setting `GH_TOKEN` directly
+  instead of passing a fine-grained token to `gh auth login --with-token`.
 - The stored credential serves `gh` subcommands only. The script does not run
   `gh auth setup-git`, so `git` over HTTPS does not use the stored credential;
   the devcontainer relies on SSH agent forwarding for `git` remote operations.
 - How to remove a stale stored credential: `gh auth logout` inside the
   container, or delete the `github-cli-config-${devcontainerId}` volume.
-- If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script warns and
-  makes no GitHub CLI auth changes.
+- If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script warns
+  that stored authentication was not updated and does not invoke `gh`.
 - If either token is set, the script attempts to store the selected token with
   `gh auth login --with-token --insecure-storage` even when other credentials
   already exist.
 - The script must unset `GH_TOKEN` and `GITHUB_TOKEN` for `gh auth login`;
   otherwise environment token auth can take precedence over stored credentials.
-- The Feature extends the official `github-cli` Feature and intentionally does
+- The feature extends the official `github-cli` feature and intentionally does
   not install or replace the `gh` binary itself.
-- The Feature must not remove, log out, overwrite unrelated accounts, delete
+- The feature must not remove, log out, overwrite unrelated accounts, delete
   `hosts.yml`, or call `gh auth switch`.
 - GitHub CLI may create or update the account associated with the selected
-  token; that account is the only stored credential the Feature is allowed to
+  token; that account is the only stored credential the feature is allowed to
   change.
 
 ## Security
@@ -164,14 +163,14 @@ environments and keeps auth available to all `gh` processes in the container.
 A stored token outlives the host's decision to stop supplying it: once
 `GH_TOKEN`/`GITHUB_TOKEN` are no longer set, the previously stored credential
 remains in the volume until it expires, is revoked, or is removed with
-`gh auth logout` or by deleting the volume. The README must document this
+`gh auth logout` or by deleting the volume. The notes must document this
 remediation path.
 
 ## Error Handling
 
-- If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script prints a
-  warning that no GitHub CLI auth changes are being made and exits
-  successfully.
+- If both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty, the script warns
+  that stored authentication was not updated, tells the user to set a host
+  token before restarting, and exits successfully.
 - If `GH_TOKEN` is set, the script selects it.
 - If `GH_TOKEN` is unset or empty and `GITHUB_TOKEN` is set, the script selects
   `GITHUB_TOKEN`.
@@ -204,9 +203,9 @@ Static checks should confirm:
 - `TZ` is present in `containerEnv` and absent from `remoteEnv`.
 - `.devcontainer/local-features/github-cli-config/devcontainer-feature.json`
   declares `ghcr.io/devcontainers/features/github-cli:1` in `dependsOn`.
-- The local Feature mounts `github-cli-config-${devcontainerId}` at
+- The local feature mounts `github-cli-config-${devcontainerId}` at
   `~/.config/gh`.
-- The local Feature declares the post-start script.
+- The local feature declares the post-start script.
 - The post-start script warns and performs no GitHub CLI auth mutation when
   both `GH_TOKEN` and `GITHUB_TOKEN` are unset or empty.
 - The post-start script unsets `GH_TOKEN` and `GITHUB_TOKEN` for `gh auth login`.
@@ -217,7 +216,7 @@ Static checks should confirm:
 - The post-start script does not remove, log out, switch, or overwrite unrelated
   stored credentials.
 - No Codex `shell_environment_policy` change is required.
-- The local Feature README documents the constraints listed above.
+- The local feature notes document the constraints listed above.
 
 Runtime checks should include:
 
