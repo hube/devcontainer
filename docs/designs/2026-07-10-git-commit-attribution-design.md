@@ -1,6 +1,6 @@
 # Git Commit Attribution Design
 
-Status: Draft — revised after first review pass on `hube/devcontainer#38`
+Status: Draft — revised after second review pass on `hube/devcontainer#38`
 
 ## Context
 
@@ -140,11 +140,15 @@ Why this repo: dotfiles in `hube/devcontainer-dotfiles` are **copied** into
 `$HOME` at container create, so changing one requires a restart. `claude-home`
 is bind-mounted, so an edit is live in every running container on the next
 commit. The file name is harness-neutral; only the Claude-branded directory
-containing it appears in this design, confined to one `source:` line in the
-Feature's mount declaration (the `local-features/ssh` idiom). A container built
-without Claude — a Codex-only consumer keeping its contract elsewhere — edits
-that single line; nothing in the container layout, the validator, or the
-diagnostics knows the Claude path.
+containing it appears in this design, confined to one `source:` line — and
+that line lives in the consuming `.devcontainer/devcontainer.json`, not in the
+Feature. Feature options cannot interpolate into mount declarations, so a
+Feature-owned mount would hardcode the Claude path into otherwise
+harness-neutral Feature source; instead the Feature owns only the stable
+container target path, documents the mount the consumer must declare, and the
+postStart warning names it when it is missing. A container built without
+Claude — a Codex-only consumer keeping its contract elsewhere — writes its own
+one-line mount; the Feature ships unchanged.
 
 ### The mechanism — `hube/devcontainer`
 
@@ -152,9 +156,10 @@ A new local Feature, `git-commit-attribution`, harness-neutral and depending on
 neither the `claude` nor the `codex` Feature.
 
 ```
-.devcontainer/devcontainer.json                  (add one stanza)
+.devcontainer/devcontainer.json                  (Feature stanza + spec mount)
 .devcontainer/local-features/git-commit-attribution/
-    devcontainer-feature.json    read-only spec mount; dependsOn node:2
+    devcontainer-feature.json    dependsOn node:2; documents the spec mount
+                                 the consumer must declare
     install.sh                   install dispatcher, symlinks, bundle;
                                  resolve node; write /etc/gitconfig
     dispatch.sh                  POSIX sh hook dispatcher (see Hook Dispatch)
@@ -184,14 +189,16 @@ a trailer block.
 | `/usr/local/share/git-commit-attribution/validate` (bundle) | image layer | `root:root` 0755 |
 | `/usr/local/bin/node` → `/usr/local/share/nvm/current/bin/node` | image layer | `root:root` symlink |
 | `/etc/gitconfig` (`core.hooksPath`) | image layer | `root:root` 0644 |
-| `~/.config/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf` | host file |
+| `~/.config/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf`, declared in `devcontainer.json` | host file |
 | `~/bin/devcontainer-feature/git-commit-attribution/postStartScript.sh` | image layer | container user |
 
 The spec is the only piece on the fast channel. Everything else is code, changes
 rarely, and rides the image.
 
 The spec is mounted read-only. `local-features/ssh` establishes the
-`"type": "bind,readonly"` idiom for `known_hosts`. Read-only matters here because
+`"type": "bind,readonly"` idiom for `known_hosts` — though there the Feature
+declares its own mount, while here the consumer does, for the portability
+reason given under *The spec*. Read-only matters here because
 editing the contract you are about to be judged against would be the easiest
 bypass available, and the only one that leaves no trace in the commit.
 
@@ -268,8 +275,12 @@ So the installed hooks directory is a dispatcher, not a single hook.
 one POSIX `sh` script, which:
 
 - resolves the repository's default hook as
-  `"$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"`, and
-- `exec`s it when executable, preserving arguments, stdin, and exit status.
+  `"$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"`,
+- `exec`s it when executable, preserving arguments, stdin, and exit status, and
+- warns — the equivalent of git's own `advice.ignoredHook` hint — when the
+  repository hook exists but is not executable, then continues as if it were
+  absent, so installing the gate does not hide a repository misconfiguration
+  git would have surfaced.
 
 For `commit-msg` — and only `commit-msg` — the dispatcher first runs the
 validator bundle. A rejection stops the commit and nothing chains. **Every
@@ -277,6 +288,37 @@ other outcome chains**: trigger not fired, validation passed, and warn-mode
 violations all fall through to the repository's own `commit-msg`. Chaining
 only after validation would eat repo `commit-msg` hooks on exactly the commits
 that fire no trigger — the human-authored ones.
+
+### Presence-Sensitive Hooks
+
+Exiting 0 when no repository hook exists is only correct for hooks whose no-op
+equals absence — vetoes and notifications, which is most of githooks(5). Two
+hooks change git's behavior by merely existing, and each gets an
+absence-equivalent adapter in the dispatcher, both verified by experiment:
+
+- **`push-to-checkout`**: under `receive.denyCurrentBranch=updateInstead`, an
+  exit-0 hook tells git the worktree update was handled. A bare `exit 0` let
+  the ref advance while the worktree and index stayed at the old commit,
+  leaving the repository dirty. When no repository hook exists, the dispatcher
+  emulates git's built-in default: refuse when the worktree or index differ
+  from `HEAD`, otherwise `git read-tree -u -m HEAD "$1"`. The hook runs with
+  its cwd inside `$GIT_DIR`, where a file named `HEAD` exists, so every
+  revision argument needs `--` disambiguation.
+- **`proc-receive`**: replaces receive-pack's internal command execution for
+  refs matching `receive.procReceiveRefs`, speaking a pkt-line protocol no
+  generic script can emulate. A repository hook, when present, gets the
+  protocol passed through untouched by `exec`. When none exists the dispatcher
+  exits non-zero: a missing hook and a failing hook reject the push with the
+  same `fail to run proc-receive hook` outcome, so failing fast is
+  absence-equivalent. Nothing in this container sets
+  `receive.procReceiveRefs`; the adapter exists so nothing breaks if
+  something ever does.
+
+Every other githooks(5) hook is delegation-safe: the `pre-*` and `*-msg`
+families veto, the `post-*` family and `reference-transaction` observe, and
+`fsmonitor-watchman` runs only where `core.fsmonitor` explicitly names it. A
+hook name added by a future git version must be classified
+absence-equivalent-or-adapter before it joins the symlink list.
 
 Two resolution details are load-bearing, both established by experiment:
 
@@ -289,8 +331,9 @@ Two resolution details are load-bearing, both established by experiment:
   linked worktrees routinely, so this is the common case, not an edge.
 
 Hook names added by future git versions are not dispatched until the symlink
-list in `install.sh` is updated; the list records its provenance (githooks(5)
-of the image's git) beside it.
+list in `install.sh` is updated — deliberately, given the classification rule
+above; the list records its provenance (githooks(5) of the image's git) beside
+it.
 
 ## Node
 
@@ -383,6 +426,10 @@ dispatcher chains to the repository's own `commit-msg` (see *Hook Dispatch*).
 - The required keys must appear in the parsed trailer list in spec order, as a
   contiguous run — nothing sits between `Harness` and the final
   `Co-Authored-By` that is not itself a required trailer.
+- Each required key other than `Co-Authored-By` must appear **exactly once in
+  the entire trailer list**, not merely once inside a valid run. Without this,
+  a message carrying two attribution blocks — one valid, one conflicting —
+  would pass on the strength of the valid one.
 - `Co-Authored-By` may repeat. A commit with several contributors — a human
   pair, a second harness — carries several `Co-Authored-By` trailers, and
   `required last` means the run of them ends the block.
@@ -510,6 +557,8 @@ Fixtures are drawn from real artifacts.
 | no trailers at all | pass, silently |
 | human-to-human `Co-Authored-By` | pass |
 | repeated `Co-Authored-By` ending the block | pass |
+| duplicate `Model:` elsewhere in the trailer list | reject |
+| two complete attribution blocks, one valid | reject |
 | `Signed-off-by` before the block | pass |
 | `--signoff` (appends `Signed-off-by` after the block) | reject |
 | spec missing | reject, naming the path |
@@ -522,7 +571,12 @@ Fixtures are drawn from real artifacts.
 | repo `commit-msg` present, message trips no trigger | repo hook still runs |
 | repo `commit-msg` present, `mode warn` violation | repo hook still runs |
 | repository `.git/hooks/pre-commit` present | still runs with the gate installed |
+| repository hook present but not executable | warning printed; treated as absent |
 | commit from a linked worktree | default hooks resolve via the common dir; gate applies |
+| `updateInstead` push, clean worktree, no repo hook | worktree and index update, as with the gate absent |
+| `updateInstead` push, dirty worktree, no repo hook | refused, as with the gate absent |
+| `updateInstead` push, repo `push-to-checkout` present | repo hook runs |
+| push to a `receive.procReceiveRefs` ref, no repo hook | rejected, as with the gate absent |
 | `GIT_CONFIG_NOSYSTEM=1` | gate absent |
 
 The fabricated-block fixture rejects only because `Skills:` became mandatory.
@@ -549,6 +603,17 @@ These were established by experiment in the container, not assumed.
   worktree — where `.git` is a file — resolves the main repository's `.git`,
   where hooks actually live.
 - A repository-local `core.hooksPath` overrides the global one, silently.
+- A present-but-no-op `push-to-checkout` under
+  `receive.denyCurrentBranch=updateInstead` lets the ref advance while the
+  worktree and index stay at the old commit, leaving the repository dirty —
+  presence alone overrides git's built-in update. The emulation (refuse when
+  worktree or index differ from `HEAD`, else `git read-tree -u -m HEAD "$1"`)
+  behaves identically to hook absence in both the clean and dirty cases. The
+  hook's cwd is inside `$GIT_DIR`, so `HEAD` needs `--` disambiguation against
+  the file of that name.
+- A push to a `receive.procReceiveRefs`-matched ref fails with the same
+  `fail to run proc-receive hook` rejection whether the hook is missing or
+  present-and-failing, so a fail-fast adapter is absence-equivalent.
 - `git commit --no-verify` bypasses the `commit-msg` hook.
 - `/etc/gitconfig` is absent in the image; `~/.gitconfig` is provided by
   `hube/devcontainer-dotfiles` at container-create time.
