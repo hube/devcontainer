@@ -15,6 +15,7 @@ setup_world() {
   mkdir -p "$HOME" "$WORLD/stub"
   export GH_LOG="$WORLD/gh.log"
   export GH_EXIT_CODE=0
+  export GH_ERROR=""
   export PATH="$WORLD/stub:$PATH"
 
   cat > "$WORLD/stub/gh" <<'GH'
@@ -28,6 +29,9 @@ setup_world() {
   printf 'GH_TOKEN=%s\n' "${GH_TOKEN-unset}"
   printf 'GITHUB_TOKEN=%s\n' "${GITHUB_TOKEN-unset}"
 } > "$GH_LOG"
+if [[ -n "${GH_ERROR:-}" ]]; then
+  printf '%s\n' "$GH_ERROR" >&2
+fi
 exit "${GH_EXIT_CODE:-0}"
 GH
   chmod +x "$WORLD/stub/gh"
@@ -47,7 +51,9 @@ export GITHUB_TOKEN=""
 run_hook
 [[ $rc -eq 0 ]] && pass "empty tokens: exits 0" || fail "empty tokens: exits 0" "got $rc"
 [[ ! -e "$GH_LOG" ]] && pass "empty tokens: does not invoke gh" || fail "empty tokens: does not invoke gh" "$out"
-[[ "$out" == *"no GitHub CLI auth changes"* ]] && pass "empty tokens: warns" || fail "empty tokens: warns" "$out"
+[[ "$out" == *"GitHub CLI bootstrap token is unavailable: GH_TOKEN and GITHUB_TOKEN are unset or empty."* ]] && pass "empty tokens: states problem" || fail "empty tokens: states problem" "$out"
+[[ "$out" == *"Stored GitHub CLI authentication was not updated."* ]] && pass "empty tokens: states consequence" || fail "empty tokens: states consequence" "$out"
+[[ "$out" == *"Set GH_TOKEN or GITHUB_TOKEN on the host, then restart the container."* ]] && pass "empty tokens: states remedy" || fail "empty tokens: states remedy" "$out"
 teardown_world
 
 # Unset tokens leave existing credentials alone by never invoking gh.
@@ -56,7 +62,9 @@ unset GH_TOKEN GITHUB_TOKEN
 run_hook
 [[ $rc -eq 0 ]] && pass "unset tokens: exits 0" || fail "unset tokens: exits 0" "got $rc"
 [[ ! -e "$GH_LOG" ]] && pass "unset tokens: does not invoke gh" || fail "unset tokens: does not invoke gh" "$out"
-[[ "$out" == *"no GitHub CLI auth changes"* ]] && pass "unset tokens: warns" || fail "unset tokens: warns" "$out"
+[[ "$out" == *"GitHub CLI bootstrap token is unavailable: GH_TOKEN and GITHUB_TOKEN are unset or empty."* ]] && pass "unset tokens: states problem" || fail "unset tokens: states problem" "$out"
+[[ "$out" == *"Stored GitHub CLI authentication was not updated."* ]] && pass "unset tokens: states consequence" || fail "unset tokens: states consequence" "$out"
+[[ "$out" == *"Set GH_TOKEN or GITHUB_TOKEN on the host, then restart the container."* ]] && pass "unset tokens: states remedy" || fail "unset tokens: states remedy" "$out"
 teardown_world
 
 # GITHUB_TOKEN is used when GH_TOKEN is empty.
@@ -93,7 +101,10 @@ out="$(PATH="$WORLD/bin" "$HOOK" 2>&1)"
 rc=$?
 [[ $rc -eq 0 ]] && pass "missing gh: exits 0" || fail "missing gh: exits 0" "got $rc"
 [[ ! -e "$GH_LOG" ]] && pass "missing gh: never reaches a gh binary" || fail "missing gh: never reaches a gh binary" "$out"
-[[ "$out" == *"failed"* ]] && pass "missing gh: warns" || fail "missing gh: warns" "$out"
+[[ "$out" == *"github-cli-config: GitHub CLI is unavailable: env:"* ]] && pass "missing gh: wraps diagnostic" || fail "missing gh: wraps diagnostic" "$out"
+[[ "$out" == *"No such file or directory"* ]] && pass "missing gh: includes diagnostic detail" || fail "missing gh: includes diagnostic detail" "$out"
+[[ "$out" == *"Stored GitHub CLI authentication was not updated."* ]] && pass "missing gh: states consequence" || fail "missing gh: states consequence" "$out"
+[[ "$out" == *"Ensure the github-cli feature is installed, then rebuild the container."* ]] && pass "missing gh: states remedy" || fail "missing gh: states remedy" "$out"
 teardown_world
 
 # gh login failures must not prevent container startup.
@@ -101,10 +112,13 @@ setup_world
 export GH_TOKEN="failing-token"
 unset GITHUB_TOKEN
 export GH_EXIT_CODE=23
+export GH_ERROR="gh said: token rejected"
 run_hook
 [[ $rc -eq 0 ]] && pass "failure: exits 0" || fail "failure: exits 0" "got $rc"
 [[ -e "$GH_LOG" ]] && pass "failure: invokes gh" || fail "failure: invokes gh" "$out"
-[[ "$out" == *"failed"* ]] && pass "failure: warns" || fail "failure: warns" "$out"
+[[ "$out" == *"github-cli-config: GitHub CLI authentication failed: gh said: token rejected."* ]] && pass "failure: wraps diagnostic" || fail "failure: wraps diagnostic" "$out"
+[[ "$out" == *"Stored GitHub CLI authentication was not updated."* ]] && pass "failure: states consequence" || fail "failure: states consequence" "$out"
+[[ "$out" == *"Verify the token is valid and includes repo, read:org, and gist; then restart the container."* ]] && pass "failure: states remedy" || fail "failure: states remedy" "$out"
 teardown_world
 
 printf '\n%d passed, %d failed\n' "$passed" "$failed"

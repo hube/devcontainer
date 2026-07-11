@@ -1,6 +1,6 @@
 # GitHub CLI Auth Design
 
-Status: Implemented
+Status: Owner review fixes in progress
 
 Issue: https://github.com/hube/devcontainer/issues/19
 
@@ -179,10 +179,16 @@ remediation path.
   --with-token --insecure-storage`.
 - If `gh auth login` fails because the token is invalid, lacks required scopes
   (including classic tokens below GitHub CLI's minimum scopes), or cannot be
-  stored, the script prints a warning and exits successfully. `gh`'s own stderr
-  passes through to the postStart log so the underlying cause is visible.
-- If `gh` is not on `PATH`, the pipeline fails the same way: the script prints
-  a warning and exits successfully.
+  stored, the script captures the command's diagnostic output, includes it in a
+  problem/consequence/remedy warning, and exits successfully. The remedy tells
+  the user to verify the token and its required permissions before restarting
+  the container.
+- If `gh` is not on `PATH`, the script captures the executable error, includes
+  it in a distinct problem/consequence/remedy warning, and exits successfully.
+  The remedy tells the user to ensure the `github-cli` feature is installed and
+  rebuild the container.
+- If no token is available, the warning states that stored authentication was
+  not updated and tells the user to set a host token before restarting.
 - The script must not remove or change other existing stored credentials.
 - The script must not call `gh auth switch`; any active-account side effects are
   limited to GitHub CLI behavior while storing the selected-token account.
