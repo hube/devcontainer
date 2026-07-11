@@ -215,7 +215,9 @@ Static checks should confirm:
   credentials already exist.
 - The post-start script does not remove, log out, switch, or overwrite unrelated
   stored credentials.
-- No Codex `shell_environment_policy` change is required.
+- `.devcontainer/local-features/codex/home/.codex/config.toml` does not define
+  `shell_environment_policy`; no Codex command-environment policy change is
+  required.
 - The local feature notes document the constraints listed above.
 
 Runtime checks should include:

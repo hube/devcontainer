@@ -16,6 +16,18 @@ require() {
   }
 }
 
+require_lines() {
+  local pattern="$1"
+  local file="$2"
+  local content
+  content="$(<"$file")"
+  [[ "$content" == *"$pattern"* ]] || {
+    printf 'Required line sequence is missing in %s: %s\n' "$file" "$pattern" >&2
+    printf 'Documentation contract verification cannot continue. Restore the required paragraph separation and rerun this test.\n' >&2
+    exit 1
+  }
+}
+
 require 'extends the official `github-cli` feature' "$NOTES"
 require 'does not install or replace the `gh` binary' "$NOTES"
 require 'top-level `remoteEnv`' "$NOTES"
@@ -43,3 +55,4 @@ require 'minimum permissions' "$NOTES"
 require '`gh auth logout --hostname github.com`' "$NOTES"
 require '`docker volume rm github-cli-config-<devcontainerId>`' "$NOTES"
 require '.devcontainer/local-features/github-cli-config/NOTES.md' "$ROOT/README.md"
+require_lines $'restarting the container.\n\nWhen a token is supplied' "$NOTES"

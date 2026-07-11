@@ -175,7 +175,7 @@ Expected: every suite passes and all Bash files are syntactically valid. Stage o
 - Consumes: the rendered feature notes, Codex `config.toml`, and missing-`gh` hook output.
 - Produces: a preserved paragraph boundary, a non-vacuous no-policy-change contract, and one wrapper-proof missing-`gh` diagnostic assertion.
 
-- [ ] **Step 1: Write failing paragraph and Codex-policy tests**
+- [x] **Step 1: Write failing paragraph and Codex-policy tests**
 
 Require the exact paragraph separator in the documentation test:
 
@@ -194,11 +194,11 @@ def test_shell_environment_policy_detection() -> None:
     raise AssertionError("shell_environment_policy was not detected")
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run the documentation and Python static tests. Expected: documentation fails because the paragraph separator is absent; Python fails because `assert_no_shell_environment_policy` is undefined.
 
-- [ ] **Step 3: Implement the minimal fixes**
+- [x] **Step 3: Implement the minimal fixes**
 
 Restore the blank line in `NOTES.md`. Define the detector and retarget the repository assertion:
 
@@ -212,7 +212,7 @@ assert_no_shell_environment_policy(codex_config)
 
 Update the design verification section to name the exact `config.toml` path.
 
-- [ ] **Step 4: Consolidate the missing-executable assertion**
+- [x] **Step 4: Consolidate the missing-executable assertion**
 
 Replace the separate wrapper-prefix and raw-detail checks with one ordered glob that requires the diagnostic detail after the wrapper prefix:
 
@@ -222,6 +222,6 @@ Replace the separate wrapper-prefix and raw-detail checks with one ordered glob 
 
 Run the head test against the pre-fix hook and confirm this assertion fails, then run against the current hook and confirm it passes.
 
-- [ ] **Step 5: Verify, synchronize, and commit**
+- [x] **Step 5: Verify, synchronize, and commit**
 
 Run all three feature suites and Bash syntax checks. Mark Task 6 complete, set design status to `Implemented`, stage only Task 6 files, create a signed attributed commit, and verify its trailers with `git interpret-trailers --parse`.

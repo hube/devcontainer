@@ -101,8 +101,7 @@ out="$(PATH="$WORLD/bin" "$HOOK" 2>&1)"
 rc=$?
 [[ $rc -eq 0 ]] && pass "missing gh: exits 0" || fail "missing gh: exits 0" "got $rc"
 [[ ! -e "$GH_LOG" ]] && pass "missing gh: never reaches a gh binary" || fail "missing gh: never reaches a gh binary" "$out"
-[[ "$out" == *"github-cli-config: GitHub CLI is unavailable: env:"* ]] && pass "missing gh: wraps diagnostic" || fail "missing gh: wraps diagnostic" "$out"
-[[ "$out" == *"No such file or directory"* ]] && pass "missing gh: includes diagnostic detail" || fail "missing gh: includes diagnostic detail" "$out"
+[[ "$out" == *"github-cli-config: GitHub CLI is unavailable: env:"*"No such file or directory"* ]] && pass "missing gh: wraps diagnostic detail" || fail "missing gh: wraps diagnostic detail" "$out"
 [[ "$out" == *"Stored GitHub CLI authentication was not updated."* ]] && pass "missing gh: states consequence" || fail "missing gh: states consequence" "$out"
 [[ "$out" == *"Ensure the github-cli feature is installed, then rebuild the container."* ]] && pass "missing gh: states remedy" || fail "missing gh: states remedy" "$out"
 teardown_world

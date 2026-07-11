@@ -11,6 +11,7 @@ FEATURE_DIR = ROOT / ".devcontainer/local-features/github-cli-config"
 MANIFEST_PATH = FEATURE_DIR / "devcontainer-feature.json"
 INSTALLER_PATH = FEATURE_DIR / "install.sh"
 DEVCONTAINER_PATH = ROOT / ".devcontainer/devcontainer.json"
+CODEX_CONFIG_PATH = ROOT / ".devcontainer/local-features/codex/home/.codex/config.toml"
 
 OFFICIAL_GITHUB_CLI_FEATURE = "ghcr.io/devcontainers/features/github-cli:1"
 LOCAL_GITHUB_CLI_CONFIG_FEATURE = "./local-features/github-cli-config"
@@ -124,7 +125,20 @@ def test_load_jsonc_supports_comments_and_trailing_commas() -> None:
     }
 
 
+def assert_no_shell_environment_policy(config: str) -> None:
+    assert "shell_environment_policy" not in config
+
+
+def test_shell_environment_policy_detection() -> None:
+    try:
+        assert_no_shell_environment_policy('shell_environment_policy = {}')
+    except AssertionError:
+        return
+    raise AssertionError("shell_environment_policy was not detected")
+
+
 def main() -> None:
+    test_shell_environment_policy_detection()
     test_load_jsonc_supports_comments_and_trailing_commas()
     manifest = load_json(MANIFEST_PATH)
     devcontainer = load_json(DEVCONTAINER_PATH)
@@ -154,8 +168,8 @@ def main() -> None:
     assert "TZ" not in devcontainer["remoteEnv"]
     assert devcontainer["containerEnv"]["TZ"] == "${localEnv:TZ:America/Los_Angeles}"
 
-    codex = load_json(ROOT / ".devcontainer/local-features/codex/devcontainer-feature.json")
-    assert "shell_environment_policy" not in codex
+    codex_config = CODEX_CONFIG_PATH.read_text(encoding="utf-8")
+    assert_no_shell_environment_policy(codex_config)
 
     syntax = subprocess.run(
         ["bash", "-n", str(INSTALLER_PATH)], check=False, capture_output=True, text=True

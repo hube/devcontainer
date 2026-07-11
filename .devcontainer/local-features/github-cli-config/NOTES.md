@@ -13,6 +13,7 @@ process. On startup, `GH_TOKEN` takes precedence over `GITHUB_TOKEN`, matching
 GitHub CLI behavior for github.com. If both values are unset or empty, the
 startup hook warns: "Stored GitHub CLI authentication was not updated." It
 tells the user to set a host token before restarting the container.
+
 When a token is supplied, the hook unsets `GH_TOKEN` and `GITHUB_TOKEN` for
 `gh auth login` before passing the selected token on standard input. This lets
 subsequent `gh` processes use stored authentication rather than environment
