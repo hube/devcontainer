@@ -14,12 +14,25 @@ fails before any patch is applied:
 bwrap: No permissions to create a new namespace, likely because the kernel does not allow non-privileged user namespaces.
 ```
 
-Root cause, verified in the running container:
+Root cause, verified by differential reproduction on the in-scope Docker
+Desktop host (Docker Engine 29.3.1, kernel 6.12.76-linuxkit):
 
-- `unshare --user --map-root-user true` fails with `Operation not permitted`.
-- `docker info` reports `name=seccomp,profile=builtin` — the container runs
-  under Docker's default seccomp profile.
-- `devcontainer.json` passes no `runArgs`, so nothing overrides that profile.
+```console
+$ docker run --rm ubuntu:rolling unshare --user --map-root-user true
+unshare: unshare failed: Operation not permitted
+
+$ docker run --rm --security-opt seccomp=unconfined ubuntu:rolling \
+    unshare --user --map-root-user true
+# exits 0
+```
+
+The only variable between the two runs is the seccomp profile, so the
+built-in profile is the blocker — the kernel permits unprivileged user
+namespaces and no other LSM intervenes (`docker info` reports only
+`name=seccomp,profile=builtin name=cgroupns` under SecurityOptions).
+Supporting observations from the running devcontainer: `unshare --user`
+fails the same way, and `devcontainer.json` passes no `runArgs`, so nothing
+overrides the default profile.
 
 Docker's default seccomp profile denies `clone`/`unshare` with `CLONE_NEW*`
 flags for containers without `CAP_SYS_ADMIN`, which is exactly the syscall
@@ -52,9 +65,16 @@ need more; that is out of scope until such a host is actually used).
 
 ### 1. Vendored seccomp profile — `.devcontainer/seccomp/userns.json` (new)
 
-A copy of Moby's `profiles/seccomp/default.json` taken from the latest
-stable Moby release tag at implementation time (recorded in the README),
-edited to:
+A copy of Moby's default seccomp profile, edited as described below. The
+profile no longer lives in `moby/moby` (the path `profiles/seccomp/default.json`
+is absent from current release tags); it is now published in the
+independently versioned [`moby/profiles`](https://github.com/moby/profiles)
+repository. Vendor `seccomp/default.json` from the latest `seccomp/vX.Y.Z`
+release tag at implementation time (currently `seccomp/v0.2.3`), recording
+the tag and the file's SHA-256 checksum in the README. No engine-version
+mapping is needed: the profiles repository tracks current engines, and the
+create-time smoke test (section 4) validates the profile against whatever
+engine Docker Desktop is actually running. Edits relative to upstream:
 
 - add `unshare`, `setns`, `mount`, `umount2`, and `pivot_root` to the
   unconditional syscall allowlist (the stock profile allows them only when
@@ -75,10 +95,12 @@ syscalls stay denied.
 
 JSON cannot carry comments, so a README alongside the profile records:
 
-- the upstream source URL and the pinned Docker/Moby version;
+- the upstream source URL (`moby/profiles`) and the pinned `seccomp/vX.Y.Z`
+  release tag;
+- the SHA-256 checksum of the unmodified upstream file;
 - the exact list of edits relative to upstream;
-- the re-vendoring procedure: download the pinned upstream file, re-apply
-  the documented edits, and review the diff.
+- the re-vendoring procedure: download the pinned upstream file, verify the
+  checksum, re-apply the documented edits, and review the diff.
 
 ### 3. Wire-up — `devcontainer.json`
 
