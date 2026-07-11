@@ -1,6 +1,6 @@
 # Git Commit Attribution Design
 
-Status: Draft — awaiting review
+Status: Draft — revised after first review pass on `hube/devcontainer#38`
 
 ## Context
 
@@ -49,11 +49,18 @@ is what makes a shared control possible.
 
 ## The Enforcement Point
 
-`git commit` is the only step every agent, every tool, and every human passes
-through. Claude Code and Codex share no runtime, no configuration format, and no
-environment variables — but both produce commits, and a commit message is a
-harness-neutral artifact. A `commit-msg` hook is therefore the one control that
-generalizes to agents nobody has configured yet.
+`git commit` is the one step Claude Code, Codex, and every human in this
+container pass through today. The two harnesses share no runtime, no
+configuration format, and no environment variables — but both drive git's
+porcelain, and a commit message is a harness-neutral artifact. A `commit-msg`
+hook therefore generalizes to any agent that commits the way these do,
+including agents nobody has configured yet.
+
+That guarantee is scoped to hook-aware porcelain. Plumbing (`git commit-tree`),
+libgit2- or JGit-based tools, and commits created through GitHub's web UI or
+API never run local hooks. No such producer commits inside this container
+today; if one appears, the deferred per-repo CI check (see *Bypasses*) is the
+boundary that catches it, not this hook.
 
 This rules out keying enforcement off the environment. `CLAUDECODE` and
 `AI_AGENT` are Claude Code's; Codex sets neither. The gate reads the **commit
@@ -98,6 +105,7 @@ a pointer rather than a copy is a documentation-review rule, not a mechanism —
 this design does not enforce it.
 
 ```
+version      1
 mode         warn
 
 trailer      Harness           required
@@ -110,20 +118,33 @@ agent-author noreply@anthropic.com
 agent-author noreply@openai.com
 ```
 
-One record per line, so the validator needs no parser and no dependency. Two
-record types, because the hook needs two things: what must be present, and when
-to enforce at all. The `agent-author` list is the harness-neutral trigger, and
+One record per line, so the validator needs no parser and no dependency.
+`trailer` records say what must be present; `agent-author` records say when to
+enforce at all. The `agent-author` list is the harness-neutral trigger, and
 extending it for a new provider is a host-side edit rather than an image
 rebuild.
 
 `mode` governs whether a violation is an error or a warning. It lives here, on
 the fast channel, so promotion and rollback are a `git pull` apart.
 
+`version` guards the skew this split creates: the spec is live on the next
+`git pull`, while the validator rides the image. A validator that does not
+recognize the declared version rejects — fail closed, consistent with a missing
+spec — naming the remedy: rebuild the container, or pin the spec to the older
+grammar. A grammar change therefore ships in two steps: land a validator that
+accepts both versions, then flip the spec. Unknown record types within a
+supported version also reject rather than being skipped; a typo'd record must
+not silently weaken a control.
+
 Why this repo: dotfiles in `hube/devcontainer-dotfiles` are **copied** into
 `$HOME` at container create, so changing one requires a restart. `claude-home`
 is bind-mounted, so an edit is live in every running container on the next
 commit. The file name is harness-neutral; only the Claude-branded directory
-containing it appears in this design, confined to one `source:` line.
+containing it appears in this design, confined to one `source:` line in the
+Feature's mount declaration (the `local-features/ssh` idiom). A container built
+without Claude — a Codex-only consumer keeping its contract elsewhere — edits
+that single line; nothing in the container layout, the validator, or the
+diagnostics knows the Claude path.
 
 ### The mechanism — `hube/devcontainer`
 
@@ -134,8 +155,10 @@ neither the `claude` nor the `codex` Feature.
 .devcontainer/devcontainer.json                  (add one stanza)
 .devcontainer/local-features/git-commit-attribution/
     devcontainer-feature.json    read-only spec mount; dependsOn node:2
-    install.sh                   install bundle; resolve node; write /etc/gitconfig
-    dist/commit-msg              committed bundle
+    install.sh                   install dispatcher, symlinks, bundle;
+                                 resolve node; write /etc/gitconfig
+    dispatch.sh                  POSIX sh hook dispatcher (see Hook Dispatch)
+    dist/validate                committed validator bundle
     NOTES.md                     the four bypasses, stated plainly
     bin/devcontainer-feature/git-commit-attribution/postStartScript.sh
     test/                        install, postStart, and integration suites
@@ -157,7 +180,8 @@ a trailer block.
 
 | Path | Provenance | Owner / mode |
 | --- | --- | --- |
-| `/usr/local/share/git-commit-attribution/hooks/commit-msg` | image layer | `root:root` 0755 |
+| `/usr/local/share/git-commit-attribution/hooks/dispatch` + one symlink per githooks(5) hook name | image layer | `root:root` 0755 |
+| `/usr/local/share/git-commit-attribution/validate` (bundle) | image layer | `root:root` 0755 |
 | `/usr/local/bin/node` → `/usr/local/share/nvm/current/bin/node` | image layer | `root:root` symlink |
 | `/etc/gitconfig` (`core.hooksPath`) | image layer | `root:root` 0644 |
 | `~/.config/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf` | host file |
@@ -179,7 +203,9 @@ is not where the spec is mounted. `install.sh` knows `_CONTAINER_USER`, so it
 bakes the absolute path
 `/home/${_CONTAINER_USER}/.config/git-commit-attribution/trailer-contract` into
 the bundle as it copies it, in the same pass that rewrites the shebang. Every
-user in the container then resolves the same spec.
+user in the container then resolves the same spec. Diagnostics print that baked
+absolute path, never `~` — a message printed during a root commit would
+otherwise point at `/root`, where the spec is not.
 
 If the host file does not exist, Docker is expected to create a **directory** at
 the bind mount's source rather than fail — unverified, and the implementation
@@ -229,6 +255,43 @@ its design in `hube/devcontainer#15` inherit a rule rather than a precedent —
 and so that no future signing include silently overrides the gate through global
 scope.
 
+## Hook Dispatch
+
+`core.hooksPath` does not add a hook; it **replaces the hook directory, for
+every hook git knows**. With it set, a repository's `.git/hooks/pre-commit`
+simply never runs — verified, not inferred from the docs. A hooks directory
+containing only a `commit-msg` would therefore silently disable every existing
+repo hook of every kind under `/workspaces`.
+
+So the installed hooks directory is a dispatcher, not a single hook.
+`install.sh` creates one symlink per hook name in githooks(5), all pointing at
+one POSIX `sh` script, which:
+
+- resolves the repository's default hook as
+  `"$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"`, and
+- `exec`s it when executable, preserving arguments, stdin, and exit status.
+
+For `commit-msg` — and only `commit-msg` — the dispatcher first runs the
+validator bundle. A rejection stops the commit and nothing chains. **Every
+other outcome chains**: trigger not fired, validation passed, and warn-mode
+violations all fall through to the repository's own `commit-msg`. Chaining
+only after validation would eat repo `commit-msg` hooks on exactly the commits
+that fire no trigger — the human-authored ones.
+
+Two resolution details are load-bearing, both established by experiment:
+
+- `git rev-parse --git-path hooks` honors `core.hooksPath`, so it returns the
+  gate's own directory — a dispatcher built on it would exec itself forever.
+  The common-dir form ignores `core.hooksPath` and is the recursion guard.
+- In a linked worktree, `.git` is a file, so the naive `.git/hooks/<name>`
+  resolves nowhere. `--git-common-dir` returns the main repository's `.git`,
+  where hooks actually live. Claude and Codex agents in this container work in
+  linked worktrees routinely, so this is the common case, not an edge.
+
+Hook names added by future git versions are not dispatched until the symlink
+list in `install.sh` is updated; the list records its provenance (githooks(5)
+of the image's git) beside it.
+
 ## Node
 
 The Feature is TypeScript, so every commit in the container depends on a working
@@ -252,33 +315,39 @@ deferring the discovery to someone's first commit.
 The bundle is **committed**, built by esbuild into a single dependency-free file
 using only `node:fs` and `node:child_process`. The image build never runs
 `npm install`. One bundle serves both entry points, dispatching on argv:
-`commit-msg <msgfile>` when git invokes it, and `--range BASE..HEAD` when CI
-runs the committed `dist/commit-msg` directly from a checkout.
+`commit-msg <msgfile>` when the dispatcher invokes it, and
+`--range BASE..HEAD --spec PATH` when CI runs the committed `dist/validate`
+directly from a checkout.
 
 Measured node startup in this image is 17–19 ms, negligible beside SSH signing.
 
-If the interpreter is missing despite all of this, git cannot execute the hook
-and refuses the commit. The mechanism fails closed by accident, consistent with
-its design, though with an unhelpful message.
+The dispatcher itself is POSIX `sh`, so hooks other than `commit-msg` never pay
+the node dependency. If the interpreter is missing despite all of this, the
+dispatcher cannot run the validator, and it treats a validator it cannot
+execute as a rejection — fail closed, naming what it could not run.
 
 ## Validation Flow
 
 ```
-commit-msg <msgfile>
+validate commit-msg <msgfile>        (invoked by the dispatcher)
   │
-  ├─ read spec  ← ~/.config/git-commit-attribution/trailer-contract
-  │    missing or malformed → REJECT, naming the path and the offending line
+  ├─ read spec  ← absolute path baked at install (see Spec Resolution)
+  │    missing, malformed, or unsupported version
+  │      → REJECT, naming the path and the offending line
   │
-  ├─ trigger?  raw text match on ^(Harness|Harness-Version|Model|Skills):
+  ├─ trigger?  raw text match on ^<Key>: for each trailer key in the spec,
   │            or ^Co-Authored-By: <address listed as agent-author>
-  │    no → exit 0, silently
+  │    no → PASS, silently
   │
   ├─ validate: git interpret-trailers --parse <msgfile> → ordered key list
   │    compare against the spec's required sequence
+  │      violation, mode enforce → REJECT
+  │      violation, mode warn    → print diagnosis, note it will become
+  │                                an error, PASS
+  │      no violation            → PASS
   │
-  ├─ mode warn → print the diagnosis, note it will become an error, exit 0
-  │
-  └─ chain: exec .git/hooks/commit-msg "$msgfile" if executable; its status is ours
+  └─ PASS → dispatcher chains to the repository's own commit-msg
+     REJECT → non-zero exit; nothing chains, the commit is not created
 ```
 
 Two reads of the message, for two different questions.
@@ -289,6 +358,12 @@ trailers, so a trigger based on parsed output would see nothing, decline to
 fire, and pass the non-compliant commit. The malformed message would evade the
 check precisely because it is malformed.
 
+Trigger patterns are generated from the spec's `trailer` records, not
+hardcoded, so detection cannot drift from the contract it enforces: a key added
+to the spec is a key that trips the trigger, with no second list to update.
+`Co-Authored-By` is the exception — it appears in human-to-human commits, so it
+triggers only with an address on the `agent-author` list.
+
 The **validator** asks whether the claim is well-formed, and delegates entirely
 to `git interpret-trailers --parse`. Git's definition of a trailer block is
 therefore the contract's definition, and the hook can never disagree with the
@@ -298,11 +373,32 @@ makes git return only the trailers after it, and a stray line makes git return
 nothing. Both surface as missing required trailers.
 
 Commits that trip no trigger pass silently: human-authored commits, GitHub merge
-commits, and human-to-human `Co-Authored-By` among them.
+commits, and human-to-human `Co-Authored-By` among them. On every PASS path the
+dispatcher chains to the repository's own `commit-msg` (see *Hook Dispatch*).
 
-**Chaining** is required, not optional. A global `core.hooksPath` shadows every
-repository's `.git/hooks/*` entirely. Without chaining, installing this Feature
-would silently disable every existing repo hook under `/workspaces`.
+### Sequence Semantics
+
+"Compare against the spec's required sequence" means, precisely:
+
+- The required keys must appear in the parsed trailer list in spec order, as a
+  contiguous run — nothing sits between `Harness` and the final
+  `Co-Authored-By` that is not itself a required trailer.
+- `Co-Authored-By` may repeat. A commit with several contributors — a human
+  pair, a second harness — carries several `Co-Authored-By` trailers, and
+  `required last` means the run of them ends the block.
+- Trailers the spec does not mention (`Signed-off-by`, Gerrit `Change-Id`) are
+  permitted **before** the block. The contract says the message *ends* with the
+  attribution block; it does not claim to be the only trailer convention in
+  existence.
+- `git commit --signoff` appends `Signed-off-by` after everything else, so it
+  lands after `Co-Authored-By` and rejects. Sign-offs belong above the block.
+  No repository this gate governs uses DCO sign-offs today; if one appears,
+  that is a spec-grammar change, not a hook edit.
+
+The block attributes the harness that **created the commit** — the
+orchestrating agent, when subagents are involved. Other contributors, human or
+AI, appear as additional `Co-Authored-By` trailers, never as a second
+`Harness:`/`Model:` block.
 
 ## Failure Behavior
 
@@ -331,8 +427,11 @@ Agent-authored commits must end with this contiguous block, Co-Authored-By last:
   Skills: <skills used, comma-separated, or 'none'>
   Co-Authored-By: <model display name> <noreply address>
 
-Spec: ~/.config/git-commit-attribution/trailer-contract
+Spec: /home/devcontainer/.config/git-commit-attribution/trailer-contract
 ```
+
+The spec path shown is the absolute path baked at install, for the reason given
+under *Spec Resolution*.
 
 The postStart script never blocks container start, matching the idiom
 `local-features/agent-skills/bin/.../postStartScript.sh` establishes. It warns
@@ -378,8 +477,14 @@ GitHub offers no `pre-receive` hook outside Enterprise. Per-repo CI is the
 correct second line of defence and is filed separately.
 
 To keep that cheap, the validator is built as a script with two entry points:
-`commit-msg <msgfile>` for the hook, and `--range BASE..HEAD` for CI over a pull
-request's commits. Same code, same spec, no second implementation.
+`commit-msg <msgfile>` for the hook, and `--range BASE..HEAD --spec PATH` for
+CI over a pull request's commits. Same code, same spec grammar, no second
+implementation. The hook resolves the spec through the path baked at install;
+CI has no bind mount and runs the untouched checked-in bundle, so `--spec` is
+**required** in range mode — there is no default for it to guess at. How a
+per-repo workflow obtains and pins the contract revision it validates against
+is a decision for that deferred design; this repo's own `tests.yml` exercises
+range mode against fixture specs committed under `test/`.
 
 ## Testing
 
@@ -404,12 +509,20 @@ Fixtures are drawn from real artifacts.
 | `Co-Authored-By` not last | reject |
 | no trailers at all | pass, silently |
 | human-to-human `Co-Authored-By` | pass |
+| repeated `Co-Authored-By` ending the block | pass |
+| `Signed-off-by` before the block | pass |
+| `--signoff` (appends `Signed-off-by` after the block) | reject |
 | spec missing | reject, naming the path |
 | spec path is a directory | reject, naming the path |
 | spec malformed | reject, naming the line |
+| spec with an unsupported `version` | reject, naming the remedy |
 | commit made as `root` | resolves the same spec; gate applies |
 | `mode warn` with a violation | exit 0, diagnosis printed |
 | repository `.git/hooks/commit-msg` present | runs; its non-zero status propagates |
+| repo `commit-msg` present, message trips no trigger | repo hook still runs |
+| repo `commit-msg` present, `mode warn` violation | repo hook still runs |
+| repository `.git/hooks/pre-commit` present | still runs with the gate installed |
+| commit from a linked worktree | default hooks resolve via the common dir; gate applies |
 | `GIT_CONFIG_NOSYSTEM=1` | gate absent |
 
 The fabricated-block fixture rejects only because `Skills:` became mandatory.
@@ -429,7 +542,12 @@ These were established by experiment in the container, not assumed.
   it. Contiguity checking is therefore free, and both cases fail closed.
 - A message with a prose line above an otherwise valid block parses to zero
   trailers, which is why the trigger reads raw text.
-- A global `core.hooksPath` shadows `.git/hooks/commit-msg` completely.
+- A global `core.hooksPath` replaces the hook directory for **every** hook:
+  with it set, a repository's `.git/hooks/pre-commit` no longer runs.
+- `git rev-parse --git-path hooks` honors `core.hooksPath` and returns the
+  gate's own directory; `--git-common-dir` ignores it, and from a linked
+  worktree — where `.git` is a file — resolves the main repository's `.git`,
+  where hooks actually live.
 - A repository-local `core.hooksPath` overrides the global one, silently.
 - `git commit --no-verify` bypasses the `commit-msg` hook.
 - `/etc/gitconfig` is absent in the image; `~/.gitconfig` is provided by
