@@ -7,6 +7,7 @@
 set -uo pipefail
 
 PROFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/seccomp/userns.json"
+GENERATED_SHA256="d563d512691ae8f2d437bfa7a9e77ac7d8c8d4a785277f8234bd688f4857ab86"
 passed=0
 failed=0
 
@@ -37,6 +38,18 @@ if [[ ! -f "$PROFILE" ]]; then
   echo "     Remedy: generate the pinned profile, then rerun this test." >&2
   echo "     Profile check said: rc=$rc ${out:-<no output>}" >&2
   exit 1
+fi
+
+out="$(sha256sum "$PROFILE" 2>&1)"; rc=$?
+actual_sha=${out%% *}
+if [[ $rc -eq 0 && "$actual_sha" == "$GENERATED_SHA256" ]]; then
+  pass "profile: matches the recorded generated SHA-256"
+else
+  fail "profile: matches the recorded generated SHA-256" \
+    "the vendored generated profile does not match its recorded SHA-256." \
+    "the profile may contain changes beyond the documented transformation." \
+    "regenerate it from the pinned upstream file, review the transformation, and record the generated SHA-256." \
+    "sha256sum said: ${out:-<no output>}"
 fi
 
 out="$(jq -e . "$PROFILE" 2>&1)"; rc=$?

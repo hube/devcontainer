@@ -14,7 +14,8 @@ why.
 | Repository | [`moby/profiles`](https://github.com/moby/profiles) |
 | Tag | `seccomp/v0.2.3` |
 | File | `seccomp/default.json` |
-| SHA-256 | `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74` |
+| SHA-256 (upstream) | `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74` |
+| SHA-256 (generated `userns.json`) | `d563d512691ae8f2d437bfa7a9e77ac7d8c8d4a785277f8234bd688f4857ab86` |
 
 The profile used to live in `moby/moby` at `profiles/seccomp/default.json`.
 It does not any more — that path is absent from current Moby release tags, and
@@ -70,6 +71,7 @@ jq '
 ' /tmp/default.json > userns.json
 ```
 
-Then review the diff against the previous `userns.json` and run
+Verify the generated SHA-256, record it in the table and test, then review the
+diff against the previous `userns.json` and run
 `../test/test-seccomp-profile.sh`, which checks both the shape of the file and
 that Bubblewrap actually works under it.

@@ -33,12 +33,24 @@ run_hook 1 0 "unshare: Operation not permitted"
   || fail "userns blocked: names the problem" "$OUT"
 [[ "$OUT" == *"cannot apply edits"* ]] && pass "userns blocked: names the consequence" \
   || fail "userns blocked: names the consequence" "$OUT"
+
 [[ "$OUT" == *"seccomp/userns.json"* && "$OUT" == *"rebuild"* ]] \
   && pass "userns blocked: names the remedy" \
   || fail "userns blocked: names the remedy" "$OUT"
 [[ "$OUT" == *"unshare said: unshare: Operation not permitted"* ]] \
   && pass "userns blocked: relays the underlying error" \
   || fail "userns blocked: relays the underlying error" "$OUT"
+
+missing_dir="$(mktemp -d)"
+ln -s "$(command -v bash)" "$missing_dir/bash"
+ln -s "/usr/bin/true" "$missing_dir/unshare"
+OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
+rm -rf "$missing_dir"
+[[ $RC -ne 0 ]] && pass "bwrap missing: fails the container create" || fail "bwrap missing: fails the container create" "exited 0"
+[[ "$OUT" == *"Bubblewrap is not installed"* ]] && pass "bwrap missing: names the problem" || fail "bwrap missing: names the problem" "$OUT"
+[[ "$OUT" == *"cannot apply edits"* ]] && pass "bwrap missing: names the consequence" || fail "bwrap missing: names the consequence" "$OUT"
+[[ "$OUT" == *"bubblewrap package"* && "$OUT" == *"rebuild"* ]] && pass "bwrap missing: names the package remedy" || fail "bwrap missing: names the package remedy" "$OUT"
+[[ "$OUT" == *"command -v bwrap said: no output"* ]] && pass "bwrap missing: frames the underlying lookup output" || fail "bwrap missing: frames the underlying lookup output" "$OUT"
 
 run_hook 0 1 "bwrap: No permissions to create a new namespace"
 [[ $RC -ne 0 ]] && pass "bwrap blocked: fails the container create" \

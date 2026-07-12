@@ -24,9 +24,10 @@ relative to upstream, and how to re-vendor it.
 ## Failure handling
 
 On container create the feature probes the capability it depends on: it creates
-a user namespace with `unshare`, then starts a Bubblewrap sandbox. If either
-fails, **container create fails**, naming the problem, the consequence, the
-remedy, and the underlying error.
+a user namespace with `unshare`, then starts a Bubblewrap sandbox. If either fails, or if the required `bwrap` executable is missing, **container
+create fails**, naming the problem, the consequence, the targeted remedy, and
+the underlying command output. A missing executable points to installing the
+`bubblewrap` package and rebuilding; a blocked probe points to `securityOpt`.
 
 This is deliberately stricter than the `agent-skills` feature, which never fails
 container start. A Codex feature whose patch helper cannot run is not degraded,
