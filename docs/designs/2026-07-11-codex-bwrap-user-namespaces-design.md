@@ -1,6 +1,7 @@
 # Enable unprivileged user namespaces for Codex's patch helper
 
-**Status:** Design approved; implementation plan under review in PR #40.
+**Status:** Implemented. Plan:
+`docs/implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`.
 
 Resolves [issue #36](https://github.com/hube/devcontainer/issues/36).
 
@@ -181,9 +182,13 @@ fail the create: a Codex feature that cannot run Codex's patch helper is
 broken, and silently starting would just relocate the failure to the middle
 of a session — the exact symptom issue #36 reports.
 
-The test uses the system `bwrap` (`/usr/bin/bwrap`, already present in the
-image); Codex bundles its own copy, but both hit the same kernel/seccomp
-boundary, so the system binary is a faithful proxy.
+The test uses the system `bwrap`. It reaches the image through `common-utils`'s
+package list, but the Codex feature installs `bubblewrap` explicitly rather than
+inherit a load-bearing binary from another feature's incidental dependencies.
+Codex also bundles its own `bwrap` under `~/.codex`, which the test deliberately
+ignores: that path is version-scoped to Codex's release layout, and both
+binaries hit the same kernel/seccomp boundary, so the system one is a faithful
+proxy.
 
 ### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md` (new)
 
