@@ -45,6 +45,13 @@ a custom seccomp profile — a vendored, pinned copy of Docker's default
 profile with targeted edits that permit unprivileged user namespaces and the
 syscalls Bubblewrap uses inside them.
 
+Only Codex needs this capability, so everything that supports it — the
+profile, its provenance record, the `securityOpt` that activates it, the
+create-time smoke test, and the `NOTES.md` describing how to configure the
+feature — lives in the Codex local feature
+(`.devcontainer/local-features/codex/`). The top-level `devcontainer.json`
+is not modified at all.
+
 Alternatives considered and rejected:
 
 - **Configure Codex to skip its internal sandbox** (treat the container as
@@ -63,24 +70,40 @@ need more; that is out of scope until such a host is actually used).
 
 ## Design
 
-### 1. Vendored seccomp profile — `.devcontainer/seccomp/userns.json` (new)
+### 1. Vendored seccomp profile — `.devcontainer/local-features/codex/seccomp/userns.json` (new)
 
 A copy of Moby's default seccomp profile, edited as described below. The
 profile no longer lives in `moby/moby` (the path `profiles/seccomp/default.json`
 is absent from current release tags); it is now published in the
 independently versioned [`moby/profiles`](https://github.com/moby/profiles)
 repository. Vendor `seccomp/default.json` from the latest `seccomp/vX.Y.Z`
-release tag at implementation time (currently `seccomp/v0.2.3`), recording
-the tag and the file's SHA-256 checksum in the README. No engine-version
-mapping is needed: the profiles repository tracks current engines, and the
-create-time smoke test (section 4) validates the profile against whatever
-engine Docker Desktop is actually running. Edits relative to upstream:
+release tag at implementation time (currently `seccomp/v0.2.3`, SHA-256
+`536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`), recording
+the tag and checksum in the README. No engine-version mapping is needed: the
+profiles repository tracks current engines, and the create-time smoke test
+(section 4) validates the profile against whatever engine Docker Desktop is
+actually running.
 
-- add `unshare`, `setns`, `mount`, `umount2`, and `pivot_root` to the
-  unconditional syscall allowlist (the stock profile allows them only when
-  the container has `CAP_SYS_ADMIN`);
-- drop the argument filter on the `clone` rule that rejects `CLONE_NEW*`
-  flags.
+The upstream profile's `defaultAction` is `SCMP_ACT_ERRNO`, so a syscall is
+permitted only if some rule allows it. Three distinct edits are needed, and
+they must not be conflated — they start from different upstream states:
+
+- **Ungate four capability-gated syscalls.** `mount`, `umount2`, `setns`, and
+  `unshare` are allowed by a rule whose `includes.caps` is `CAP_SYS_ADMIN`.
+  Allow them unconditionally.
+- **Newly allow `pivot_root`.** It appears nowhere in the profile, so it is
+  denied by the default action rather than capability-gated. This genuinely
+  widens the allowlist beyond what any capability grants today.
+- **Drop the `clone` argument filter.** The non-`CAP_SYS_ADMIN` `clone` rule
+  allows the call only when `(flags & 0x7e020000) == 0` — that mask is exactly
+  the `CLONE_NEW*` namespace bits. Removing the filter is what permits
+  `CLONE_NEWUSER`.
+
+`clone3` is deliberately left alone. Upstream returns `ENOSYS` for it without
+`CAP_SYS_ADMIN` (seccomp cannot inspect `clone3`'s flags, which sit behind a
+userspace pointer), which makes glibc fall back to `clone` — where the
+argument filter above *can* be enforced. Preserving that fallback keeps the
+namespace path filterable instead of opening an unfilterable one.
 
 The mount-family syscalls are required, not optional: Docker compiles the
 seccomp filter from the container's bounding capabilities at start time, so
@@ -91,38 +114,54 @@ create the namespace and then fail at `mount`/`pivot_root`.
 Everything else in the default profile is unchanged; all other denied
 syscalls stay denied.
 
-### 2. Provenance record — `.devcontainer/seccomp/README.md` (new)
+### 2. Provenance record — `.devcontainer/local-features/codex/seccomp/README.md` (new)
 
 JSON cannot carry comments, so a README alongside the profile records:
 
 - the upstream source URL (`moby/profiles`) and the pinned `seccomp/vX.Y.Z`
   release tag;
 - the SHA-256 checksum of the unmodified upstream file;
-- the exact list of edits relative to upstream;
+- the exact list of edits relative to upstream, distinguishing the ungated
+  syscalls from the newly-allowed `pivot_root` and the `clone` filter removal;
 - the re-vendoring procedure: download the pinned upstream file, verify the
   checksum, re-apply the documented edits, and review the diff.
 
-### 3. Wire-up — `devcontainer.json`
+### 3. Wire-up — the Codex feature's `devcontainer-feature.json`
+
+The feature activates the profile itself; no `runArgs` in `devcontainer.json`:
 
 ```json
-"runArgs": [
-  "--security-opt",
-  "seccomp=${localWorkspaceFolder}/.devcontainer/seccomp/userns.json"
+"securityOpt": [
+  "seccomp=${localWorkspaceFolder}/.devcontainer/local-features/codex/seccomp/userns.json"
 ]
 ```
 
-`runArgs` is passed to `docker run` at container create time; the change
-takes effect on the next rebuild and needs nothing further from the host.
+This works because the Dev Container spec lets a feature contribute
+`securityOpt` (it is in the feature schema alongside `privileged` and
+`capAdd`), the CLI unions every feature's `securityOpt` into the merged
+config, and passes each one to `docker run` as `--security-opt`
+(`mergeConfiguration` → `singleContainer.ts`). Feature metadata goes through
+the same variable substitution as `devcontainer.json`, so
+`${localWorkspaceFolder}` resolves to the host path of the checkout — which
+is what `--security-opt seccomp=<path>` needs, since the Docker CLI reads
+the profile from the host filesystem at container-create time. The existing
+feature already relies on this substitution for its `mounts`.
+
+The path is stable because the profile ships inside the feature and the
+feature is consumed by relative path (`./local-features/codex`) from this
+repo, so the two always travel together.
+
+Caveat: the CLI does not pass `--security-opt` under the `wslc` variant.
+That is out of scope here (Docker Desktop only), but it is why the smoke
+test in section 4 checks the capability at runtime rather than assuming the
+profile took effect.
 
 ### 4. Smoke test in the Codex local feature
 
-Only Codex cares about this capability, so the check lives in
-`.devcontainer/local-features/codex/`, not top-level `devcontainer.json`:
-
-- `install.sh` installs a verification script into the image;
-- the feature's `devcontainer-feature.json` declares a `postCreateCommand`
-  lifecycle hook (features may contribute lifecycle hooks) that runs it on
-  every container create.
+Following the pattern the `agent-skills` feature already uses, `install.sh`
+installs a verification script under `~/bin/devcontainer-feature/codex/`, and
+`devcontainer-feature.json` declares a `postCreateCommand` pointing at it, so
+it runs on every container create.
 
 The script runs:
 
@@ -131,14 +170,34 @@ The script runs:
    works, including the mount-family syscalls.
 
 On failure it prints problem → consequence → remedy, including the failing
-command's actual stderr (e.g. "user-namespace creation is blocked → Codex's
-patch helper cannot apply edits → check that `runArgs` references
-`.devcontainer/seccomp/userns.json` and rebuild the container"), and exits
-non-zero so the failure surfaces at create time instead of mid-session.
+command's actual stderr — e.g. "user-namespace creation is blocked → Codex's
+patch helper cannot apply edits → confirm the Codex feature's `securityOpt`
+resolves to `local-features/codex/seccomp/userns.json` and rebuild the
+container" — and exits non-zero so the failure surfaces at create time
+instead of mid-session.
+
+Unlike `agent-skills`, which never fails container start, this check *does*
+fail the create: a Codex feature that cannot run Codex's patch helper is
+broken, and silently starting would just relocate the failure to the middle
+of a session — the exact symptom issue #36 reports.
 
 The test uses the system `bwrap` (`/usr/bin/bwrap`, already present in the
 image); Codex bundles its own copy, but both hit the same kernel/seccomp
 boundary, so the system binary is a faithful proxy.
+
+### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md` (new)
+
+The Codex feature has no `NOTES.md` today. Add one, following the structure
+`agent-skills/NOTES.md` established (Behavior / Failure handling / Caveats),
+covering how to configure the feature correctly:
+
+- that the feature ships and activates its own seccomp profile via
+  `securityOpt`, and therefore requires no `runArgs` in `devcontainer.json`;
+- that the profile is resolved from the host checkout at container-create
+  time, so the feature must be consumed by relative path from this repo;
+- what the create-time smoke test checks and what a failure means;
+- the security trade-off (container-wide user namespaces) and a pointer to
+  the provenance README for re-vendoring.
 
 ## Error handling
 
