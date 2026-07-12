@@ -18,7 +18,11 @@
 - **Scope is Docker Desktop hosts only.** No AppArmor handling.
 - **Error messages state problem, then consequence, then remedy, in that order, and include the failing command's own output.** This is the house style; see `local-features/agent-skills/bin/devcontainer-feature/agent-skills/postStartScript.sh`.
 - **Tests are Bash scripts in the feature's `test/` directory**, named `test-*.sh`, using the `pass`/`fail` counter harness from `local-features/agent-skills/test/test-poststart.sh`, exiting non-zero if any assertion failed.
+- **Behavioral Docker tests are hermetic.** Every build uses a unique temporary image tag, exits immediately with Docker's output if the build fails, and removes the image from an `EXIT` trap.
+- **The final test-suite command runs every test and exits non-zero if any test failed.** Reporting a failure must never consume its status and turn the verification gate green.
+- **Before every commit:** rerun the task's exact verification, run `ssh-add -l`, inspect `git status` and `git diff`, stop on any failure, then stage only the task's listed files.
 - **Every commit needs the metadata trailer block and a `Co-Authored-By` trailer** as one contiguous paragraph with no blank line between them, per `CLAUDE.md`. Verify with `git log -1 --pretty=%B | git interpret-trailers --parse` before moving on.
+- **Commit metadata must describe the actual executor.** Populate `Skills:` with the skills that contributed to that commit, and omit the line when none contributed; do not copy a fixed skill name from this plan.
 
 ## Background the implementer needs
 
@@ -129,11 +133,26 @@ fi
 if ! docker info >/dev/null 2>&1; then
   printf '\nSKIP behavioural checks: docker is unavailable\n'
 else
-  IMAGE="codex-bwrap-probe:latest"
-  docker build -q -t "$IMAGE" - >/dev/null <<'DOCKERFILE'
+  BUILD_LOG="$(mktemp)"
+  IMAGE="codex-bwrap-probe:test-$(basename "$BUILD_LOG")"
+  cleanup_image() {
+    docker image rm -f "$IMAGE" >/dev/null 2>&1 || true
+    rm -f "$BUILD_LOG"
+  }
+  trap cleanup_image EXIT
+
+  if ! docker build -t "$IMAGE" - >"$BUILD_LOG" 2>&1 <<'DOCKERFILE'
 FROM ubuntu:rolling
 RUN apt-get update && apt-get install -y bubblewrap && rm -rf /var/lib/apt/lists/*
 DOCKERFILE
+  then
+    echo "FAIL behavioural setup: Docker could not build the probe image." >&2
+    echo "     Consequence: the bwrap checks cannot be trusted or run." >&2
+    echo "     Remedy: fix the build error printed below, then rerun this test." >&2
+    echo "     docker build said:" >&2
+    cat "$BUILD_LOG" >&2
+    exit 1
+  fi
 
   # Control: the stock profile must still fail, and fail for the reason #36 reports.
   out="$(docker run --rm "$IMAGE" bwrap --unshare-all --dev-bind / / true 2>&1)"; rc=$?
@@ -147,8 +166,6 @@ DOCKERFILE
   [[ $rc -eq 0 && "$out" == "ok" ]] \
     && pass "treatment: bwrap runs a sandboxed command under userns.json" \
     || fail "treatment: bwrap runs a sandboxed command under userns.json" "rc=$rc out=$out"
-
-  docker image rm -f "$IMAGE" >/dev/null 2>&1
 fi
 
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
@@ -277,6 +294,12 @@ that Bubblewrap actually works under it.
 - [ ] **Step 6: Commit**
 
 ```bash
+set -euo pipefail
+.devcontainer/local-features/codex/test/test-seccomp-profile.sh || exit 1
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
 git add .devcontainer/local-features/codex/seccomp/userns.json \
         .devcontainer/local-features/codex/seccomp/README.md \
         .devcontainer/local-features/codex/test/test-seccomp-profile.sh
@@ -300,7 +323,7 @@ a sandboxed command.
 Harness: <harness>
 Harness-Version: <version>
 Model: <model id>
-Skills: superpowers:subagent-driven-development
+Skills: <comma-separated skills actually used; omit this line when none>
 Co-Authored-By: <model display name> <noreply address>
 EOF
 )"
@@ -435,6 +458,12 @@ Note: the container is not rebuilt yet, so the hook script does not exist on dis
 - [ ] **Step 5: Commit**
 
 ```bash
+set -euo pipefail
+.devcontainer/local-features/codex/test/test-metadata.sh || exit 1
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
 git add .devcontainer/local-features/codex/devcontainer-feature.json \
         .devcontainer/local-features/codex/test/test-metadata.sh
 git commit -m "$(cat <<'EOF'
@@ -451,7 +480,7 @@ Also declare the postCreateCommand hook the smoke test will install.
 Harness: <harness>
 Harness-Version: <version>
 Model: <model id>
-Skills: superpowers:subagent-driven-development
+Skills: <comma-separated skills actually used; omit this line when none>
 Co-Authored-By: <model display name> <noreply address>
 EOF
 )"
@@ -663,6 +692,12 @@ The two "relays the underlying error" assertions are the ones that matter most, 
 - [ ] **Step 6: Commit**
 
 ```bash
+set -euo pipefail
+.devcontainer/local-features/codex/test/test-postcreate.sh || exit 1
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
 git add .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCreateScript.sh \
         .devcontainer/local-features/codex/install.sh \
         .devcontainer/local-features/codex/test/test-postcreate.sh
@@ -678,7 +713,7 @@ relocate the failure into the middle of a session.
 Harness: <harness>
 Harness-Version: <version>
 Model: <model id>
-Skills: superpowers:subagent-driven-development
+Skills: <comma-separated skills actually used; omit this line when none>
 Co-Authored-By: <model display name> <noreply address>
 EOF
 )"
@@ -804,7 +839,14 @@ proxy.
 - [ ] **Step 4: Verify the docs match what was built**
 
 ```bash
-grep -n "runArgs" .devcontainer/devcontainer.json || echo "OK: devcontainer.json untouched"
+set -euo pipefail
+if grep -n "runArgs" .devcontainer/devcontainer.json; then
+  echo "ERROR: devcontainer.json contains runArgs; seccomp would no longer be feature-owned." >&2
+  echo "Remedy: remove the runArgs change and keep securityOpt in the Codex feature." >&2
+  exit 1
+else
+  echo "OK: devcontainer.json untouched"
+fi
 test -f .devcontainer/local-features/codex/NOTES.md && echo "OK: NOTES.md exists"
 grep -q "codex" README.md && echo "OK: README links the feature"
 ```
@@ -814,6 +856,20 @@ Expected: all three `OK` lines. The first matters most — the whole point of th
 - [ ] **Step 5: Commit**
 
 ```bash
+set -euo pipefail
+if grep -n "runArgs" .devcontainer/devcontainer.json; then
+  echo "ERROR: devcontainer.json contains runArgs; seccomp would no longer be feature-owned." >&2
+  echo "Remedy: remove the runArgs change and keep securityOpt in the Codex feature." >&2
+  exit 1
+else
+  echo "OK: devcontainer.json untouched"
+fi
+test -f .devcontainer/local-features/codex/NOTES.md && echo "OK: NOTES.md exists"
+grep -q "codex" README.md && echo "OK: README links the feature"
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
 git add .devcontainer/local-features/codex/NOTES.md README.md \
         docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md
 git commit -m "$(cat <<'EOF'
@@ -827,7 +883,7 @@ image ships bwrap -- it does not, which is why install.sh now installs it.
 Harness: <harness>
 Harness-Version: <version>
 Model: <model id>
-Skills: superpowers:subagent-driven-development
+Skills: <comma-separated skills actually used; omit this line when none>
 Co-Authored-By: <model display name> <noreply address>
 EOF
 )"
@@ -841,9 +897,12 @@ git log -1 --pretty=%B | git interpret-trailers --parse
 After all four tasks, run the feature's tests together:
 
 ```bash
+failed=0
 for t in .devcontainer/local-features/codex/test/test-*.sh; do
-  echo "=== $t"; "$t" || echo "FAILED: $t"
+  echo "=== $t"
+  "$t" || { echo "FAILED: $t"; failed=1; }
 done
+exit "$failed"
 ```
 
 Expected: every script ends `N passed, 0 failed` (or prints its verification line), and none report `FAILED`.
