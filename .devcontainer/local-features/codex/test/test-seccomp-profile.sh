@@ -132,15 +132,15 @@ DOCKERFILE
     exit 1
   fi
 
-  # Control: the stock profile must still fail, and fail for the reason #36 reports.
+  # Retirement control: if the stock profile succeeds, reevaluate and remove the relaxations.
   out="$(docker run --rm "$IMAGE" bwrap --unshare-all --dev-bind / / true 2>&1)"; rc=$?
   if [[ $rc -ne 0 && "$out" == *"No permissions to create a new namespace"* ]]; then
     pass "control: stock profile reproduces issue #36"
   elif [[ $rc -eq 0 ]]; then
     fail "control: stock profile reproduces issue #36" \
       "Bubblewrap unexpectedly succeeded under Docker's stock seccomp profile." \
-      "the control no longer proves that the treatment result comes from userns.json." \
-      "verify the Docker daemon's default seccomp policy, then rerun this test." \
+      "Docker's default profile may now be sufficient, so these relaxations may be obsolete." \
+      "reevaluate and remove the vendored relaxations if the default policy now supports Bubblewrap." \
       "docker run said: rc=$rc ${out:-<no output>}"
   else
     fail "control: stock profile reproduces issue #36" \

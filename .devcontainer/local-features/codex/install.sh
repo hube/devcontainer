@@ -4,12 +4,12 @@
 # https://developers.openai.com/codex/cli
 
 set -euo pipefail
+# sudo -iu re-exec may omit _CONTAINER_USER, and fallback avoids set -u failure while preserving current user.
 CONTAINER_USER="${_CONTAINER_USER:-$(id -un)}"
 
 if [[ $EUID -ne $(id -u "${CONTAINER_USER}") ]]
 then
-  # Codex patches files through Bubblewrap. This feature owns the dependency
-  # rather than inheriting it from common-utils' incidental package list.
+  # The system bwrap command is this feature's stable capability probe.
   echo ">Installing Bubblewrap"
   apt-get update
   apt-get install -y --no-install-recommends bubblewrap

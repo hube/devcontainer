@@ -73,11 +73,7 @@ need more; that is out of scope until such a host is actually used).
 
 ### 1. Vendored seccomp profile — `.devcontainer/local-features/codex/seccomp/userns.json` (new)
 
-A copy of Moby's default seccomp profile, edited as described below. The
-profile no longer lives in `moby/moby` (the path `profiles/seccomp/default.json`
-is absent from current release tags); it is now published in the
-independently versioned [`moby/profiles`](https://github.com/moby/profiles)
-repository. Vendor `seccomp/default.json` from the latest `seccomp/vX.Y.Z`
+A copy of Moby's default seccomp profile, edited as described below. Vendor `seccomp/default.json` from the latest `seccomp/vX.Y.Z`
 release tag at implementation time (currently `seccomp/v0.2.3`, SHA-256
 `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`), recording the tag, upstream checksum, and generated profile checksum in the
 README. The test verifies the generated checksum exactly, so structural and
@@ -171,12 +167,11 @@ The script runs:
 2. `bwrap --unshare-all --dev-bind / / true` — the full Bubblewrap path
    works, including the mount-family syscalls.
 
-Before probing, it verifies that `bwrap` is installed and reports a
-package-install/rebuild remedy if lookup fails. On probe failure it prints
+It always runs the `unshare` probe and checks whether `bwrap` is installed. If available, it runs the Bubblewrap probe even when `unshare` failed; otherwise it reports a package-install/rebuild remedy. On probe failure it prints
 problem → consequence → remedy, including the failing command's actual stderr — e.g. "user-namespace creation is blocked → Codex's
 patch helper cannot apply edits → confirm the Codex feature's `securityOpt`
 resolves to `local-features/codex/seccomp/userns.json` and rebuild the
-container" — and exits non-zero so the failure surfaces at create time
+container" — accumulates every applicable structured diagnostic, and exits non-zero once so the failures surface at create time
 instead of mid-session.
 
 Unlike `agent-skills`, which never fails container start, this check *does*
@@ -184,13 +179,9 @@ fail the create: a Codex feature that cannot run Codex's patch helper is
 broken, and silently starting would just relocate the failure to the middle
 of a session — the exact symptom issue #36 reports.
 
-The test uses the system `bwrap`. It reaches the image through `common-utils`'s
-package list, but the Codex feature installs `bubblewrap` explicitly rather than
-inherit a load-bearing binary from another feature's incidental dependencies.
-Codex also bundles its own `bwrap` under `~/.codex`, which the test deliberately
-ignores: that path is version-scoped to Codex's release layout, and both
-binaries hit the same kernel/seccomp boundary, so the system one is a faithful
-proxy.
+The test uses the system `bwrap`, which the feature installs explicitly as its stable feature probe. Codex's version-scoped copies under `~/.codex/packages/.../codex-resources/bwrap` are internal and unstable; official OpenAI Dev Container guidance independently installs Bubblewrap.
+
+The stock-profile control intentionally fails if Docker's default profile becomes sufficient; that failure is the retirement signal to reevaluate and remove the relaxations. No stable documented Codex interface signals that Codex stopped using Bubblewrap, so the design does not inspect versioned internal package layouts or add an upstream watcher.
 
 ### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md`
 

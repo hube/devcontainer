@@ -24,7 +24,7 @@ relative to upstream, and how to re-vendor it.
 ## Failure handling
 
 On container create the feature probes the capability it depends on: it creates
-a user namespace with `unshare`, then starts a Bubblewrap sandbox. If either fails, or if the required `bwrap` executable is missing, **container
+a user namespace with `unshare`, then starts a Bubblewrap sandbox. Every applicable check runs even after another fails. If either probe fails, or if the required `bwrap` executable is missing, **container
 create fails**, naming the problem, the consequence, the targeted remedy, and
 the underlying command output. A missing executable points to installing the
 `bubblewrap` package and rebuilding; a blocked probe points to `securityOpt`.
@@ -34,9 +34,9 @@ container start. A Codex feature whose patch helper cannot run is not degraded,
 it is broken — and starting quietly would only move the failure into the middle
 of a Codex session, which is the symptom that made the original bug so confusing.
 
-The feature installs the `bubblewrap` package itself. `common-utils` happens to
-install it too, but a binary this feature cannot work without should not arrive
-as a side effect of another feature's package list.
+The feature explicitly installs the system `bubblewrap` package because `bwrap` is the stable feature probe. Codex's version-scoped copies under `~/.codex/packages/.../codex-resources/bwrap` are internal and unstable. Official OpenAI Dev Container guidance also installs Bubblewrap independently.
+
+The stock-profile test intentionally fails if Docker's default profile becomes sufficient; that is the retirement signal to reevaluate and remove these relaxations. There is no stable documented Codex interface that signals Codex stopped using Bubblewrap, so this feature does not inspect versioned internal package paths or add an upstream watcher.
 
 ## Caveats
 

@@ -205,15 +205,15 @@ DOCKERFILE
     exit 1
   fi
 
-  # Control: the stock profile must still fail, and fail for the reason #36 reports.
+  # Retirement control: if the stock profile succeeds, reevaluate and remove the relaxations.
   out="$(docker run --rm "$IMAGE" bwrap --unshare-all --dev-bind / / true 2>&1)"; rc=$?
   if [[ $rc -ne 0 && "$out" == *"No permissions to create a new namespace"* ]]; then
     pass "control: stock profile reproduces issue #36"
   elif [[ $rc -eq 0 ]]; then
     fail "control: stock profile reproduces issue #36" \
       "Bubblewrap unexpectedly succeeded under Docker's stock seccomp profile." \
-      "the control no longer proves that the treatment result comes from userns.json." \
-      "verify the Docker daemon's default seccomp policy, then rerun this test." \
+      "Docker's default profile may now be sufficient, so these relaxations may be obsolete." \
+      "reevaluate and remove the vendored relaxations if the default policy now supports Bubblewrap." \
       "docker run said: rc=$rc ${out:-<no output>}"
   else
     fail "control: stock profile reproduces issue #36" \
@@ -307,10 +307,6 @@ why.
 | File | `seccomp/default.json` |
 | SHA-256 | `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74` |
 
-The profile used to live in `moby/moby` at `profiles/seccomp/default.json`.
-It does not any more — that path is absent from current Moby release tags, and
-the profiles are now published from their own independently versioned
-repository.
 
 ## Edits
 
@@ -641,7 +637,10 @@ git log -1 --pretty=%B | git interpret-trailers --parse
 
 **Two things the implementer must not skip:**
 
-1. **Make the `bubblewrap` dependency explicit.** There are two `bwrap` binaries in this container and they must not be confused. Codex's installer vendors its own copy at `~/.codex/packages/<version>/codex-resources/bwrap` — version-scoped, an implementation detail of Codex's release layout, not a stable thing to probe. The system `/usr/bin/bwrap` arrives incidentally: it sits in the `common-utils` feature's `apt-get install` list (verified in this image's apt history, alongside `jq` and `socat`). It *is* therefore present on a fresh build today — but a load-bearing binary reaching us through another feature's incidental package list is a silent dependency, and if that list ever changes the smoke test fails at create time with a confusing `bwrap: command not found`. `install.sh` installs the package explicitly. `apt-get install` on an already-installed package is a no-op, so this costs a cached apt layer and buys a dependency that is visible in the feature that actually needs it.
+1. **Make the `bubblewrap` dependency explicit.** Install the system package explicitly because `bwrap` is the stable feature probe. Codex's version-scoped copies under `~/.codex/packages/.../codex-resources/bwrap` are internal and unstable; official OpenAI Dev Container guidance independently installs Bubblewrap.
+
+The stock-profile control intentionally fails if Docker's default profile becomes sufficient; that is the retirement signal to reevaluate and remove the relaxations. No stable documented Codex interface signals that Codex stopped using Bubblewrap, so do not inspect versioned internal package layouts or add an upstream watcher.
+
 2. **This hook fails the container create on error.** That is deliberate and differs from `agent-skills`, which never fails start. A Codex feature that cannot run Codex's patch helper is broken, and starting quietly just relocates the failure into the middle of a session — the exact symptom issue #36 reports.
 
 - [ ] **Step 1: Write the failing test**
@@ -712,11 +711,49 @@ run_hook 0 1 "bwrap: No permissions to create a new namespace"
   && pass "bwrap blocked: relays the underlying error" \
   || fail "bwrap blocked: relays the underlying error" "$OUT"
 
+run_hook 1 1 "namespace probe failed"
+[[ $RC -ne 0 ]] && pass "combined blocked: fails the container create" \
+  || fail "combined blocked: fails the container create" "exited 0"
+[[ "$OUT" == *"unshare said: namespace probe failed"* ]] \
+  && pass "combined blocked: reports the unshare failure" \
+  || fail "combined blocked: reports the unshare failure" "$OUT"
+[[ "$OUT" == *"bwrap said: namespace probe failed"* ]] \
+  && pass "combined blocked: reports the bwrap failure" \
+  || fail "combined blocked: reports the bwrap failure" "$OUT"
+
+missing_dir="$(mktemp -d)"
+ln -s "$(command -v bash)" "$missing_dir/bash"
+printf '#!/usr/bin/env bash\necho "unshare combined failure" >&2\nexit 1\n' > "$missing_dir/unshare"
+chmod +x "$missing_dir/unshare"
+OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
+rm -rf "$missing_dir"
+[[ $RC -ne 0 ]] && pass "combined missing: fails the container create" \
+  || fail "combined missing: fails the container create" "exited 0"
+[[ "$OUT" == *"unshare said: unshare combined failure"* ]] \
+  && pass "combined missing: reports the unshare failure" \
+  || fail "combined missing: reports the unshare failure" "$OUT"
+[[ "$OUT" == *"command -v bwrap said: no output"* ]] \
+  && pass "combined missing: reports the missing bwrap failure" \
+  || fail "combined missing: reports the missing bwrap failure" "$OUT"
 INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
-grep -q 'bubblewrap' "$INSTALL" \
+
+installs_bubblewrap() {
+  grep -Eq '^[[:space:]]*apt-get[[:space:]]+install([[:space:]]+[^[:space:]]+)*[[:space:]]+bubblewrap([[:space:]]|$)' "$1"
+}
+
+installs_bubblewrap "$INSTALL" \
   && pass "install: installs bubblewrap explicitly" \
   || fail "install: installs bubblewrap explicitly" "the hook's bwrap would depend on another feature's package list"
 
+mutated_install="$(mktemp)"
+sed '/^[[:space:]]*apt-get[[:space:]]\+install.*[[:space:]]bubblewrap[[:space:]]*$/d' "$INSTALL" > "$mutated_install"
+if installs_bubblewrap "$mutated_install"; then
+  fail "install assertion: rejects a copy without the install command" \
+    "comments or output text satisfied the explicit dependency assertion"
+else
+  pass "install assertion: rejects a copy without the install command"
+fi
+rm -f "$mutated_install"
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [[ $failed -eq 0 ]]
 ```
@@ -740,8 +777,9 @@ Create `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCr
 set -uo pipefail
 
 PROFILE=".devcontainer/local-features/codex/seccomp/userns.json"
+failed=0
 
-die() {
+diagnose() {
   local problem="$1" remedy="$2" tool="$3" output="$4"
   {
     echo "codex: $problem"
@@ -749,28 +787,28 @@ die() {
     echo "codex: $remedy"
     echo "codex: $tool said: ${output:-no output}"
   } >&2
-  exit 1
+  failed=1
 }
 
 if ! output="$(unshare --user --map-root-user true 2>&1)"; then
-  die "creating an unprivileged user namespace is blocked." \
+  diagnose "creating an unprivileged user namespace is blocked." \
     "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
     unshare "$output"
 fi
 
 if ! bwrap_path="$(command -v bwrap 2>&1)"; then
-  die "Bubblewrap is not installed." \
+  diagnose "Bubblewrap is not installed." \
     "Install the bubblewrap package by rebuilding the container with the Codex feature." \
     "command -v bwrap" "$bwrap_path"
+else
+  if ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
+    diagnose "Bubblewrap cannot start a sandbox." \
+      "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
+      bwrap "$output"
+  fi
 fi
 
-if ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
-  die "Bubblewrap cannot start a sandbox even though user namespaces work." \
-    "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
-    bwrap "$output"
-fi
-
-exit 0
+exit "$failed"
 ```
 
 - [ ] **Step 4: Install bubblewrap and the hook**
@@ -784,12 +822,12 @@ Modify `.devcontainer/local-features/codex/install.sh`. The script re-execs itse
 # https://developers.openai.com/codex/cli
 
 set -euo pipefail
+# sudo -iu re-exec may omit _CONTAINER_USER, and fallback avoids set -u failure while preserving current user.
 CONTAINER_USER="${_CONTAINER_USER:-$(id -un)}"
 
 if [[ $EUID -ne $(id -u "${CONTAINER_USER}") ]]
 then
-  # Codex patches files through Bubblewrap. This feature owns the dependency
-  # rather than inheriting it from common-utils' incidental package list.
+  # The system bwrap command is this feature's stable capability probe.
   echo ">Installing Bubblewrap"
   apt-get update
   apt-get install -y --no-install-recommends bubblewrap
@@ -828,7 +866,7 @@ chmod +x .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postC
 .devcontainer/local-features/codex/test/test-postcreate.sh
 ```
 
-Expected: all assertions `ok`, ending `16 passed, 0 failed`.
+Expected: all assertions `ok`, ending `23 passed, 0 failed`.
 
 The two "relays the underlying error" assertions are the ones that matter most, and they have been checked against a hook *without* the fix: a naive version that prints its own message but swallows the command's stderr fails exactly those two and passes the other diagnostic assertions. That is why they assert on the wrapper's framing (`unshare said: ...`) rather than on the bare error text, which the failing command writes to stderr on its own.
 
@@ -918,9 +956,7 @@ container start. A Codex feature whose patch helper cannot run is not degraded,
 it is broken — and starting quietly would only move the failure into the middle
 of a Codex session, which is the symptom that made the original bug so confusing.
 
-The feature installs the `bubblewrap` package itself. `common-utils` happens to
-install it too, but a binary this feature cannot work without should not arrive
-as a side effect of another feature's package list.
+The feature explicitly installs the system `bubblewrap` package because `bwrap` is the stable probe. Codex's version-scoped internal copies are not inspected.
 
 ## Caveats
 
@@ -964,20 +1000,7 @@ with:
 `docs/implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`.
 ```
 
-Then sharpen one sentence. The design says the smoke test uses a system `bwrap`
-"already present in the image". That is true — `common-utils` installs the
-`bubblewrap` package — but it undersells why Task 3 installs it again. Replace
-that sentence in section 4 with:
-
-```markdown
-The test uses the system `bwrap`. It reaches the image through `common-utils`'s
-package list, but the Codex feature installs `bubblewrap` explicitly rather than
-inherit a load-bearing binary from another feature's incidental dependencies.
-Codex also bundles its own `bwrap` under `~/.codex`, which the test deliberately
-ignores: that path is version-scoped to Codex's release layout, and both
-binaries hit the same kernel/seccomp boundary, so the system one is a faithful
-proxy.
-```
+Then document that the system `bwrap` is the stable feature probe, that Codex's version-scoped bundled path is internal and unstable, and that official OpenAI Dev Container guidance installs Bubblewrap independently.
 
 - [ ] **Step 4: Verify the docs match what was built**
 

@@ -17,11 +17,6 @@ why.
 | SHA-256 (upstream) | `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74` |
 | SHA-256 (generated `userns.json`) | `d563d512691ae8f2d437bfa7a9e77ac7d8c8d4a785277f8234bd688f4857ab86` |
 
-The profile used to live in `moby/moby` at `profiles/seccomp/default.json`.
-It does not any more — that path is absent from current Moby release tags, and
-the profiles are now published from their own independently versioned
-repository.
-
 ## Edits
 
 The upstream `defaultAction` is `SCMP_ACT_ERRNO`, so a syscall is denied unless

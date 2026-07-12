@@ -61,10 +61,48 @@ run_hook 0 1 "bwrap: No permissions to create a new namespace"
   && pass "bwrap blocked: relays the underlying error" \
   || fail "bwrap blocked: relays the underlying error" "$OUT"
 
+run_hook 1 1 "namespace probe failed"
+[[ $RC -ne 0 ]] && pass "combined blocked: fails the container create" \
+  || fail "combined blocked: fails the container create" "exited 0"
+[[ "$OUT" == *"unshare said: namespace probe failed"* ]] \
+  && pass "combined blocked: reports the unshare failure" \
+  || fail "combined blocked: reports the unshare failure" "$OUT"
+[[ "$OUT" == *"bwrap said: namespace probe failed"* ]] \
+  && pass "combined blocked: reports the bwrap failure" \
+  || fail "combined blocked: reports the bwrap failure" "$OUT"
+
+missing_dir="$(mktemp -d)"
+ln -s "$(command -v bash)" "$missing_dir/bash"
+printf '#!/usr/bin/env bash\necho "unshare combined failure" >&2\nexit 1\n' > "$missing_dir/unshare"
+chmod +x "$missing_dir/unshare"
+OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
+rm -rf "$missing_dir"
+[[ $RC -ne 0 ]] && pass "combined missing: fails the container create" \
+  || fail "combined missing: fails the container create" "exited 0"
+[[ "$OUT" == *"unshare said: unshare combined failure"* ]] \
+  && pass "combined missing: reports the unshare failure" \
+  || fail "combined missing: reports the unshare failure" "$OUT"
+[[ "$OUT" == *"command -v bwrap said: no output"* ]] \
+  && pass "combined missing: reports the missing bwrap failure" \
+  || fail "combined missing: reports the missing bwrap failure" "$OUT"
 INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
-grep -q 'bubblewrap' "$INSTALL" \
+
+installs_bubblewrap() {
+  grep -Eq '^[[:space:]]*apt-get[[:space:]]+install([[:space:]]+[^[:space:]]+)*[[:space:]]+bubblewrap([[:space:]]|$)' "$1"
+}
+
+installs_bubblewrap "$INSTALL" \
   && pass "install: installs bubblewrap explicitly" \
   || fail "install: installs bubblewrap explicitly" "the hook's bwrap would depend on another feature's package list"
 
+mutated_install="$(mktemp)"
+sed '/^[[:space:]]*apt-get[[:space:]]\+install.*[[:space:]]bubblewrap[[:space:]]*$/d' "$INSTALL" > "$mutated_install"
+if installs_bubblewrap "$mutated_install"; then
+  fail "install assertion: rejects a copy without the install command" \
+    "comments or output text satisfied the explicit dependency assertion"
+else
+  pass "install assertion: rejects a copy without the install command"
+fi
+rm -f "$mutated_install"
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [[ $failed -eq 0 ]]
