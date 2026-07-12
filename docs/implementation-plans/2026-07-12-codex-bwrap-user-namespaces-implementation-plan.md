@@ -431,9 +431,14 @@ METADATA="$(mktemp)"
 trap 'docker image rm --force "$IMAGE" >/dev/null 2>&1 || true; rm -f "$BUILD_LOG" "$INSPECT_LOG" "$METADATA"' EXIT
 
 fail() {
-  local problem=$1 consequence=$2 remedy=$3 tool=$4 output=$5
-  printf 'Problem: %s\nConsequence: %s\nRemedy: %s\n%s said: %s\n' \
-    "$problem" "$consequence" "$remedy" "$tool" "${output:-<no output>}" >&2
+  local problem=$1 consequence=$2 remedy=$3
+  shift 3
+  printf 'Problem: %s\nConsequence: %s\nRemedy: %s\n' \
+    "$problem" "$consequence" "$remedy" >&2
+  while [[ $# -ge 2 ]]; do
+    printf '%s said: %s\n' "$1" "${2:-<no output>}" >&2
+    shift 2
+  done
   exit 1
 }
 
@@ -450,7 +455,8 @@ if ! docker inspect "$IMAGE" --format '{{ index .Config.Labels "devcontainer.met
   fail "Docker could not inspect the built image's devcontainer.metadata label." \
     "The Codex feature's securityOpt and postCreateCommand cannot be verified." \
     "Fix the Docker inspect error shown below, then rerun this test." \
-    "docker inspect" "$(cat "$INSPECT_LOG")"
+    "docker inspect stdout" "$(cat "$METADATA")" \
+    "docker inspect stderr" "$(cat "$INSPECT_LOG")"
 fi
 
 python3 -c '
