@@ -190,19 +190,18 @@ ignores: that path is version-scoped to Codex's release layout, and both
 binaries hit the same kernel/seccomp boundary, so the system one is a faithful
 proxy.
 
-### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md` (new)
+### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md`
 
-The Codex feature has no `NOTES.md` today. Add one, following the structure
-`agent-skills/NOTES.md` established (Behavior / Failure handling / Caveats),
-covering how to configure the feature correctly:
+The Codex feature's `NOTES.md` follows the Behavior / Failure handling / Caveats
+structure established by `agent-skills/NOTES.md`. It documents:
 
 - that the feature ships and activates its own seccomp profile via
   `securityOpt`, and therefore requires no `runArgs` in `devcontainer.json`;
 - that the profile is resolved from the host checkout at container-create
-  time, so the feature must be consumed by relative path from this repo;
+  time, so the feature is consumed by relative path from this repo;
 - what the create-time smoke test checks and what a failure means;
-- the security trade-off (container-wide user namespaces) and a pointer to
-  the provenance README for re-vendoring.
+- the security trade-off (container-wide user namespaces) and the provenance
+  README used for re-vendoring.
 
 ## Error handling
 
