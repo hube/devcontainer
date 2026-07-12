@@ -282,7 +282,7 @@ Expected: `sha256sum -c` prints `/tmp/moby-seccomp-default.json: OK`. If it does
 .devcontainer/local-features/codex/test/test-seccomp-profile.sh
 ```
 
-Expected: all assertions `ok`, ending `12 passed, 0 failed`. If Docker is unavailable, the test ends `9 passed, 0 failed` after a warning that states the problem, consequence, and remedy and includes the actual `docker info` output under `docker info said:`. The control assertion proves the stock profile still breaks bwrap; the treatment assertion proves ours fixes it.
+Expected: all assertions `ok`, ending `12 passed, 0 failed`. If Docker is unavailable, the test ends `10 passed, 0 failed` after a warning that states the problem, consequence, and remedy and includes the actual `docker info` output under `docker info said:`. The control assertion proves the stock profile still breaks bwrap; the treatment assertion proves ours fixes it.
 
 - [ ] **Step 5: Write the provenance README**
 
