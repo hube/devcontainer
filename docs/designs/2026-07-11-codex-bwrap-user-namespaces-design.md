@@ -217,12 +217,15 @@ stops and preserves Docker's output if the build fails, and removes the image
 from an `EXIT` trap. The final test-suite command runs every test but records
 any failure and exits non-zero after the suite completes.
 
-Every warning and error emitted by the seccomp-profile implementation test
-states the problem, its consequence, and a remedy, then includes the failing
-command's actual output under a wrapper-owned `<command> said:` prefix. The
-test distinguishes failure modes that need different diagnoses; its diagnostic
-contract asserts on that wrapper framing rather than on bare child-process
-stderr.
+Every warning and error emitted by the seccomp-profile or feature-metadata
+implementation tests states the problem, its consequence, and a remedy, then
+includes the failing command's actual output under a wrapper-owned `<command>
+said:` prefix. The tests distinguish failure modes that need different
+diagnoses; their diagnostic contracts assert on that wrapper framing rather
+than on bare child-process stderr. In particular, the metadata test separately
+reports Dev Container build, Docker inspect, JSON parse, and semantic metadata
+failures while preserving the exact `securityOpt` and `postCreateCommand`
+assertions against the real built image label.
 
 Manual, once after the first rebuild: run Codex's patch helper against a
 tracked file in a worktree — the original reproduction from issue #36 — and
