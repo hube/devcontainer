@@ -811,7 +811,7 @@ Modify `docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md`.
 Replace the status line:
 
 ```markdown
-**Status:** Design approved; implementation plan not yet written.
+**Status:** Design approved; implementation plan under review in PR #40.
 ```
 
 with:
