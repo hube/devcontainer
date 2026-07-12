@@ -217,6 +217,13 @@ stops and preserves Docker's output if the build fails, and removes the image
 from an `EXIT` trap. The final test-suite command runs every test but records
 any failure and exits non-zero after the suite completes.
 
+Every warning and error emitted by the seccomp-profile implementation test
+states the problem, its consequence, and a remedy, then includes the failing
+command's actual output under a wrapper-owned `<command> said:` prefix. The
+test distinguishes failure modes that need different diagnoses; its diagnostic
+contract asserts on that wrapper framing rather than on bare child-process
+stderr.
+
 Manual, once after the first rebuild: run Codex's patch helper against a
 tracked file in a worktree — the original reproduction from issue #36 — and
 confirm the edit persists.
