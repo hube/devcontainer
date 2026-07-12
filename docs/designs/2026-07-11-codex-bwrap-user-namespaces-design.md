@@ -1,6 +1,6 @@
 # Enable unprivileged user namespaces for Codex's patch helper
 
-**Status:** Design approved; implementation plan not yet written.
+**Status:** Design approved; implementation plan under review in PR #40.
 
 Resolves [issue #36](https://github.com/hube/devcontainer/issues/36).
 
@@ -211,9 +211,23 @@ covering how to configure the feature correctly:
 
 Automated, on every container create: the smoke test in the Codex feature.
 
+The implementation tests must not be able to pass against stale artifacts. A
+behavioral test that builds a container image uses a unique temporary tag,
+stops and preserves Docker's output if the build fails, and removes the image
+from an `EXIT` trap. The final test-suite command runs every test but records
+any failure and exits non-zero after the suite completes.
+
 Manual, once after the first rebuild: run Codex's patch helper against a
 tracked file in a worktree — the original reproduction from issue #36 — and
 confirm the edit persists.
+
+## Implementation workflow
+
+Before each task commit, the executor reruns that task's exact verification,
+checks the forwarded signing agent with `ssh-add -l`, and inspects `git status`
+and `git diff`. Only the task's listed files are staged. Commit metadata records
+the skills actually used by that executor rather than assuming a particular
+execution workflow.
 
 ## Risks and trade-offs
 

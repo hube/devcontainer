@@ -1,0 +1,918 @@
+# Codex Bubblewrap User Namespaces Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Let Codex's Bubblewrap-based patch helper apply edits in this devcontainer by shipping a custom seccomp profile that permits unprivileged user namespaces, scoped entirely to the Codex local feature.
+
+**Architecture:** The Codex feature vendors a pinned copy of Moby's default seccomp profile with three targeted edits, activates it through its own `securityOpt` (no top-level `devcontainer.json` change), installs `bubblewrap` so a system `bwrap` exists, and runs a `postCreateCommand` smoke test that fails the container create if the capability is missing.
+
+**Tech Stack:** Dev Container Features (JSON metadata + `install.sh`), Bash, `jq`, Docker, `@devcontainers/cli` (via `npx`), Moby seccomp profiles.
+
+**Spec:** `docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md` (approved, merged in PR #39). Resolves [issue #36](https://github.com/hube/devcontainer/issues/36).
+
+## Global Constraints
+
+- **All new files live under `.devcontainer/local-features/codex/`.** The top-level `.devcontainer/devcontainer.json` must not be modified by any task.
+- **Upstream profile source:** `https://raw.githubusercontent.com/moby/profiles/seccomp/v0.2.3/seccomp/default.json`
+- **Upstream profile SHA-256:** `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`
+- **Scope is Docker Desktop hosts only.** No AppArmor handling.
+- **Error messages state problem, then consequence, then remedy, in that order, and include the failing command's own output.** This is the house style; see `local-features/agent-skills/bin/devcontainer-feature/agent-skills/postStartScript.sh`.
+- **Tests are Bash scripts in the feature's `test/` directory**, named `test-*.sh`, using the `pass`/`fail` counter harness from `local-features/agent-skills/test/test-poststart.sh`, exiting non-zero if any assertion failed.
+- **Behavioral Docker tests are hermetic.** Every build uses a unique temporary image tag, exits immediately with Docker's output if the build fails, and removes the image from an `EXIT` trap.
+- **The final test-suite command runs every test and exits non-zero if any test failed.** Reporting a failure must never consume its status and turn the verification gate green.
+- **Before every commit:** rerun the task's exact verification, run `ssh-add -l`, inspect `git status` and `git diff`, stop on any failure, then stage only the task's listed files.
+- **Every commit needs the metadata trailer block and a `Co-Authored-By` trailer** as one contiguous paragraph with no blank line between them, per `CLAUDE.md`. Verify with `git log -1 --pretty=%B | git interpret-trailers --parse` before moving on.
+- **Commit metadata must describe the actual executor.** Populate `Skills:` with the skills that contributed to that commit, and omit the line when none contributed; do not copy a fixed skill name from this plan.
+
+## Background the implementer needs
+
+Docker's default seccomp profile has `"defaultAction": "SCMP_ACT_ERRNO"` — a syscall is denied unless some rule allows it. In `seccomp/v0.2.3` the relevant rules are:
+
+- A rule allowing `clone`, `clone3`, `mount`, `setns`, `umount2`, `unshare` **only when the container has `CAP_SYS_ADMIN`** (`"includes": {"caps": ["CAP_SYS_ADMIN"]}`). This container does not have that capability, so Docker never emits this rule into the filter.
+- A rule allowing `clone` **only when no namespace flags are set**: `"args": [{"index": 0, "value": 2114060288, "op": "SCMP_CMP_MASKED_EQ"}]`. That value is `0x7e020000`, exactly the `CLONE_NEW*` bits. This is what denies `CLONE_NEWUSER`.
+- A rule returning `ENOSYS` (`errnoRet: 38`) for `clone3` without `CAP_SYS_ADMIN`. **Leave this alone.** Seccomp cannot inspect `clone3`'s flags (they sit behind a userspace pointer), so upstream forces glibc to fall back to `clone`, where the flag filter *can* be enforced. Ungating `clone3` would open an unfilterable namespace path.
+- `pivot_root` appears **nowhere** in the profile, so it is denied by the default action rather than capability-gated. Allowing it is a genuine widening, not an ungating.
+
+The mount-family syscalls are required, not optional: Docker compiles the filter from the container's bounding capabilities at start time, so the `CAP_SYS_ADMIN` that Bubblewrap gains *inside* its new user namespace is invisible to the filter. Allowing only `unshare`/`clone` would let bwrap create the namespace and then die at `mount`/`pivot_root`.
+
+**The fix is already validated.** Under the stock profile, `bwrap --unshare-all --dev-bind / / true` reproduces issue #36's exact error (`bwrap: No permissions to create a new namespace...`); under the profile this plan generates, it exits 0.
+
+## File Structure
+
+| File | Responsibility |
+|---|---|
+| `.devcontainer/local-features/codex/seccomp/userns.json` (create) | The vendored, edited seccomp profile Docker loads. |
+| `.devcontainer/local-features/codex/seccomp/README.md` (create) | Provenance: upstream tag, checksum, exact edits, re-vendoring procedure. JSON cannot carry comments, so this file is the record. |
+| `.devcontainer/local-features/codex/test/test-seccomp-profile.sh` (create) | Proves the profile has the intended shape *and* actually enables bwrap at runtime. |
+| `.devcontainer/local-features/codex/devcontainer-feature.json` (modify) | Adds `securityOpt` (activates the profile) and `postCreateCommand` (runs the smoke test). |
+| `.devcontainer/local-features/codex/test/test-metadata.sh` (create) | Proves the feature's `securityOpt`/`postCreateCommand` reach the built image's `devcontainer.metadata` label. |
+| `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCreateScript.sh` (create) | The create-time smoke test that fails the build if user namespaces are unavailable. |
+| `.devcontainer/local-features/codex/install.sh` (modify) | Installs `bubblewrap` explicitly and copies `bin/` into the user's home. |
+| `.devcontainer/local-features/codex/test/test-postcreate.sh` (create) | Unit-tests the smoke test's success and failure paths without a container rebuild. |
+| `.devcontainer/local-features/codex/NOTES.md` (create) | How to configure the feature correctly. |
+| `README.md` (modify) | Points at the new NOTES.md, matching how `agent-skills` is referenced. |
+| `docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md` (modify) | Status update + correct the stale claim that `bwrap` ships in the image. |
+
+---
+
+### Task 1: Vendor the seccomp profile with provenance
+
+**Files:**
+- Create: `.devcontainer/local-features/codex/seccomp/userns.json`
+- Create: `.devcontainer/local-features/codex/seccomp/README.md`
+- Test: `.devcontainer/local-features/codex/test/test-seccomp-profile.sh`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: the profile at path `.devcontainer/local-features/codex/seccomp/userns.json`. Task 2 references this exact path in `securityOpt`; do not rename it.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `.devcontainer/local-features/codex/test/test-seccomp-profile.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Two kinds of assertion, because either alone is misleading:
+#   1. structural  -- the committed JSON says what we think it says
+#   2. behavioural -- a real container under this profile can actually run bwrap
+# The behavioural half reproduces issue #36 under the stock profile first, so a
+# passing result cannot come from bwrap silently succeeding for other reasons.
+set -uo pipefail
+
+PROFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/seccomp/userns.json"
+passed=0
+failed=0
+
+pass() { printf 'ok   %s\n' "$1"; passed=$((passed + 1)); }
+fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
+
+# --- structural ---------------------------------------------------------
+[[ -f "$PROFILE" ]] || { echo "missing profile: $PROFILE" >&2; exit 1; }
+jq -e . "$PROFILE" >/dev/null 2>&1 && pass "profile: is valid JSON" \
+  || fail "profile: is valid JSON" "jq could not parse it"
+
+[[ "$(jq -r .defaultAction "$PROFILE")" == "SCMP_ACT_ERRNO" ]] \
+  && pass "profile: default action still denies" \
+  || fail "profile: default action still denies" "expected SCMP_ACT_ERRNO"
+
+# An unconditional ALLOW rule: no capability gate, no arch gate, no arg filter.
+unconditional='.syscalls[] | select(.action == "SCMP_ACT_ALLOW")
+  | select(has("includes") | not) | select(has("excludes") | not)
+  | select(has("args") | not) | .names[]'
+for sc in mount umount2 setns unshare pivot_root; do
+  if jq -e --arg sc "$sc" "[$unconditional] | index(\$sc)" "$PROFILE" >/dev/null; then
+    pass "profile: $sc is allowed unconditionally"
+  else
+    fail "profile: $sc is allowed unconditionally" "not found in any ungated ALLOW rule"
+  fi
+done
+
+# The CLONE_NEW* argument filter (mask 0x7e020000) must be gone from every
+# clone rule, or CLONE_NEWUSER stays denied.
+if jq -e '[.syscalls[] | select(.names | index("clone")) | select(has("args"))] | length == 0' \
+     "$PROFILE" >/dev/null; then
+  pass "profile: no clone rule retains an argument filter"
+else
+  fail "profile: no clone rule retains an argument filter" "a clone rule still has .args"
+fi
+
+# clone3 must STILL be ENOSYS without CAP_SYS_ADMIN. Ungating it would open a
+# namespace path seccomp cannot filter; this asserts we did not do that.
+if jq -e '[.syscalls[]
+      | select(.names | index("clone3"))
+      | select(.action == "SCMP_ACT_ERRNO" and .errnoRet == 38)
+      | select(.excludes.caps | index("CAP_SYS_ADMIN"))] | length == 1' \
+     "$PROFILE" >/dev/null; then
+  pass "profile: clone3 still returns ENOSYS so glibc falls back to clone"
+else
+  fail "profile: clone3 still returns ENOSYS so glibc falls back to clone" \
+       "the clone3 ERRNO rule was altered or removed"
+fi
+
+# --- behavioural --------------------------------------------------------
+if ! docker info >/dev/null 2>&1; then
+  printf '\nSKIP behavioural checks: docker is unavailable\n'
+else
+  BUILD_LOG="$(mktemp)"
+  IMAGE="codex-bwrap-probe:test-$(basename "$BUILD_LOG")"
+  cleanup_image() {
+    docker image rm -f "$IMAGE" >/dev/null 2>&1 || true
+    rm -f "$BUILD_LOG"
+  }
+  trap cleanup_image EXIT
+
+  if ! docker build -t "$IMAGE" - >"$BUILD_LOG" 2>&1 <<'DOCKERFILE'
+FROM ubuntu:rolling
+RUN apt-get update && apt-get install -y bubblewrap && rm -rf /var/lib/apt/lists/*
+DOCKERFILE
+  then
+    echo "FAIL behavioural setup: Docker could not build the probe image." >&2
+    echo "     Consequence: the bwrap checks cannot be trusted or run." >&2
+    echo "     Remedy: fix the build error printed below, then rerun this test." >&2
+    echo "     docker build said:" >&2
+    cat "$BUILD_LOG" >&2
+    exit 1
+  fi
+
+  # Control: the stock profile must still fail, and fail for the reason #36 reports.
+  out="$(docker run --rm "$IMAGE" bwrap --unshare-all --dev-bind / / true 2>&1)"; rc=$?
+  [[ $rc -ne 0 && "$out" == *"No permissions to create a new namespace"* ]] \
+    && pass "control: stock profile reproduces issue #36" \
+    || fail "control: stock profile reproduces issue #36" "rc=$rc out=$out"
+
+  # Treatment: the vendored profile must let bwrap start a sandbox and do work.
+  out="$(docker run --rm --security-opt seccomp="$PROFILE" "$IMAGE" \
+         bwrap --unshare-all --dev-bind / / --chdir /tmp sh -c 'echo ok > f && cat f' 2>&1)"; rc=$?
+  [[ $rc -eq 0 && "$out" == "ok" ]] \
+    && pass "treatment: bwrap runs a sandboxed command under userns.json" \
+    || fail "treatment: bwrap runs a sandboxed command under userns.json" "rc=$rc out=$out"
+fi
+
+printf '\n%d passed, %d failed\n' "$passed" "$failed"
+[[ $failed -eq 0 ]]
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+chmod +x .devcontainer/local-features/codex/test/test-seccomp-profile.sh
+.devcontainer/local-features/codex/test/test-seccomp-profile.sh
+```
+
+Expected: exits non-zero with `missing profile: .../seccomp/userns.json`.
+
+- [ ] **Step 3: Generate the profile**
+
+Run exactly this. Do not hand-edit the JSON — the transformation must be reproducible from the pinned upstream file, which is the whole point of the provenance record.
+
+```bash
+mkdir -p .devcontainer/local-features/codex/seccomp
+curl -fsSL -o /tmp/moby-seccomp-default.json \
+  https://raw.githubusercontent.com/moby/profiles/seccomp/v0.2.3/seccomp/default.json
+echo "536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74  /tmp/moby-seccomp-default.json" \
+  | sha256sum -c -
+jq '
+  .syscalls |= (
+    map(if (.names | index("clone")) and has("args") then del(.args) else . end)
+    + [{"names":["mount","umount2","setns","unshare","pivot_root"],"action":"SCMP_ACT_ALLOW"}]
+  )
+' /tmp/moby-seccomp-default.json > .devcontainer/local-features/codex/seccomp/userns.json
+```
+
+Expected: `sha256sum -c` prints `/tmp/moby-seccomp-default.json: OK`. If it does not, **stop** — upstream retagged or the download is corrupt, and the checksum in the README would be a lie.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+```bash
+.devcontainer/local-features/codex/test/test-seccomp-profile.sh
+```
+
+Expected: all assertions `ok`, ending `11 passed, 0 failed` (`9 passed` if Docker is unavailable and the behavioural half is skipped). The control assertion proves the stock profile still breaks bwrap; the treatment assertion proves ours fixes it.
+
+- [ ] **Step 5: Write the provenance README**
+
+Create `.devcontainer/local-features/codex/seccomp/README.md`:
+
+````markdown
+# Vendored seccomp profile
+
+`userns.json` is Moby's default seccomp profile with three edits that let
+Codex's Bubblewrap-based patch helper create an unprivileged user namespace.
+Without them, every Codex edit fails (hube/devcontainer#36).
+
+JSON cannot carry comments, so this file is the record of what was changed and
+why.
+
+## Upstream
+
+| | |
+|---|---|
+| Repository | [`moby/profiles`](https://github.com/moby/profiles) |
+| Tag | `seccomp/v0.2.3` |
+| File | `seccomp/default.json` |
+| SHA-256 | `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74` |
+
+The profile used to live in `moby/moby` at `profiles/seccomp/default.json`.
+It does not any more — that path is absent from current Moby release tags, and
+the profiles are now published from their own independently versioned
+repository.
+
+## Edits
+
+The upstream `defaultAction` is `SCMP_ACT_ERRNO`, so a syscall is denied unless
+a rule allows it. The three edits start from different upstream states, which is
+why they are described separately:
+
+1. **`mount`, `umount2`, `setns`, `unshare` are ungated.** Upstream allows them
+   only when the container holds `CAP_SYS_ADMIN`. They are now allowed
+   unconditionally. Bubblewrap needs them *inside* the namespace it creates, and
+   the `CAP_SYS_ADMIN` it gains there is invisible to seccomp — Docker compiles
+   the filter from the container's bounding capabilities at start time — so
+   gating on the capability is equivalent to denying them.
+2. **`pivot_root` is newly allowed.** It appears nowhere upstream, so it was
+   denied by the default action rather than capability-gated. This genuinely
+   widens the allowlist beyond what any capability grants today.
+3. **The `clone` argument filter is dropped.** Upstream allows `clone` only when
+   `(flags & 0x7e020000) == 0`; that mask is exactly the `CLONE_NEW*` namespace
+   bits. Removing the filter is what permits `CLONE_NEWUSER`.
+
+`clone3` is deliberately left alone: upstream returns `ENOSYS` for it without
+`CAP_SYS_ADMIN`, which makes glibc fall back to `clone`, where the flag filter
+above can actually be enforced. Seccomp cannot inspect `clone3`'s flags (they
+sit behind a userspace pointer), so ungating it would open a namespace path that
+cannot be filtered at all.
+
+Everything else is unchanged. All other syscalls the default profile denies stay
+denied — this is a much narrower relaxation than `seccomp=unconfined`.
+
+## Re-vendoring
+
+Do this when upstream publishes a profile release that adds syscalls the
+container needs (the symptom is a new syscall returning `EPERM` for no obvious
+reason). Never hand-edit `userns.json`; regenerate it so the diff stays
+reviewable.
+
+```bash
+TAG=seccomp/v0.2.3   # bump to the release you are moving to
+curl -fsSL -o /tmp/default.json \
+  "https://raw.githubusercontent.com/moby/profiles/${TAG}/seccomp/default.json"
+sha256sum /tmp/default.json   # record this in the table above
+
+jq '
+  .syscalls |= (
+    map(if (.names | index("clone")) and has("args") then del(.args) else . end)
+    + [{"names":["mount","umount2","setns","unshare","pivot_root"],"action":"SCMP_ACT_ALLOW"}]
+  )
+' /tmp/default.json > userns.json
+```
+
+Then review the diff against the previous `userns.json` and run
+`../test/test-seccomp-profile.sh`, which checks both the shape of the file and
+that Bubblewrap actually works under it.
+````
+
+- [ ] **Step 6: Commit**
+
+```bash
+set -euo pipefail
+.devcontainer/local-features/codex/test/test-seccomp-profile.sh || exit 1
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
+git add .devcontainer/local-features/codex/seccomp/userns.json \
+        .devcontainer/local-features/codex/seccomp/README.md \
+        .devcontainer/local-features/codex/test/test-seccomp-profile.sh
+git commit -m "$(cat <<'EOF'
+Vendor a seccomp profile permitting unprivileged user namespaces
+
+Codex's patch helper runs every edit inside Bubblewrap, which cannot
+create a user namespace under Docker's default seccomp profile, so Codex
+cannot write files in this container at all (#36).
+
+Vendor moby/profiles seccomp/v0.2.3 with three edits: ungate the
+capability-gated mount family, newly allow pivot_root (absent upstream,
+so denied by the default action), and drop the clone CLONE_NEW* argument
+filter. clone3 keeps its ENOSYS fallback so the namespace path stays
+filterable.
+
+The test asserts both the file's shape and its behaviour: the stock
+profile must still reproduce #36, and the vendored one must let bwrap run
+a sandboxed command.
+
+Harness: <harness>
+Harness-Version: <version>
+Model: <model id>
+Skills: <comma-separated skills actually used; omit this line when none>
+Co-Authored-By: <model display name> <noreply address>
+EOF
+)"
+git log -1 --pretty=%B | git interpret-trailers --parse
+```
+
+Expected: the parse output lists every trailer. If any is missing, a blank line split the block — amend before continuing.
+
+---
+
+### Task 2: Activate the profile from the feature
+
+**Files:**
+- Modify: `.devcontainer/local-features/codex/devcontainer-feature.json`
+- Test: `.devcontainer/local-features/codex/test/test-metadata.sh`
+
+**Interfaces:**
+- Consumes: the profile path from Task 1.
+- Produces: the `securityOpt` entry `seccomp=${localWorkspaceFolder}/.devcontainer/local-features/codex/seccomp/userns.json` in the feature metadata, and the hook path `~/bin/devcontainer-feature/codex/postCreateScript.sh` that Task 3 creates.
+
+**Why this works** (do not "simplify" it away): the Dev Container feature schema permits `securityOpt`; the CLI unions every feature's `securityOpt` into the merged config and passes each as `--security-opt` to `docker run`. Feature metadata goes through the same variable substitution as `devcontainer.json`, so `${localWorkspaceFolder}` resolves to the **host** path of the checkout — which is what `--security-opt seccomp=<path>` needs, because the Docker CLI reads the profile off the host filesystem at container-create time. A container-side path would not work. The image label stores the metadata **unsubstituted**, which is why the test below asserts on the literal `${localWorkspaceFolder}` string.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `.devcontainer/local-features/codex/test/test-metadata.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Asserts the Codex feature's securityOpt and postCreateCommand actually reach
+# the built image's devcontainer.metadata label. A typo in either is silently
+# ignored by the CLI, so this must be asserted, never assumed.
+#
+# The label stores metadata *unsubstituted*, so the expected securityOpt still
+# contains the literal ${localWorkspaceFolder}; the CLI resolves it against the
+# host checkout when the container is created.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+IMAGE="dc-codex-metadata-assert:latest"
+BUILD_LOG="$(mktemp)"
+trap 'rm -f "$BUILD_LOG"' EXIT
+
+if ! npx -y @devcontainers/cli@latest build \
+  --workspace-folder "$REPO_ROOT" --image-name "$IMAGE" >"$BUILD_LOG" 2>&1; then
+  cat "$BUILD_LOG"
+  exit 1
+fi
+
+docker inspect "$IMAGE" --format '{{ index .Config.Labels "devcontainer.metadata" }}' \
+  | python3 -c '
+import json, sys
+
+def check(cond, msg):
+    # Bare assert is stripped under PYTHONOPTIMIZE/-O, which would make this
+    # script print success unconditionally on a real regression.
+    if not cond:
+        raise SystemExit(msg)
+
+meta = json.load(sys.stdin)
+entries = [e for e in meta if e.get("id") == "./local-features/codex"]
+check(len(entries) == 1, f"expected exactly one codex metadata entry, got {len(entries)}")
+codex = entries[0]
+
+expected_opt = ("seccomp=${localWorkspaceFolder}"
+                "/.devcontainer/local-features/codex/seccomp/userns.json")
+opts = codex.get("securityOpt") or []
+check(expected_opt in opts, f"securityOpt missing or wrong: {opts}")
+
+expected_hook = "~/bin/devcontainer-feature/codex/postCreateScript.sh"
+actual_hook = codex.get("postCreateCommand")
+check(actual_hook == expected_hook, f"bad postCreateCommand: {actual_hook}")
+
+print("codex securityOpt and postCreateCommand verified")
+'
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+chmod +x .devcontainer/local-features/codex/test/test-metadata.sh
+.devcontainer/local-features/codex/test/test-metadata.sh
+```
+
+Expected: the image builds, then the script exits non-zero with `securityOpt missing or wrong: []`.
+
+(The build takes a few minutes. If `npx` cannot reach the network, that is an environment problem, not a test failure — resolve it before continuing, since Task 2 cannot be verified without it.)
+
+- [ ] **Step 3: Add `securityOpt` and the hook to the feature**
+
+Modify `.devcontainer/local-features/codex/devcontainer-feature.json`. Keep the existing `id`, `name`, `version`, `dependsOn`, `installsAfter`, and `mounts` exactly as they are; add the two new top-level keys after `mounts`:
+
+```json
+{
+  "id": "codex",
+  "name": "Codex",
+  "version": "1.0.0",
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "mounts": [
+    {
+      "type": "volume",
+      "source": "codex-code-config-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.codex"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/CLAUDE.md",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.codex/AGENTS.md"
+    }
+  ],
+  // Codex patches files through Bubblewrap, which needs an unprivileged user
+  // namespace that Docker's default seccomp profile denies. See seccomp/README.md.
+  "securityOpt": [
+    "seccomp=${localWorkspaceFolder}/.devcontainer/local-features/codex/seccomp/userns.json"
+  ],
+  "postCreateCommand": "~/bin/devcontainer-feature/codex/postCreateScript.sh"
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+```bash
+.devcontainer/local-features/codex/test/test-metadata.sh
+```
+
+Expected: `codex securityOpt and postCreateCommand verified`.
+
+Note: the container is not rebuilt yet, so the hook script does not exist on disk. That is fine — this task asserts the metadata wiring only. Task 3 creates the script.
+
+- [ ] **Step 5: Commit**
+
+```bash
+set -euo pipefail
+.devcontainer/local-features/codex/test/test-metadata.sh || exit 1
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
+git add .devcontainer/local-features/codex/devcontainer-feature.json \
+        .devcontainer/local-features/codex/test/test-metadata.sh
+git commit -m "$(cat <<'EOF'
+Activate the seccomp profile from the Codex feature
+
+Declare securityOpt on the feature itself rather than runArgs in
+devcontainer.json, so the capability stays scoped to the feature that
+needs it. The CLI unions feature securityOpt into the merged config and
+passes it to docker run; ${localWorkspaceFolder} resolves to the host
+path, which is what --security-opt seccomp=<path> requires.
+
+Also declare the postCreateCommand hook the smoke test will install.
+
+Harness: <harness>
+Harness-Version: <version>
+Model: <model id>
+Skills: <comma-separated skills actually used; omit this line when none>
+Co-Authored-By: <model display name> <noreply address>
+EOF
+)"
+git log -1 --pretty=%B | git interpret-trailers --parse
+```
+
+---
+
+### Task 3: Install bubblewrap and the create-time smoke test
+
+**Files:**
+- Create: `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCreateScript.sh`
+- Modify: `.devcontainer/local-features/codex/install.sh`
+- Test: `.devcontainer/local-features/codex/test/test-postcreate.sh`
+
+**Interfaces:**
+- Consumes: the hook path declared in Task 2 (`~/bin/devcontainer-feature/codex/postCreateScript.sh`) — the script must land at exactly that path.
+- Produces: nothing later tasks depend on.
+
+**Two things the implementer must not skip:**
+
+1. **Make the `bubblewrap` dependency explicit.** There are two `bwrap` binaries in this container and they must not be confused. Codex's installer vendors its own copy at `~/.codex/packages/<version>/codex-resources/bwrap` — version-scoped, an implementation detail of Codex's release layout, not a stable thing to probe. The system `/usr/bin/bwrap` arrives incidentally: it sits in the `common-utils` feature's `apt-get install` list (verified in this image's apt history, alongside `jq` and `socat`). It *is* therefore present on a fresh build today — but a load-bearing binary reaching us through another feature's incidental package list is a silent dependency, and if that list ever changes the smoke test fails at create time with a confusing `bwrap: command not found`. `install.sh` installs the package explicitly. `apt-get install` on an already-installed package is a no-op, so this costs a cached apt layer and buys a dependency that is visible in the feature that actually needs it.
+2. **This hook fails the container create on error.** That is deliberate and differs from `agent-skills`, which never fails start. A Codex feature that cannot run Codex's patch helper is broken, and starting quietly just relocates the failure into the middle of a session — the exact symptom issue #36 reports.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `.devcontainer/local-features/codex/test/test-postcreate.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Tests postCreateScript.sh's success and failure paths without rebuilding the
+# container. The failure path is forced by stubbing `unshare` and `bwrap` on
+# PATH, so the test does not depend on the host's namespace policy.
+set -uo pipefail
+
+HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/devcontainer-feature/codex/postCreateScript.sh"
+passed=0
+failed=0
+
+pass() { printf 'ok   %s\n' "$1"; passed=$((passed + 1)); }
+fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
+
+[[ -x "$HOOK" ]] && pass "hook: is executable" || fail "hook: is executable" "$HOOK"
+
+# Runs the hook against stubbed tools, leaving the result in OUT and RC.
+# $1 = exit code for `unshare`, $2 = exit code for `bwrap`,
+# $3 = message the failing stub writes to stderr.
+run_hook() {
+  local dir; dir="$(mktemp -d)"
+  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$1" "$3" "$1" > "$dir/unshare"
+  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$2" "$3" "$2" > "$dir/bwrap"
+  chmod +x "$dir/unshare" "$dir/bwrap"
+  OUT="$(PATH="$dir:$PATH" "$HOOK" 2>&1)"; RC=$?
+  rm -rf "$dir"
+}
+
+# --- both probes succeed: the hook must not block container start
+run_hook 0 0 ""
+[[ $RC -eq 0 ]] && pass "success: exits 0 when namespaces work" \
+  || fail "success: exits 0 when namespaces work" "rc=$RC out=$OUT"
+
+# --- unshare blocked: fail the create, and say problem/consequence/remedy
+run_hook 1 0 "unshare: Operation not permitted"
+[[ $RC -ne 0 ]] && pass "userns blocked: fails the container create" \
+  || fail "userns blocked: fails the container create" "exited 0"
+[[ "$OUT" == *"user namespace"* ]] && pass "userns blocked: names the problem" \
+  || fail "userns blocked: names the problem" "$OUT"
+[[ "$OUT" == *"cannot apply edits"* ]] && pass "userns blocked: names the consequence" \
+  || fail "userns blocked: names the consequence" "$OUT"
+[[ "$OUT" == *"seccomp/userns.json"* && "$OUT" == *"rebuild"* ]] \
+  && pass "userns blocked: names the remedy" \
+  || fail "userns blocked: names the remedy" "$OUT"
+# Assert on the wrapper's own framing, not on the stub's text: a bare match for
+# the stub message would pass even if the hook relayed nothing, because the stub
+# writes to stderr itself.
+[[ "$OUT" == *"unshare said: unshare: Operation not permitted"* ]] \
+  && pass "userns blocked: relays the underlying error" \
+  || fail "userns blocked: relays the underlying error" "$OUT"
+
+# --- unshare works but bwrap does not: a distinct, separately diagnosable failure
+run_hook 0 1 "bwrap: No permissions to create a new namespace"
+[[ $RC -ne 0 ]] && pass "bwrap blocked: fails the container create" \
+  || fail "bwrap blocked: fails the container create" "exited 0"
+[[ "$OUT" == *"Bubblewrap"* ]] && pass "bwrap blocked: distinct message from the userns case" \
+  || fail "bwrap blocked: distinct message from the userns case" "$OUT"
+[[ "$OUT" == *"bwrap said: bwrap: No permissions"* ]] \
+  && pass "bwrap blocked: relays the underlying error" \
+  || fail "bwrap blocked: relays the underlying error" "$OUT"
+
+# --- install.sh owns the bubblewrap dependency rather than inheriting it from
+# common-utils' incidental package list
+INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
+grep -q 'bubblewrap' "$INSTALL" \
+  && pass "install: installs bubblewrap explicitly" \
+  || fail "install: installs bubblewrap explicitly" "the hook's bwrap would depend on another feature's package list"
+
+printf '\n%d passed, %d failed\n' "$passed" "$failed"
+[[ $failed -eq 0 ]]
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+chmod +x .devcontainer/local-features/codex/test/test-postcreate.sh
+.devcontainer/local-features/codex/test/test-postcreate.sh
+```
+
+Expected: fails — the hook script does not exist yet, and `install.sh` does not mention `bubblewrap`.
+
+- [ ] **Step 3: Write the smoke test hook**
+
+Create `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCreateScript.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Verifies the seccomp profile this feature ships actually took effect.
+#
+# Codex patches files through Bubblewrap, which needs an unprivileged user
+# namespace. If the profile did not load, Codex cannot write files at all
+# (hube/devcontainer#36). Unlike the agent-skills hook, this one fails the
+# container create: coming up quietly would only move the failure into the
+# middle of a session, which is the symptom that issue reports.
+set -uo pipefail
+
+PROFILE=".devcontainer/local-features/codex/seccomp/userns.json"
+
+# Problem, then consequence, then remedy -- and always the underlying output,
+# so nobody has to re-run the command to find out what it said.
+die() {
+  local problem="$1" tool="$2" output="$3"
+  {
+    echo "codex: $problem"
+    echo "codex: Codex's patch helper cannot apply edits, so Codex cannot write files in this container."
+    echo "codex: Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container."
+    echo "codex: $tool said: ${output:-no output}"
+  } >&2
+  exit 1
+}
+
+if ! output="$(unshare --user --map-root-user true 2>&1)"; then
+  die "creating an unprivileged user namespace is blocked." unshare "$output"
+fi
+
+if ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
+  die "Bubblewrap cannot start a sandbox even though user namespaces work." bwrap "$output"
+fi
+
+exit 0
+```
+
+- [ ] **Step 4: Install bubblewrap and the hook**
+
+Modify `.devcontainer/local-features/codex/install.sh`. The script re-execs itself as the container user, so the root-only work (package install, copying files into the user's home) must happen in the first branch, before the `exec sudo`. Replace the file with:
+
+```bash
+#!/usr/bin/env bash
+
+# Install OpenAI Codex CLI. Installation script originally copied from
+# https://developers.openai.com/codex/cli
+
+if [[ $EUID -ne $(id -u ${_CONTAINER_USER}) ]]
+then
+  # Codex patches files through Bubblewrap. common-utils happens to install it
+  # today, but this feature is the one that cannot work without it, so it owns
+  # the dependency rather than inheriting it.
+  echo ">Installing Bubblewrap"
+  apt-get update
+  apt-get install -y --no-install-recommends bubblewrap
+  rm -rf /var/lib/apt/lists/*
+
+  echo ">Copying config to the remote user's home directory"
+
+  # Copy files over while setting ownership and permissions
+  rsync -rp \
+      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chmod=D755,F644 \
+      home/. /home/${_CONTAINER_USER}
+
+  # The lifecycle hook must be executable, so it is copied separately from the
+  # config files above.
+  rsync -rp \
+      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chmod=D755,F755 \
+      bin /home/${_CONTAINER_USER}
+
+  exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)"
+fi
+
+echo ">Switched to the container user"
+
+echo ">Installing Codex CLI"
+
+curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+
+echo ">Done installing Codex CLI"
+```
+
+- [ ] **Step 5: Run the test to verify it passes**
+
+```bash
+chmod +x .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCreateScript.sh
+.devcontainer/local-features/codex/test/test-postcreate.sh
+```
+
+Expected: all assertions `ok`, ending `11 passed, 0 failed`.
+
+The two "relays the underlying error" assertions are the ones that matter most, and they have been checked against a hook *without* the fix: a naive version that prints its own message but swallows the command's stderr fails exactly those two and passes the other nine. That is why they assert on the wrapper's framing (`unshare said: ...`) rather than on the bare error text, which the failing command writes to stderr on its own.
+
+- [ ] **Step 6: Commit**
+
+```bash
+set -euo pipefail
+.devcontainer/local-features/codex/test/test-postcreate.sh || exit 1
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
+git add .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCreateScript.sh \
+        .devcontainer/local-features/codex/install.sh \
+        .devcontainer/local-features/codex/test/test-postcreate.sh
+git commit -m "$(cat <<'EOF'
+Verify user namespaces at container create
+
+Install bubblewrap explicitly rather than inherit it from common-utils'
+package list, and add a postCreate hook that probes unshare and bwrap.
+The hook fails the create rather than starting quietly: a Codex feature
+whose patch helper cannot run is broken, and coming up anyway would just
+relocate the failure into the middle of a session.
+
+Harness: <harness>
+Harness-Version: <version>
+Model: <model id>
+Skills: <comma-separated skills actually used; omit this line when none>
+Co-Authored-By: <model display name> <noreply address>
+EOF
+)"
+git log -1 --pretty=%B | git interpret-trailers --parse
+```
+
+---
+
+### Task 4: Document the feature
+
+**Files:**
+- Create: `.devcontainer/local-features/codex/NOTES.md`
+- Modify: `README.md`
+- Modify: `docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md`
+
+**Interfaces:**
+- Consumes: everything from Tasks 1-3.
+- Produces: nothing.
+
+There is no automated test here; the check is that the documented behaviour matches what Tasks 1-3 actually built.
+
+- [ ] **Step 1: Write NOTES.md**
+
+Create `.devcontainer/local-features/codex/NOTES.md`, following the Behavior / Failure handling / Caveats structure of `agent-skills/NOTES.md`:
+
+```markdown
+## Behavior
+
+This feature installs the Codex CLI, and configures the container so Codex can
+actually edit files in it.
+
+Codex applies every patch inside a [Bubblewrap][1] sandbox, which has to create
+an unprivileged user namespace. Docker's default seccomp profile denies that, so
+without this configuration Codex fails on its first edit and cannot write
+anything (hube/devcontainer#36).
+
+The feature therefore ships its own seccomp profile, `seccomp/userns.json`, and
+activates it through its own `securityOpt`. Nothing needs to be added to
+`devcontainer.json` — no `runArgs`, no `--security-opt`. Installing this feature
+is the whole configuration.
+
+The profile is read **from the host** when the container is created, so the
+feature has to be referenced by relative path (`./local-features/codex`) from a
+checkout of this repository. That is how `devcontainer.json` already consumes it.
+The path travels with the feature, so the two cannot drift apart.
+
+`seccomp/README.md` records where the profile came from, exactly what was changed
+relative to upstream, and how to re-vendor it.
+
+## Failure handling
+
+On container create the feature probes the capability it depends on: it creates
+a user namespace with `unshare`, then starts a Bubblewrap sandbox. If either
+fails, **container create fails**, naming the problem, the consequence, the
+remedy, and the underlying error.
+
+This is deliberately stricter than the `agent-skills` feature, which never fails
+container start. A Codex feature whose patch helper cannot run is not degraded,
+it is broken — and starting quietly would only move the failure into the middle
+of a Codex session, which is the symptom that made the original bug so confusing.
+
+The feature installs the `bubblewrap` package itself. `common-utils` happens to
+install it too, but a binary this feature cannot work without should not arrive
+as a side effect of another feature's package list.
+
+## Caveats
+
+The seccomp relaxation is container-wide, not Codex-specific: any process in the
+container can create user namespaces and call the mount-family syscalls. It is
+still far narrower than `seccomp=unconfined` — every other syscall the default
+profile denies stays denied — but it is a real widening, and it is the price of
+running a sandboxing tool inside a sandbox.
+
+The profile is only known to be needed on Docker Desktop hosts. On Linux hosts
+with AppArmor (Ubuntu 23.10+), unprivileged user namespaces are restricted by
+AppArmor as well, and seccomp alone would not be enough.
+
+[1]: https://github.com/containers/bubblewrap
+```
+
+- [ ] **Step 2: Link it from the root README**
+
+Modify `README.md`. After the existing `agent-skills` paragraph, add:
+
+```markdown
+The [`codex`](.devcontainer/local-features/codex/NOTES.md) local feature installs
+the Codex CLI and ships the seccomp profile Codex's Bubblewrap sandbox needs in
+order to patch files.
+```
+
+- [ ] **Step 3: Update the design document's status**
+
+Modify `docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md`.
+
+Replace the status line:
+
+```markdown
+**Status:** Design approved; implementation plan under review in PR #40.
+```
+
+with:
+
+```markdown
+**Status:** Implemented. Plan:
+`docs/implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`.
+```
+
+Then sharpen one sentence. The design says the smoke test uses a system `bwrap`
+"already present in the image". That is true — `common-utils` installs the
+`bubblewrap` package — but it undersells why Task 3 installs it again. Replace
+that sentence in section 4 with:
+
+```markdown
+The test uses the system `bwrap`. It reaches the image through `common-utils`'s
+package list, but the Codex feature installs `bubblewrap` explicitly rather than
+inherit a load-bearing binary from another feature's incidental dependencies.
+Codex also bundles its own `bwrap` under `~/.codex`, which the test deliberately
+ignores: that path is version-scoped to Codex's release layout, and both
+binaries hit the same kernel/seccomp boundary, so the system one is a faithful
+proxy.
+```
+
+- [ ] **Step 4: Verify the docs match what was built**
+
+```bash
+set -euo pipefail
+if grep -n "runArgs" .devcontainer/devcontainer.json; then
+  echo "ERROR: devcontainer.json contains runArgs; seccomp would no longer be feature-owned." >&2
+  echo "Remedy: remove the runArgs change and keep securityOpt in the Codex feature." >&2
+  exit 1
+else
+  echo "OK: devcontainer.json untouched"
+fi
+test -f .devcontainer/local-features/codex/NOTES.md && echo "OK: NOTES.md exists"
+grep -q "codex" README.md && echo "OK: README links the feature"
+```
+
+Expected: all three `OK` lines. The first matters most — the whole point of this design was that `devcontainer.json` never learns about seccomp.
+
+- [ ] **Step 5: Commit**
+
+```bash
+set -euo pipefail
+if grep -n "runArgs" .devcontainer/devcontainer.json; then
+  echo "ERROR: devcontainer.json contains runArgs; seccomp would no longer be feature-owned." >&2
+  echo "Remedy: remove the runArgs change and keep securityOpt in the Codex feature." >&2
+  exit 1
+else
+  echo "OK: devcontainer.json untouched"
+fi
+test -f .devcontainer/local-features/codex/NOTES.md && echo "OK: NOTES.md exists"
+grep -q "codex" README.md && echo "OK: README links the feature"
+ssh-add -l || exit 1
+git status --short --branch || exit 1
+git diff --check || exit 1
+git diff || exit 1
+git add .devcontainer/local-features/codex/NOTES.md README.md \
+        docs/designs/2026-07-11-codex-bwrap-user-namespaces-design.md
+git commit -m "$(cat <<'EOF'
+Document the Codex feature's seccomp configuration
+
+Add NOTES.md covering what the feature configures, why container create
+fails when user namespaces are unavailable, and the security trade-off.
+Link it from the README, and correct the design doc's claim that the base
+image ships bwrap -- it does not, which is why install.sh now installs it.
+
+Harness: <harness>
+Harness-Version: <version>
+Model: <model id>
+Skills: <comma-separated skills actually used; omit this line when none>
+Co-Authored-By: <model display name> <noreply address>
+EOF
+)"
+git log -1 --pretty=%B | git interpret-trailers --parse
+```
+
+---
+
+## Final verification
+
+After all four tasks, run the feature's tests together:
+
+```bash
+failed=0
+for t in .devcontainer/local-features/codex/test/test-*.sh; do
+  echo "=== $t"
+  "$t" || { echo "FAILED: $t"; failed=1; }
+done
+exit "$failed"
+```
+
+Expected: every script ends `N passed, 0 failed` (or prints its verification line), and none report `FAILED`.
+
+Then the end-to-end check that closes issue #36 — it needs a real rebuild, so it cannot be automated in the test scripts:
+
+1. Rebuild the devcontainer (`devcontainer up --workspace-folder . --remove-existing-container`, or "Rebuild Container" in the editor). The create must succeed; the smoke test runs during it.
+2. Inside the rebuilt container, confirm the profile is what is actually loaded:
+   ```bash
+   unshare --user --map-root-user true && echo "userns OK"
+   bwrap --unshare-all --dev-bind / / true && echo "bwrap OK"
+   ```
+3. Run Codex and have it patch a tracked file in a worktree — the original reproduction from issue #36. The edit must persist.
