@@ -17,11 +17,5 @@
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.codex/AGENTS.md"
     }
-  ],
-  // Codex patches files through Bubblewrap, which needs an unprivileged user
-  // namespace that Docker's default seccomp profile denies. See seccomp/README.md.
-  "securityOpt": [
-    "seccomp=${localWorkspaceFolder}/.devcontainer/local-features/codex/seccomp/userns.json"
-  ],
-  "postCreateCommand": "~/bin/devcontainer-feature/codex/postCreateScript.sh"
+  ]
 }
