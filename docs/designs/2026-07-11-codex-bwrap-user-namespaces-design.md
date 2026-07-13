@@ -1,6 +1,7 @@
 # Enable unprivileged user namespaces for Codex's patch helper
 
-**Status:** Design approved; implementation plan under review in PR #40.
+**Status:** Implemented. Plan:
+`docs/implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`.
 
 Resolves [issue #36](https://github.com/hube/devcontainer/issues/36).
 
@@ -72,14 +73,11 @@ need more; that is out of scope until such a host is actually used).
 
 ### 1. Vendored seccomp profile — `.devcontainer/local-features/codex/seccomp/userns.json` (new)
 
-A copy of Moby's default seccomp profile, edited as described below. The
-profile no longer lives in `moby/moby` (the path `profiles/seccomp/default.json`
-is absent from current release tags); it is now published in the
-independently versioned [`moby/profiles`](https://github.com/moby/profiles)
-repository. Vendor `seccomp/default.json` from the latest `seccomp/vX.Y.Z`
+A copy of Moby's default seccomp profile, edited as described below. Vendor `seccomp/default.json` from the latest `seccomp/vX.Y.Z`
 release tag at implementation time (currently `seccomp/v0.2.3`, SHA-256
-`536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`), recording
-the tag and checksum in the README. No engine-version mapping is needed: the
+`536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`), recording the tag, upstream checksum, and generated profile checksum in the
+README. The test verifies the generated checksum exactly, so structural and
+behavioral checks cannot overlook unrelated edits to the vendored artifact. No engine-version mapping is needed: the
 profiles repository tracks current engines, and the create-time smoke test
 (section 4) validates the profile against whatever engine Docker Desktop is
 actually running.
@@ -163,17 +161,21 @@ installs a verification script under `~/bin/devcontainer-feature/codex/`, and
 `devcontainer-feature.json` declares a `postCreateCommand` pointing at it, so
 it runs on every container create.
 
-The script runs:
-
-1. `unshare --user --map-root-user true` — user-namespace creation works;
-2. `bwrap --unshare-all --dev-bind / / true` — the full Bubblewrap path
-   works, including the mount-family syscalls.
-
-On failure it prints problem → consequence → remedy, including the failing
-command's actual stderr — e.g. "user-namespace creation is blocked → Codex's
+The script checks that `bwrap` is installed, then runs
+`bwrap --unshare-all --dev-bind / / true`. This end-to-end probe defines
+production health because it exercises the Bubblewrap path Codex actually
+uses, including user-namespace creation and the mount-family syscalls. A
+successful Bubblewrap probe exits successfully without running standalone
+`unshare`. If Bubblewrap fails, the script runs
+`unshare --user --map-root-user true` only as a secondary diagnostic. Missing
+Bubblewrap reports the package-install/rebuild remedy without running
+`unshare`. On probe failure it prints
+problem → consequence → remedy, including the failing command's actual stderr — e.g. "user-namespace creation is blocked → Codex's
 patch helper cannot apply edits → confirm the Codex feature's `securityOpt`
 resolves to `local-features/codex/seccomp/userns.json` and rebuild the
-container" — and exits non-zero so the failure surfaces at create time
+container" — always reports the Bubblewrap failure, adds the standalone
+`unshare` failure only when that secondary probe also fails, and exits non-zero
+once so the failures surface at create time
 instead of mid-session.
 
 Unlike `agent-skills`, which never fails container start, this check *does*
@@ -181,23 +183,22 @@ fail the create: a Codex feature that cannot run Codex's patch helper is
 broken, and silently starting would just relocate the failure to the middle
 of a session — the exact symptom issue #36 reports.
 
-The test uses the system `bwrap` (`/usr/bin/bwrap`, already present in the
-image); Codex bundles its own copy, but both hit the same kernel/seccomp
-boundary, so the system binary is a faithful proxy.
+The test uses the system `bwrap`, which the feature installs explicitly as its stable feature probe. Codex's version-scoped copies under `~/.codex/packages/.../codex-resources/bwrap` are internal and unstable; official OpenAI Dev Container guidance independently installs Bubblewrap.
 
-### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md` (new)
+The stock-profile control intentionally fails if Docker's default profile becomes sufficient; that failure is the retirement signal to reevaluate and remove the relaxations. No stable documented Codex interface signals that Codex stopped using Bubblewrap, so the design does not inspect versioned internal package layouts or add an upstream watcher.
 
-The Codex feature has no `NOTES.md` today. Add one, following the structure
-`agent-skills/NOTES.md` established (Behavior / Failure handling / Caveats),
-covering how to configure the feature correctly:
+### 5. Feature documentation — `.devcontainer/local-features/codex/NOTES.md`
+
+The Codex feature's `NOTES.md` follows the Behavior / Failure handling / Caveats
+structure established by `agent-skills/NOTES.md`. It documents:
 
 - that the feature ships and activates its own seccomp profile via
   `securityOpt`, and therefore requires no `runArgs` in `devcontainer.json`;
 - that the profile is resolved from the host checkout at container-create
-  time, so the feature must be consumed by relative path from this repo;
+  time, so the feature is consumed by relative path from this repo;
 - what the create-time smoke test checks and what a failure means;
-- the security trade-off (container-wide user namespaces) and a pointer to
-  the provenance README for re-vendoring.
+- the security trade-off (container-wide user namespaces) and the provenance
+  README used for re-vendoring.
 
 ## Error handling
 
@@ -211,11 +212,23 @@ covering how to configure the feature correctly:
 
 Automated, on every container create: the smoke test in the Codex feature.
 
-The implementation tests must not be able to pass against stale artifacts. A
+The implementation tests must not be able to pass against stale artifacts. The
+seccomp test pins the exact SHA-256 of the generated profile in addition to
+checking its structure and runtime behavior. A
 behavioral test that builds a container image uses a unique temporary tag,
 stops and preserves Docker's output if the build fails, and removes the image
 from an `EXIT` trap. The final test-suite command runs every test but records
 any failure and exits non-zero after the suite completes.
+
+Every warning and error emitted by the seccomp-profile or feature-metadata
+implementation tests states the problem, its consequence, and a remedy, then
+includes the failing command's actual output under a wrapper-owned `<command>
+said:` prefix. The tests distinguish failure modes that need different
+diagnoses; their diagnostic contracts assert on that wrapper framing rather
+than on bare child-process stderr. In particular, the metadata test separately
+reports Dev Container build, Docker inspect, JSON parse, and semantic metadata
+failures while preserving the exact `securityOpt` and `postCreateCommand`
+assertions against the real built image label.
 
 Manual, once after the first rebuild: run Codex's patch helper against a
 tracked file in a worktree — the original reproduction from issue #36 — and

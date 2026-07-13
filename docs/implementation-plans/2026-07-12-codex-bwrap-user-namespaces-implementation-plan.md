@@ -80,58 +80,108 @@ Create `.devcontainer/local-features/codex/test/test-seccomp-profile.sh`:
 set -uo pipefail
 
 PROFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/seccomp/userns.json"
+GENERATED_SHA256="d563d512691ae8f2d437bfa7a9e77ac7d8c8d4a785277f8234bd688f4857ab86"
 passed=0
 failed=0
 
 pass() { printf 'ok   %s\n' "$1"; passed=$((passed + 1)); }
-fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
+fail() {
+  printf 'FAIL %s\n     Problem: %s\n     Consequence: %s\n     Remedy: %s\n     %s\n' \
+    "$1" "$2" "$3" "$4" "$5"
+  failed=$((failed + 1))
+}
+
+assert_jq() {
+  local label=$1 filter=$2 problem=$3 consequence=$4 remedy=$5 out rc
+  out="$(jq -e "$filter" "$PROFILE" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]]; then
+    pass "$label"
+  else
+    fail "$label" "$problem" "$consequence" "$remedy" \
+      "jq said: ${out:-<no output>}"
+  fi
+}
 
 # --- structural ---------------------------------------------------------
-[[ -f "$PROFILE" ]] || { echo "missing profile: $PROFILE" >&2; exit 1; }
-jq -e . "$PROFILE" >/dev/null 2>&1 && pass "profile: is valid JSON" \
-  || fail "profile: is valid JSON" "jq could not parse it"
+if [[ ! -f "$PROFILE" ]]; then
+  out="$(ls -l "$PROFILE" 2>&1)"; rc=$?
+  echo "FAIL profile: exists" >&2
+  echo "     Problem: the seccomp profile is missing." >&2
+  echo "     Consequence: structural and behavioural checks cannot run." >&2
+  echo "     Remedy: generate the pinned profile, then rerun this test." >&2
+  echo "     Profile check said: rc=$rc ${out:-<no output>}" >&2
+  exit 1
+fi
 
-[[ "$(jq -r .defaultAction "$PROFILE")" == "SCMP_ACT_ERRNO" ]] \
-  && pass "profile: default action still denies" \
-  || fail "profile: default action still denies" "expected SCMP_ACT_ERRNO"
+out="$(sha256sum "$PROFILE" 2>&1)"; rc=$?
+actual_sha=${out%% *}
+if [[ $rc -eq 0 && "$actual_sha" == "$GENERATED_SHA256" ]]; then
+  pass "profile: matches the recorded generated SHA-256"
+else
+  fail "profile: matches the recorded generated SHA-256" \
+    "the vendored generated profile does not match its recorded SHA-256." \
+    "the profile may contain changes beyond the documented transformation." \
+    "regenerate it from the pinned upstream file, review the transformation, and record the generated SHA-256." \
+    "sha256sum said: ${out:-<no output>}"
+fi
+
+out="$(jq -e . "$PROFILE" 2>&1)"; rc=$?
+if [[ $rc -eq 0 ]]; then
+  pass "profile: is valid JSON"
+else
+  echo "FAIL profile: is valid JSON" >&2
+  echo "     Problem: the seccomp profile is not valid JSON." >&2
+  echo "     Consequence: Docker cannot load it and structural checks are unreliable." >&2
+  echo "     Remedy: regenerate the profile from the pinned upstream file." >&2
+  echo "     jq said: ${out:-<no output>}" >&2
+  exit 1
+fi
+
+assert_jq "profile: default action still denies" \
+  '.defaultAction == "SCMP_ACT_ERRNO"' \
+  "the default action is not SCMP_ACT_ERRNO." \
+  "syscalls absent from allow rules may no longer be denied." \
+  "regenerate the profile and restore the upstream default action."
 
 # An unconditional ALLOW rule: no capability gate, no arch gate, no arg filter.
 unconditional='.syscalls[] | select(.action == "SCMP_ACT_ALLOW")
   | select(has("includes") | not) | select(has("excludes") | not)
   | select(has("args") | not) | .names[]'
 for sc in mount umount2 setns unshare pivot_root; do
-  if jq -e --arg sc "$sc" "[$unconditional] | index(\$sc)" "$PROFILE" >/dev/null; then
-    pass "profile: $sc is allowed unconditionally"
-  else
-    fail "profile: $sc is allowed unconditionally" "not found in any ungated ALLOW rule"
-  fi
+  assert_jq "profile: $sc is allowed unconditionally" \
+    "[$unconditional] | index(\"$sc\") != null" \
+    "$sc is absent from every ungated ALLOW rule." \
+    "Bubblewrap may fail while constructing its user-namespace sandbox." \
+    "regenerate the profile with the required unconditional allow rule."
 done
 
 # The CLONE_NEW* argument filter (mask 0x7e020000) must be gone from every
 # clone rule, or CLONE_NEWUSER stays denied.
-if jq -e '[.syscalls[] | select(.names | index("clone")) | select(has("args"))] | length == 0' \
-     "$PROFILE" >/dev/null; then
-  pass "profile: no clone rule retains an argument filter"
-else
-  fail "profile: no clone rule retains an argument filter" "a clone rule still has .args"
-fi
+assert_jq "profile: no clone rule retains an argument filter" \
+  '[.syscalls[] | select(.names | index("clone")) | select(has("args"))] | length == 0' \
+  "a clone rule still has an argument filter." \
+  "CLONE_NEWUSER remains denied, so Bubblewrap cannot create its sandbox." \
+  "regenerate the profile with the clone argument filter removed."
 
 # clone3 must STILL be ENOSYS without CAP_SYS_ADMIN. Ungating it would open a
 # namespace path seccomp cannot filter; this asserts we did not do that.
-if jq -e '[.syscalls[]
-      | select(.names | index("clone3"))
-      | select(.action == "SCMP_ACT_ERRNO" and .errnoRet == 38)
-      | select(.excludes.caps | index("CAP_SYS_ADMIN"))] | length == 1' \
-     "$PROFILE" >/dev/null; then
-  pass "profile: clone3 still returns ENOSYS so glibc falls back to clone"
-else
-  fail "profile: clone3 still returns ENOSYS so glibc falls back to clone" \
-       "the clone3 ERRNO rule was altered or removed"
-fi
+assert_jq "profile: clone3 still returns ENOSYS so glibc falls back to clone" \
+  '[.syscalls[]
+    | select(.names | index("clone3"))
+    | select(.action == "SCMP_ACT_ERRNO" and .errnoRet == 38)
+    | select(.excludes.caps | index("CAP_SYS_ADMIN"))] | length == 1' \
+  "the clone3 ENOSYS rule or its CAP_SYS_ADMIN exclusion was altered." \
+  "an unfilterable namespace-creation path may be opened or fallback to clone may stop." \
+  "restore the pinned upstream clone3 rule and rerun this test."
 
 # --- behavioural --------------------------------------------------------
-if ! docker info >/dev/null 2>&1; then
-  printf '\nSKIP behavioural checks: docker is unavailable\n'
+docker_out="$(docker info 2>&1)"; docker_rc=$?
+if [[ $docker_rc -ne 0 ]]; then
+  echo "WARNING: Docker is unavailable."
+  echo "     Problem: docker info failed."
+  echo "     Consequence: the two behavioural checks were skipped, so only profile structure was verified."
+  echo "     Remedy: start Docker and rerun this test to verify runtime behaviour."
+  echo "     docker info said: ${docker_out:-<no output>}"
 else
   BUILD_LOG="$(mktemp)"
   IMAGE="codex-bwrap-probe:test-$(basename "$BUILD_LOG")"
@@ -147,6 +197,7 @@ RUN apt-get update && apt-get install -y bubblewrap && rm -rf /var/lib/apt/lists
 DOCKERFILE
   then
     echo "FAIL behavioural setup: Docker could not build the probe image." >&2
+    echo "     Problem: docker build failed." >&2
     echo "     Consequence: the bwrap checks cannot be trusted or run." >&2
     echo "     Remedy: fix the build error printed below, then rerun this test." >&2
     echo "     docker build said:" >&2
@@ -154,18 +205,42 @@ DOCKERFILE
     exit 1
   fi
 
-  # Control: the stock profile must still fail, and fail for the reason #36 reports.
+  # Retirement control: if the stock profile succeeds, reevaluate and remove the relaxations.
   out="$(docker run --rm "$IMAGE" bwrap --unshare-all --dev-bind / / true 2>&1)"; rc=$?
-  [[ $rc -ne 0 && "$out" == *"No permissions to create a new namespace"* ]] \
-    && pass "control: stock profile reproduces issue #36" \
-    || fail "control: stock profile reproduces issue #36" "rc=$rc out=$out"
+  if [[ $rc -ne 0 && "$out" == *"No permissions to create a new namespace"* ]]; then
+    pass "control: stock profile reproduces issue #36"
+  elif [[ $rc -eq 0 ]]; then
+    fail "control: stock profile reproduces issue #36" \
+      "Bubblewrap unexpectedly succeeded under Docker's stock seccomp profile." \
+      "Docker's default profile may now be sufficient, so these relaxations may be obsolete." \
+      "reevaluate and remove the vendored relaxations if the default policy now supports Bubblewrap." \
+      "docker run said: rc=$rc ${out:-<no output>}"
+  else
+    fail "control: stock profile reproduces issue #36" \
+      "Bubblewrap failed, but not with issue #36's namespace-permission diagnostic." \
+      "the control failure may have an unrelated cause, so the treatment comparison is untrusted." \
+      "fix the Docker or Bubblewrap error shown below, then rerun this test." \
+      "docker run said: rc=$rc ${out:-<no output>}"
+  fi
 
   # Treatment: the vendored profile must let bwrap start a sandbox and do work.
   out="$(docker run --rm --security-opt seccomp="$PROFILE" "$IMAGE" \
          bwrap --unshare-all --dev-bind / / --chdir /tmp sh -c 'echo ok > f && cat f' 2>&1)"; rc=$?
-  [[ $rc -eq 0 && "$out" == "ok" ]] \
-    && pass "treatment: bwrap runs a sandboxed command under userns.json" \
-    || fail "treatment: bwrap runs a sandboxed command under userns.json" "rc=$rc out=$out"
+  if [[ $rc -eq 0 && "$out" == "ok" ]]; then
+    pass "treatment: bwrap runs a sandboxed command under userns.json"
+  elif [[ $rc -ne 0 ]]; then
+    fail "treatment: bwrap runs a sandboxed command under userns.json" \
+      "Bubblewrap failed under the vendored seccomp profile." \
+      "the profile does not demonstrably enable Codex's patch sandbox." \
+      "fix the Docker or Bubblewrap error shown below, then rerun this test." \
+      "docker run said: rc=$rc ${out:-<no output>}"
+  else
+    fail "treatment: bwrap runs a sandboxed command under userns.json" \
+      "the sandboxed command succeeded but returned unexpected output." \
+      "the behavioural probe did not demonstrate the expected write/read result." \
+      "inspect the command output shown below, restore the probe, and rerun this test." \
+      "docker run said: rc=$rc ${out:-<no output>}"
+  fi
 fi
 
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
@@ -179,7 +254,7 @@ chmod +x .devcontainer/local-features/codex/test/test-seccomp-profile.sh
 .devcontainer/local-features/codex/test/test-seccomp-profile.sh
 ```
 
-Expected: exits non-zero with `missing profile: .../seccomp/userns.json`.
+Expected: exits non-zero with wrapper-owned `Problem:`, `Consequence:`, and `Remedy:` lines, followed by `Profile check said:` and the actual missing-file diagnostic.
 
 - [ ] **Step 3: Generate the profile**
 
@@ -207,7 +282,7 @@ Expected: `sha256sum -c` prints `/tmp/moby-seccomp-default.json: OK`. If it does
 .devcontainer/local-features/codex/test/test-seccomp-profile.sh
 ```
 
-Expected: all assertions `ok`, ending `11 passed, 0 failed` (`9 passed` if Docker is unavailable and the behavioural half is skipped). The control assertion proves the stock profile still breaks bwrap; the treatment assertion proves ours fixes it.
+Expected: all assertions `ok`, ending `12 passed, 0 failed`. If Docker is unavailable, the test ends `10 passed, 0 failed` after a warning that states the problem, consequence, and remedy and includes the actual `docker info` output under `docker info said:`. The control assertion proves the stock profile still breaks bwrap; the treatment assertion proves ours fixes it.
 
 - [ ] **Step 5: Write the provenance README**
 
@@ -232,10 +307,6 @@ why.
 | File | `seccomp/default.json` |
 | SHA-256 | `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74` |
 
-The profile used to live in `moby/moby` at `profiles/seccomp/default.json`.
-It does not any more — that path is absent from current Moby release tags, and
-the profiles are now published from their own independently versioned
-repository.
 
 ## Edits
 
@@ -362,42 +433,95 @@ Create `.devcontainer/local-features/codex/test/test-metadata.sh`:
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
-IMAGE="dc-codex-metadata-assert:latest"
+IMAGE="dc-codex-metadata-assert:$(date +%s)-$$-$RANDOM"
 BUILD_LOG="$(mktemp)"
-trap 'rm -f "$BUILD_LOG"' EXIT
+INSPECT_LOG="$(mktemp)"
+METADATA="$(mktemp)"
+trap 'docker image rm --force "$IMAGE" >/dev/null 2>&1 || true; rm -f "$BUILD_LOG" "$INSPECT_LOG" "$METADATA"' EXIT
+
+fail() {
+  local problem=$1 consequence=$2 remedy=$3
+  shift 3
+  printf 'Problem: %s\nConsequence: %s\nRemedy: %s\n' \
+    "$problem" "$consequence" "$remedy" >&2
+  while [[ $# -ge 2 ]]; do
+    printf '%s said: %s\n' "$1" "${2:-<no output>}" >&2
+    shift 2
+  done
+  exit 1
+}
 
 if ! npx -y @devcontainers/cli@latest build \
   --workspace-folder "$REPO_ROOT" --image-name "$IMAGE" >"$BUILD_LOG" 2>&1; then
-  cat "$BUILD_LOG"
-  exit 1
+  fail "The Dev Container image build failed." \
+    "The Codex feature metadata cannot be verified in a built image." \
+    "Fix the Dev Container build error shown below, then rerun this test." \
+    "npx devcontainer build" "$(cat "$BUILD_LOG")"
 fi
 
-docker inspect "$IMAGE" --format '{{ index .Config.Labels "devcontainer.metadata" }}' \
-  | python3 -c '
+if ! docker inspect "$IMAGE" --format '{{ index .Config.Labels "devcontainer.metadata" }}' \
+  >"$METADATA" 2>"$INSPECT_LOG"; then
+  fail "Docker could not inspect the built image's devcontainer.metadata label." \
+    "The Codex feature's securityOpt and postCreateCommand cannot be verified." \
+    "Fix the Docker inspect error shown below, then rerun this test." \
+    "docker inspect stdout" "$(cat "$METADATA")" \
+    "docker inspect stderr" "$(cat "$INSPECT_LOG")"
+fi
+
+python3 -c '
 import json, sys
 
-def check(cond, msg):
-    # Bare assert is stripped under PYTHONOPTIMIZE/-O, which would make this
-    # script print success unconditionally on a real regression.
-    if not cond:
-        raise SystemExit(msg)
+def fail(problem, consequence, remedy, tool, output):
+    print(f"Problem: {problem}", file=sys.stderr)
+    print(f"Consequence: {consequence}", file=sys.stderr)
+    print(f"Remedy: {remedy}", file=sys.stderr)
+    print("{} said: {}".format(tool, output or "<no output>"), file=sys.stderr)
+    raise SystemExit(1)
 
-meta = json.load(sys.stdin)
-entries = [e for e in meta if e.get("id") == "./local-features/codex"]
-check(len(entries) == 1, f"expected exactly one codex metadata entry, got {len(entries)}")
+def check(cond, problem, consequence, remedy, output):
+    if not cond:
+        fail(problem, consequence, remedy, "metadata validation", output)
+
+try:
+    meta = json.load(sys.stdin)
+except json.JSONDecodeError as exc:
+    fail("The built image has a devcontainer.metadata label that is not valid JSON.",
+         "The Codex feature metadata cannot be checked for the required security configuration.",
+         "Rebuild the image with valid feature metadata, then rerun this test.",
+         "python json parser", f"{type(exc).__name__}: {exc}")
+
+check(isinstance(meta, list),
+      "The devcontainer.metadata label is not a JSON array.",
+      "The Codex feature metadata entry cannot be located reliably.",
+      "Rebuild the image so devcontainer.metadata contains the feature metadata array.",
+      f"expected a list, got {type(meta).__name__}: {meta!r}")
+entries = [e for e in meta if isinstance(e, dict) and e.get("id") == "./local-features/codex"]
+check(len(entries) == 1,
+      "The built image does not contain exactly one Codex feature metadata entry.",
+      "The Codex feature security configuration cannot be selected unambiguously.",
+      "Ensure the Codex feature is declared exactly once, rebuild the image, and rerun this test.",
+      f"expected exactly one codex metadata entry, got {len(entries)}")
 codex = entries[0]
 
 expected_opt = ("seccomp=${localWorkspaceFolder}"
                 "/.devcontainer/local-features/codex/seccomp/userns.json")
 opts = codex.get("securityOpt") or []
-check(expected_opt in opts, f"securityOpt missing or wrong: {opts}")
+check(isinstance(opts, list) and expected_opt in opts,
+      "The Codex metadata entry has a missing or incorrect securityOpt.",
+      "Docker may start the container without the seccomp profile Codex needs to apply edits.",
+      f"Set securityOpt to include {expected_opt!r}, rebuild the image, and rerun this test.",
+      f"securityOpt missing or wrong: {opts}")
 
 expected_hook = "~/bin/devcontainer-feature/codex/postCreateScript.sh"
 actual_hook = codex.get("postCreateCommand")
-check(actual_hook == expected_hook, f"bad postCreateCommand: {actual_hook}")
+check(actual_hook == expected_hook,
+      "The Codex metadata entry has a missing or incorrect postCreateCommand.",
+      "Container creation may skip the user-namespace smoke test and surface failures mid-session.",
+      f"Set postCreateCommand to {expected_hook!r}, rebuild the image, and rerun this test.",
+      f"bad postCreateCommand: {actual_hook}")
 
 print("codex securityOpt and postCreateCommand verified")
-'
+' <"$METADATA"
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -407,7 +531,18 @@ chmod +x .devcontainer/local-features/codex/test/test-metadata.sh
 .devcontainer/local-features/codex/test/test-metadata.sh
 ```
 
-Expected: the image builds, then the script exits non-zero with `securityOpt missing or wrong: []`.
+Expected: the image builds, then the script exits non-zero with the semantic
+failure's wrapper-owned diagnostic (problem → consequence → remedy → actual
+validator output):
+
+```text
+Problem: The Codex metadata entry has a missing or incorrect securityOpt.
+Consequence: Docker may start the container without the seccomp profile Codex needs to apply edits.
+Remedy: Set securityOpt to include 'seccomp=${localWorkspaceFolder}/.devcontainer/local-features/codex/seccomp/userns.json', rebuild the image, and rerun this test.
+metadata validation said: securityOpt missing or wrong: []
+```
+
+Build, Docker inspect, JSON parse, and semantic assertion failures each use distinct diagnostics and preserve the failing command's actual output under their own `<command> said:` prefix.
 
 (The build takes a few minutes. If `npx` cannot reach the network, that is an environment problem, not a test failure — resolve it before continuing, since Task 2 cannot be verified without it.)
 
@@ -502,7 +637,10 @@ git log -1 --pretty=%B | git interpret-trailers --parse
 
 **Two things the implementer must not skip:**
 
-1. **Make the `bubblewrap` dependency explicit.** There are two `bwrap` binaries in this container and they must not be confused. Codex's installer vendors its own copy at `~/.codex/packages/<version>/codex-resources/bwrap` — version-scoped, an implementation detail of Codex's release layout, not a stable thing to probe. The system `/usr/bin/bwrap` arrives incidentally: it sits in the `common-utils` feature's `apt-get install` list (verified in this image's apt history, alongside `jq` and `socat`). It *is* therefore present on a fresh build today — but a load-bearing binary reaching us through another feature's incidental package list is a silent dependency, and if that list ever changes the smoke test fails at create time with a confusing `bwrap: command not found`. `install.sh` installs the package explicitly. `apt-get install` on an already-installed package is a no-op, so this costs a cached apt layer and buys a dependency that is visible in the feature that actually needs it.
+1. **Make the `bubblewrap` dependency explicit.** Install the system package explicitly because `bwrap` is the stable feature probe. Codex's version-scoped copies under `~/.codex/packages/.../codex-resources/bwrap` are internal and unstable; official OpenAI Dev Container guidance independently installs Bubblewrap.
+
+The stock-profile control intentionally fails if Docker's default profile becomes sufficient; that is the retirement signal to reevaluate and remove the relaxations. No stable documented Codex interface signals that Codex stopped using Bubblewrap, so do not inspect versioned internal package layouts or add an upstream watcher.
+
 2. **This hook fails the container create on error.** That is deliberate and differs from `agent-skills`, which never fails start. A Codex feature that cannot run Codex's patch helper is broken, and starting quietly just relocates the failure into the middle of a session — the exact symptom issue #36 reports.
 
 - [ ] **Step 1: Write the failing test**
@@ -516,7 +654,7 @@ Create `.devcontainer/local-features/codex/test/test-postcreate.sh`:
 # PATH, so the test does not depend on the host's namespace policy.
 set -uo pipefail
 
-HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/devcontainer-feature/codex/postCreateScript.sh"
+HOOK="${HOOK:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/devcontainer-feature/codex/postCreateScript.sh}"
 passed=0
 failed=0
 
@@ -525,58 +663,79 @@ fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
 
 [[ -x "$HOOK" ]] && pass "hook: is executable" || fail "hook: is executable" "$HOOK"
 
-# Runs the hook against stubbed tools, leaving the result in OUT and RC.
-# $1 = exit code for `unshare`, $2 = exit code for `bwrap`,
-# $3 = message the failing stub writes to stderr.
 run_hook() {
   local dir; dir="$(mktemp -d)"
-  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$1" "$3" "$1" > "$dir/unshare"
-  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$2" "$3" "$2" > "$dir/bwrap"
+  printf '#!/usr/bin/env bash\necho invoked > "%s"\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$dir/unshare-invoked" "$1" "$3" "$1" > "$dir/unshare"
+  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$2" "$4" "$2" > "$dir/bwrap"
   chmod +x "$dir/unshare" "$dir/bwrap"
   OUT="$(PATH="$dir:$PATH" "$HOOK" 2>&1)"; RC=$?
+  [[ -e "$dir/unshare-invoked" ]]; UNSHARE_INVOKED=$?
   rm -rf "$dir"
 }
 
-# --- both probes succeed: the hook must not block container start
-run_hook 0 0 ""
+run_hook 0 0 "" ""
 [[ $RC -eq 0 ]] && pass "success: exits 0 when namespaces work" \
   || fail "success: exits 0 when namespaces work" "rc=$RC out=$OUT"
 
-# --- unshare blocked: fail the create, and say problem/consequence/remedy
-run_hook 1 0 "unshare: Operation not permitted"
-[[ $RC -ne 0 ]] && pass "userns blocked: fails the container create" \
-  || fail "userns blocked: fails the container create" "exited 0"
-[[ "$OUT" == *"user namespace"* ]] && pass "userns blocked: names the problem" \
-  || fail "userns blocked: names the problem" "$OUT"
-[[ "$OUT" == *"cannot apply edits"* ]] && pass "userns blocked: names the consequence" \
-  || fail "userns blocked: names the consequence" "$OUT"
-[[ "$OUT" == *"seccomp/userns.json"* && "$OUT" == *"rebuild"* ]] \
-  && pass "userns blocked: names the remedy" \
-  || fail "userns blocked: names the remedy" "$OUT"
-# Assert on the wrapper's own framing, not on the stub's text: a bare match for
-# the stub message would pass even if the hook relayed nothing, because the stub
-# writes to stderr itself.
-[[ "$OUT" == *"unshare said: unshare: Operation not permitted"* ]] \
-  && pass "userns blocked: relays the underlying error" \
-  || fail "userns blocked: relays the underlying error" "$OUT"
+run_hook 1 0 "unshare: Operation not permitted" ""
+[[ $RC -eq 0 ]] && pass "bwrap healthy: ignores standalone unshare failure" \
+  || fail "bwrap healthy: ignores standalone unshare failure" "rc=$RC out=$OUT"
+[[ $UNSHARE_INVOKED -ne 0 ]] && pass "bwrap healthy: skips the secondary unshare diagnostic" \
+  || fail "bwrap healthy: skips the secondary unshare diagnostic" "unshare was invoked"
 
-# --- unshare works but bwrap does not: a distinct, separately diagnosable failure
-run_hook 0 1 "bwrap: No permissions to create a new namespace"
+missing_dir="$(mktemp -d)"
+ln -s "$(command -v bash)" "$missing_dir/bash"
+printf '#!/usr/bin/env bash\necho invoked > "%s"\nexit 0\n' "$missing_dir/unshare-invoked" > "$missing_dir/unshare"
+chmod +x "$missing_dir/unshare"
+OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
+[[ $RC -ne 0 ]] && pass "bwrap missing: fails the container create" || fail "bwrap missing: fails the container create" "exited 0"
+[[ "$OUT" == *"Bubblewrap is not installed"* ]] && pass "bwrap missing: names the problem" || fail "bwrap missing: names the problem" "$OUT"
+[[ "$OUT" == *"cannot apply edits"* ]] && pass "bwrap missing: names the consequence" || fail "bwrap missing: names the consequence" "$OUT"
+[[ "$OUT" == *"bubblewrap package"* && "$OUT" == *"rebuild"* ]] && pass "bwrap missing: names the package remedy" || fail "bwrap missing: names the package remedy" "$OUT"
+[[ ! -e "$missing_dir/unshare-invoked" ]] && pass "bwrap missing: skips the secondary unshare diagnostic" || fail "bwrap missing: skips the secondary unshare diagnostic" "unshare was invoked"
+rm -rf "$missing_dir"
+[[ "$OUT" == *"command -v bwrap said: no output"* ]] && pass "bwrap missing: frames the underlying lookup output" || fail "bwrap missing: frames the underlying lookup output" "$OUT"
+
+run_hook 1 1 "unshare sentinel: Operation not permitted" "bwrap sentinel: No permissions to create a new namespace"
 [[ $RC -ne 0 ]] && pass "bwrap blocked: fails the container create" \
   || fail "bwrap blocked: fails the container create" "exited 0"
 [[ "$OUT" == *"Bubblewrap"* ]] && pass "bwrap blocked: distinct message from the userns case" \
   || fail "bwrap blocked: distinct message from the userns case" "$OUT"
-[[ "$OUT" == *"bwrap said: bwrap: No permissions"* ]] \
+[[ "$OUT" == *"codex: bwrap said: bwrap sentinel: No permissions to create a new namespace"* ]] \
   && pass "bwrap blocked: relays the underlying error" \
   || fail "bwrap blocked: relays the underlying error" "$OUT"
+[[ "$OUT" == *"codex: unshare said: unshare sentinel: Operation not permitted"* ]] \
+  && pass "bwrap blocked: reports the secondary unshare failure" \
+  || fail "bwrap blocked: reports the secondary unshare failure" "$OUT"
 
-# --- install.sh owns the bubblewrap dependency rather than inheriting it from
-# common-utils' incidental package list
+run_hook 0 1 "" "bwrap probe failed"
+[[ $RC -ne 0 ]] && pass "bwrap blocked with userns available: fails the container create" \
+  || fail "bwrap blocked with userns available: fails the container create" "exited 0"
+[[ "$OUT" == *"bwrap said: bwrap probe failed"* ]] \
+  && pass "bwrap blocked with userns available: reports the bwrap failure" \
+  || fail "bwrap blocked with userns available: reports the bwrap failure" "$OUT"
+[[ "$OUT" != *"unshare said:"* ]] \
+  && pass "bwrap blocked with userns available: omits a success diagnostic" \
+  || fail "bwrap blocked with userns available: omits a success diagnostic" "$OUT"
 INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
-grep -q 'bubblewrap' "$INSTALL" \
+
+installs_bubblewrap() {
+  grep -Eq '^[[:space:]]*apt-get[[:space:]]+install([[:space:]]+[^[:space:]]+)*[[:space:]]+bubblewrap([[:space:]]|$)' "$1"
+}
+
+installs_bubblewrap "$INSTALL" \
   && pass "install: installs bubblewrap explicitly" \
   || fail "install: installs bubblewrap explicitly" "the hook's bwrap would depend on another feature's package list"
 
+mutated_install="$(mktemp)"
+sed '/^[[:space:]]*apt-get[[:space:]]\+install.*[[:space:]]bubblewrap[[:space:]]*$/d' "$INSTALL" > "$mutated_install"
+if installs_bubblewrap "$mutated_install"; then
+  fail "install assertion: rejects a copy without the install command" \
+    "comments or output text satisfied the explicit dependency assertion"
+else
+  pass "install assertion: rejects a copy without the install command"
+fi
+rm -f "$mutated_install"
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [[ $failed -eq 0 ]]
 ```
@@ -597,38 +756,39 @@ Create `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postCr
 ```bash
 #!/usr/bin/env bash
 # Verifies the seccomp profile this feature ships actually took effect.
-#
-# Codex patches files through Bubblewrap, which needs an unprivileged user
-# namespace. If the profile did not load, Codex cannot write files at all
-# (hube/devcontainer#36). Unlike the agent-skills hook, this one fails the
-# container create: coming up quietly would only move the failure into the
-# middle of a session, which is the symptom that issue reports.
 set -uo pipefail
 
 PROFILE=".devcontainer/local-features/codex/seccomp/userns.json"
+failed=0
 
-# Problem, then consequence, then remedy -- and always the underlying output,
-# so nobody has to re-run the command to find out what it said.
-die() {
-  local problem="$1" tool="$2" output="$3"
+diagnose() {
+  local problem="$1" remedy="$2" tool="$3" output="$4"
   {
     echo "codex: $problem"
     echo "codex: Codex's patch helper cannot apply edits, so Codex cannot write files in this container."
-    echo "codex: Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container."
+    echo "codex: $remedy"
     echo "codex: $tool said: ${output:-no output}"
   } >&2
-  exit 1
+  failed=1
 }
 
-if ! output="$(unshare --user --map-root-user true 2>&1)"; then
-  die "creating an unprivileged user namespace is blocked." unshare "$output"
+if ! bwrap_path="$(command -v bwrap 2>&1)"; then
+  diagnose "Bubblewrap is not installed." \
+    "Install the bubblewrap package by rebuilding the container with the Codex feature." \
+    "command -v bwrap" "$bwrap_path"
+elif ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
+  diagnose "Bubblewrap cannot start a sandbox." \
+    "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
+    bwrap "$output"
+
+  if ! output="$(unshare --user --map-root-user true 2>&1)"; then
+    diagnose "creating an unprivileged user namespace is also blocked." \
+      "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
+      unshare "$output"
+  fi
 fi
 
-if ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
-  die "Bubblewrap cannot start a sandbox even though user namespaces work." bwrap "$output"
-fi
-
-exit 0
+exit "$failed"
 ```
 
 - [ ] **Step 4: Install bubblewrap and the hook**
@@ -641,11 +801,13 @@ Modify `.devcontainer/local-features/codex/install.sh`. The script re-execs itse
 # Install OpenAI Codex CLI. Installation script originally copied from
 # https://developers.openai.com/codex/cli
 
-if [[ $EUID -ne $(id -u ${_CONTAINER_USER}) ]]
+set -euo pipefail
+# sudo -iu re-exec may omit _CONTAINER_USER, and fallback avoids set -u failure while preserving current user.
+CONTAINER_USER="${_CONTAINER_USER:-$(id -un)}"
+
+if [[ $EUID -ne $(id -u "${CONTAINER_USER}") ]]
 then
-  # Codex patches files through Bubblewrap. common-utils happens to install it
-  # today, but this feature is the one that cannot work without it, so it owns
-  # the dependency rather than inheriting it.
+  # The system bwrap command is this feature's stable capability probe.
   echo ">Installing Bubblewrap"
   apt-get update
   apt-get install -y --no-install-recommends bubblewrap
@@ -655,18 +817,17 @@ then
 
   # Copy files over while setting ownership and permissions
   rsync -rp \
-      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chown=${CONTAINER_USER}:${CONTAINER_USER} \
       --chmod=D755,F644 \
-      home/. /home/${_CONTAINER_USER}
+      home/. "/home/${CONTAINER_USER}"
 
-  # The lifecycle hook must be executable, so it is copied separately from the
-  # config files above.
+  # Lifecycle hooks must remain executable.
   rsync -rp \
-      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chown=${CONTAINER_USER}:${CONTAINER_USER} \
       --chmod=D755,F755 \
-      bin /home/${_CONTAINER_USER}
+      bin "/home/${CONTAINER_USER}"
 
-  exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)"
+  exec sudo -iu "${CONTAINER_USER}" "$(realpath "$0")"
 fi
 
 echo ">Switched to the container user"
@@ -685,9 +846,9 @@ chmod +x .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postC
 .devcontainer/local-features/codex/test/test-postcreate.sh
 ```
 
-Expected: all assertions `ok`, ending `11 passed, 0 failed`.
+Expected: all assertions `ok`, ending `19 passed, 0 failed`.
 
-The two "relays the underlying error" assertions are the ones that matter most, and they have been checked against a hook *without* the fix: a naive version that prints its own message but swallows the command's stderr fails exactly those two and passes the other nine. That is why they assert on the wrapper's framing (`unshare said: ...`) rather than on the bare error text, which the failing command writes to stderr on its own.
+The two "relays the underlying error" assertions are the ones that matter most, and they have been checked against a hook *without* the fix: a naive version that prints its own message but swallows the command's stderr fails exactly those two and passes the other diagnostic assertions. That is why they assert on the wrapper's framing (`unshare said: ...`) rather than on the bare error text, which the failing command writes to stderr on its own.
 
 - [ ] **Step 6: Commit**
 
@@ -705,7 +866,7 @@ git commit -m "$(cat <<'EOF'
 Verify user namespaces at container create
 
 Install bubblewrap explicitly rather than inherit it from common-utils'
-package list, and add a postCreate hook that probes unshare and bwrap.
+package list, and add a postCreate hook that gates health on bwrap and uses unshare only for secondary diagnosis.
 The hook fails the create rather than starting quietly: a Codex feature
 whose patch helper cannot run is broken, and coming up anyway would just
 relocate the failure into the middle of a session.
@@ -765,19 +926,21 @@ relative to upstream, and how to re-vendor it.
 
 ## Failure handling
 
-On container create the feature probes the capability it depends on: it creates
-a user namespace with `unshare`, then starts a Bubblewrap sandbox. If either
-fails, **container create fails**, naming the problem, the consequence, the
-remedy, and the underlying error.
+On container create the feature checks that `bwrap` is installed, then runs its
+end-to-end sandbox probe. A successful Bubblewrap probe defines health and does
+not require standalone `unshare`. If Bubblewrap fails, `unshare` runs only as a
+secondary diagnostic. Missing Bubblewrap reports only the package/rebuild
+diagnostic. A failed Bubblewrap probe always reports its structured diagnostic;
+the standalone user-namespace diagnostic is added only when it also fails.
+Container create then exits non-zero once, with each error naming the problem,
+consequence, remedy, and wrapper-owned underlying output.
 
 This is deliberately stricter than the `agent-skills` feature, which never fails
 container start. A Codex feature whose patch helper cannot run is not degraded,
 it is broken — and starting quietly would only move the failure into the middle
 of a Codex session, which is the symptom that made the original bug so confusing.
 
-The feature installs the `bubblewrap` package itself. `common-utils` happens to
-install it too, but a binary this feature cannot work without should not arrive
-as a side effect of another feature's package list.
+The feature explicitly installs the system `bubblewrap` package because `bwrap` is the stable probe. Codex's version-scoped internal copies are not inspected.
 
 ## Caveats
 
@@ -821,20 +984,7 @@ with:
 `docs/implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`.
 ```
 
-Then sharpen one sentence. The design says the smoke test uses a system `bwrap`
-"already present in the image". That is true — `common-utils` installs the
-`bubblewrap` package — but it undersells why Task 3 installs it again. Replace
-that sentence in section 4 with:
-
-```markdown
-The test uses the system `bwrap`. It reaches the image through `common-utils`'s
-package list, but the Codex feature installs `bubblewrap` explicitly rather than
-inherit a load-bearing binary from another feature's incidental dependencies.
-Codex also bundles its own `bwrap` under `~/.codex`, which the test deliberately
-ignores: that path is version-scoped to Codex's release layout, and both
-binaries hit the same kernel/seccomp boundary, so the system one is a faithful
-proxy.
-```
+Then document that the system `bwrap` is the stable feature probe, that Codex's version-scoped bundled path is internal and unstable, and that official OpenAI Dev Container guidance installs Bubblewrap independently.
 
 - [ ] **Step 4: Verify the docs match what was built**
 
