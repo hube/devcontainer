@@ -19,10 +19,6 @@ The [`agent-skills`](.devcontainer/local-features/agent-skills/NOTES.md) local
 feature clones a repo that provides skills for AI agents to use, and installs
 them on container start.
 
-The [`codex`](.devcontainer/local-features/codex/NOTES.md) local feature installs
-the Codex CLI and ships the seccomp profile Codex's Bubblewrap sandbox needs in
-order to patch files.
-
 The [`github-cli-config`](.devcontainer/local-features/github-cli-config/NOTES.md)
 local feature persists `gh` authentication for processes that do not inherit
 Dev Container `remoteEnv`.
