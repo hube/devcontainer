@@ -161,17 +161,21 @@ installs a verification script under `~/bin/devcontainer-feature/codex/`, and
 `devcontainer-feature.json` declares a `postCreateCommand` pointing at it, so
 it runs on every container create.
 
-The script runs:
-
-1. `unshare --user --map-root-user true` — user-namespace creation works;
-2. `bwrap --unshare-all --dev-bind / / true` — the full Bubblewrap path
-   works, including the mount-family syscalls.
-
-It always runs the `unshare` probe and checks whether `bwrap` is installed. If available, it runs the Bubblewrap probe even when `unshare` failed; otherwise it reports a package-install/rebuild remedy. On probe failure it prints
+The script checks that `bwrap` is installed, then runs
+`bwrap --unshare-all --dev-bind / / true`. This end-to-end probe defines
+production health because it exercises the Bubblewrap path Codex actually
+uses, including user-namespace creation and the mount-family syscalls. A
+successful Bubblewrap probe exits successfully without running standalone
+`unshare`. If Bubblewrap fails, the script runs
+`unshare --user --map-root-user true` only as a secondary diagnostic. Missing
+Bubblewrap reports the package-install/rebuild remedy without running
+`unshare`. On probe failure it prints
 problem → consequence → remedy, including the failing command's actual stderr — e.g. "user-namespace creation is blocked → Codex's
 patch helper cannot apply edits → confirm the Codex feature's `securityOpt`
 resolves to `local-features/codex/seccomp/userns.json` and rebuild the
-container" — accumulates every applicable structured diagnostic, and exits non-zero once so the failures surface at create time
+container" — always reports the Bubblewrap failure, adds the standalone
+`unshare` failure only when that secondary probe also fails, and exits non-zero
+once so the failures surface at create time
 instead of mid-session.
 
 Unlike `agent-skills`, which never fails container start, this check *does*

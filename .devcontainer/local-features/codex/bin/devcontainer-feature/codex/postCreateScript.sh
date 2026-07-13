@@ -16,21 +16,19 @@ diagnose() {
   failed=1
 }
 
-if ! output="$(unshare --user --map-root-user true 2>&1)"; then
-  diagnose "creating an unprivileged user namespace is blocked." \
-    "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
-    unshare "$output"
-fi
-
 if ! bwrap_path="$(command -v bwrap 2>&1)"; then
   diagnose "Bubblewrap is not installed." \
     "Install the bubblewrap package by rebuilding the container with the Codex feature." \
     "command -v bwrap" "$bwrap_path"
-else
-  if ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
-    diagnose "Bubblewrap cannot start a sandbox." \
+elif ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
+  diagnose "Bubblewrap cannot start a sandbox." \
+    "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
+    bwrap "$output"
+
+  if ! output="$(unshare --user --map-root-user true 2>&1)"; then
+    diagnose "creating an unprivileged user namespace is also blocked." \
       "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
-      bwrap "$output"
+      unshare "$output"
   fi
 fi
 

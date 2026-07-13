@@ -665,10 +665,11 @@ fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
 
 run_hook() {
   local dir; dir="$(mktemp -d)"
-  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$1" "$3" "$1" > "$dir/unshare"
+  printf '#!/usr/bin/env bash\necho invoked > "%s"\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$dir/unshare-invoked" "$1" "$3" "$1" > "$dir/unshare"
   printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$2" "$3" "$2" > "$dir/bwrap"
   chmod +x "$dir/unshare" "$dir/bwrap"
   OUT="$(PATH="$dir:$PATH" "$HOOK" 2>&1)"; RC=$?
+  [[ -e "$dir/unshare-invoked" ]]; UNSHARE_INVOKED=$?
   rm -rf "$dir"
 }
 
@@ -677,23 +678,13 @@ run_hook 0 0 ""
   || fail "success: exits 0 when namespaces work" "rc=$RC out=$OUT"
 
 run_hook 1 0 "unshare: Operation not permitted"
-[[ $RC -ne 0 ]] && pass "userns blocked: fails the container create" \
-  || fail "userns blocked: fails the container create" "exited 0"
-[[ "$OUT" == *"user namespace"* ]] && pass "userns blocked: names the problem" \
-  || fail "userns blocked: names the problem" "$OUT"
-[[ "$OUT" == *"cannot apply edits"* ]] && pass "userns blocked: names the consequence" \
-  || fail "userns blocked: names the consequence" "$OUT"
-
-[[ "$OUT" == *"seccomp/userns.json"* && "$OUT" == *"rebuild"* ]] \
-  && pass "userns blocked: names the remedy" \
-  || fail "userns blocked: names the remedy" "$OUT"
-[[ "$OUT" == *"unshare said: unshare: Operation not permitted"* ]] \
-  && pass "userns blocked: relays the underlying error" \
-  || fail "userns blocked: relays the underlying error" "$OUT"
+[[ $RC -eq 0 ]] && pass "bwrap healthy: ignores standalone unshare failure" \
+  || fail "bwrap healthy: ignores standalone unshare failure" "rc=$RC out=$OUT"
+[[ $UNSHARE_INVOKED -ne 0 ]] && pass "bwrap healthy: skips the secondary unshare diagnostic" \
+  || fail "bwrap healthy: skips the secondary unshare diagnostic" "unshare was invoked"
 
 missing_dir="$(mktemp -d)"
 ln -s "$(command -v bash)" "$missing_dir/bash"
-ln -s "/usr/bin/true" "$missing_dir/unshare"
 OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
 rm -rf "$missing_dir"
 [[ $RC -ne 0 ]] && pass "bwrap missing: fails the container create" || fail "bwrap missing: fails the container create" "exited 0"
@@ -702,7 +693,7 @@ rm -rf "$missing_dir"
 [[ "$OUT" == *"bubblewrap package"* && "$OUT" == *"rebuild"* ]] && pass "bwrap missing: names the package remedy" || fail "bwrap missing: names the package remedy" "$OUT"
 [[ "$OUT" == *"command -v bwrap said: no output"* ]] && pass "bwrap missing: frames the underlying lookup output" || fail "bwrap missing: frames the underlying lookup output" "$OUT"
 
-run_hook 0 1 "bwrap: No permissions to create a new namespace"
+run_hook 1 1 "bwrap: No permissions to create a new namespace"
 [[ $RC -ne 0 ]] && pass "bwrap blocked: fails the container create" \
   || fail "bwrap blocked: fails the container create" "exited 0"
 [[ "$OUT" == *"Bubblewrap"* ]] && pass "bwrap blocked: distinct message from the userns case" \
@@ -710,31 +701,19 @@ run_hook 0 1 "bwrap: No permissions to create a new namespace"
 [[ "$OUT" == *"bwrap said: bwrap: No permissions"* ]] \
   && pass "bwrap blocked: relays the underlying error" \
   || fail "bwrap blocked: relays the underlying error" "$OUT"
+[[ "$OUT" == *"unshare said: bwrap: No permissions"* ]] \
+  && pass "bwrap blocked: reports the secondary unshare failure" \
+  || fail "bwrap blocked: reports the secondary unshare failure" "$OUT"
 
-run_hook 1 1 "namespace probe failed"
-[[ $RC -ne 0 ]] && pass "combined blocked: fails the container create" \
-  || fail "combined blocked: fails the container create" "exited 0"
-[[ "$OUT" == *"unshare said: namespace probe failed"* ]] \
-  && pass "combined blocked: reports the unshare failure" \
-  || fail "combined blocked: reports the unshare failure" "$OUT"
-[[ "$OUT" == *"bwrap said: namespace probe failed"* ]] \
-  && pass "combined blocked: reports the bwrap failure" \
-  || fail "combined blocked: reports the bwrap failure" "$OUT"
-
-missing_dir="$(mktemp -d)"
-ln -s "$(command -v bash)" "$missing_dir/bash"
-printf '#!/usr/bin/env bash\necho "unshare combined failure" >&2\nexit 1\n' > "$missing_dir/unshare"
-chmod +x "$missing_dir/unshare"
-OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
-rm -rf "$missing_dir"
-[[ $RC -ne 0 ]] && pass "combined missing: fails the container create" \
-  || fail "combined missing: fails the container create" "exited 0"
-[[ "$OUT" == *"unshare said: unshare combined failure"* ]] \
-  && pass "combined missing: reports the unshare failure" \
-  || fail "combined missing: reports the unshare failure" "$OUT"
-[[ "$OUT" == *"command -v bwrap said: no output"* ]] \
-  && pass "combined missing: reports the missing bwrap failure" \
-  || fail "combined missing: reports the missing bwrap failure" "$OUT"
+run_hook 0 1 "bwrap probe failed"
+[[ $RC -ne 0 ]] && pass "bwrap blocked with userns available: fails the container create" \
+  || fail "bwrap blocked with userns available: fails the container create" "exited 0"
+[[ "$OUT" == *"bwrap said: bwrap probe failed"* ]] \
+  && pass "bwrap blocked with userns available: reports the bwrap failure" \
+  || fail "bwrap blocked with userns available: reports the bwrap failure" "$OUT"
+[[ "$OUT" != *"unshare said:"* ]] \
+  && pass "bwrap blocked with userns available: omits a success diagnostic" \
+  || fail "bwrap blocked with userns available: omits a success diagnostic" "$OUT"
 INSTALL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
 
 installs_bubblewrap() {
@@ -790,21 +769,19 @@ diagnose() {
   failed=1
 }
 
-if ! output="$(unshare --user --map-root-user true 2>&1)"; then
-  diagnose "creating an unprivileged user namespace is blocked." \
-    "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
-    unshare "$output"
-fi
-
 if ! bwrap_path="$(command -v bwrap 2>&1)"; then
   diagnose "Bubblewrap is not installed." \
     "Install the bubblewrap package by rebuilding the container with the Codex feature." \
     "command -v bwrap" "$bwrap_path"
-else
-  if ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
-    diagnose "Bubblewrap cannot start a sandbox." \
+elif ! output="$(bwrap --unshare-all --dev-bind / / true 2>&1)"; then
+  diagnose "Bubblewrap cannot start a sandbox." \
+    "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
+    bwrap "$output"
+
+  if ! output="$(unshare --user --map-root-user true 2>&1)"; then
+    diagnose "creating an unprivileged user namespace is also blocked." \
       "Check that the Codex feature's securityOpt resolves to $PROFILE on the host, then rebuild the container." \
-      bwrap "$output"
+      unshare "$output"
   fi
 fi
 
@@ -866,7 +843,7 @@ chmod +x .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postC
 .devcontainer/local-features/codex/test/test-postcreate.sh
 ```
 
-Expected: all assertions `ok`, ending `23 passed, 0 failed`.
+Expected: all assertions `ok`, ending `18 passed, 0 failed`.
 
 The two "relays the underlying error" assertions are the ones that matter most, and they have been checked against a hook *without* the fix: a naive version that prints its own message but swallows the command's stderr fails exactly those two and passes the other diagnostic assertions. That is why they assert on the wrapper's framing (`unshare said: ...`) rather than on the bare error text, which the failing command writes to stderr on its own.
 
@@ -886,7 +863,7 @@ git commit -m "$(cat <<'EOF'
 Verify user namespaces at container create
 
 Install bubblewrap explicitly rather than inherit it from common-utils'
-package list, and add a postCreate hook that probes unshare and bwrap.
+package list, and add a postCreate hook that gates health on bwrap and uses unshare only for secondary diagnosis.
 The hook fails the create rather than starting quietly: a Codex feature
 whose patch helper cannot run is broken, and coming up anyway would just
 relocate the failure into the middle of a session.
@@ -946,10 +923,14 @@ relative to upstream, and how to re-vendor it.
 
 ## Failure handling
 
-On container create the feature probes the capability it depends on: it creates
-a user namespace with `unshare`, then starts a Bubblewrap sandbox. If either
-fails, **container create fails**, naming the problem, the consequence, the
-remedy, and the underlying error.
+On container create the feature checks that `bwrap` is installed, then runs its
+end-to-end sandbox probe. A successful Bubblewrap probe defines health and does
+not require standalone `unshare`. If Bubblewrap fails, `unshare` runs only as a
+secondary diagnostic. Missing Bubblewrap reports only the package/rebuild
+diagnostic. A failed Bubblewrap probe always reports its structured diagnostic;
+the standalone user-namespace diagnostic is added only when it also fails.
+Container create then exits non-zero once, with each error naming the problem,
+consequence, remedy, and wrapper-owned underlying output.
 
 This is deliberately stricter than the `agent-skills` feature, which never fails
 container start. A Codex feature whose patch helper cannot run is not degraded,

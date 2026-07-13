@@ -23,11 +23,14 @@ relative to upstream, and how to re-vendor it.
 
 ## Failure handling
 
-On container create the feature probes the capability it depends on: it creates
-a user namespace with `unshare`, then starts a Bubblewrap sandbox. Every applicable check runs even after another fails. If either probe fails, or if the required `bwrap` executable is missing, **container
-create fails**, naming the problem, the consequence, the targeted remedy, and
-the underlying command output. A missing executable points to installing the
-`bubblewrap` package and rebuilding; a blocked probe points to `securityOpt`.
+On container create the feature checks that the required `bwrap` executable is
+installed, then runs `bwrap --unshare-all --dev-bind / / true`. That end-to-end
+Bubblewrap probe defines feature health. If it succeeds, container create
+succeeds without requiring a separate `unshare` command to work. If it fails,
+the hook runs `unshare --user --map-root-user true` as a secondary diagnostic.
+Container create fails after reporting the Bubblewrap failure and, when
+applicable, the separate user-namespace failure. Missing Bubblewrap reports
+only the package and rebuild remedy because Codex cannot apply edits without it.
 
 This is deliberately stricter than the `agent-skills` feature, which never fails
 container start. A Codex feature whose patch helper cannot run is not degraded,
