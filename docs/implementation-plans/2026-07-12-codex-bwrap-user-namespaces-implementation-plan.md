@@ -654,7 +654,7 @@ Create `.devcontainer/local-features/codex/test/test-postcreate.sh`:
 # PATH, so the test does not depend on the host's namespace policy.
 set -uo pipefail
 
-HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/devcontainer-feature/codex/postCreateScript.sh"
+HOOK="${HOOK:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/devcontainer-feature/codex/postCreateScript.sh}"
 passed=0
 failed=0
 
@@ -666,18 +666,18 @@ fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
 run_hook() {
   local dir; dir="$(mktemp -d)"
   printf '#!/usr/bin/env bash\necho invoked > "%s"\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$dir/unshare-invoked" "$1" "$3" "$1" > "$dir/unshare"
-  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$2" "$3" "$2" > "$dir/bwrap"
+  printf '#!/usr/bin/env bash\n[[ %s -eq 0 ]] || echo "%s" >&2\nexit %s\n' "$2" "$4" "$2" > "$dir/bwrap"
   chmod +x "$dir/unshare" "$dir/bwrap"
   OUT="$(PATH="$dir:$PATH" "$HOOK" 2>&1)"; RC=$?
   [[ -e "$dir/unshare-invoked" ]]; UNSHARE_INVOKED=$?
   rm -rf "$dir"
 }
 
-run_hook 0 0 ""
+run_hook 0 0 "" ""
 [[ $RC -eq 0 ]] && pass "success: exits 0 when namespaces work" \
   || fail "success: exits 0 when namespaces work" "rc=$RC out=$OUT"
 
-run_hook 1 0 "unshare: Operation not permitted"
+run_hook 1 0 "unshare: Operation not permitted" ""
 [[ $RC -eq 0 ]] && pass "bwrap healthy: ignores standalone unshare failure" \
   || fail "bwrap healthy: ignores standalone unshare failure" "rc=$RC out=$OUT"
 [[ $UNSHARE_INVOKED -ne 0 ]] && pass "bwrap healthy: skips the secondary unshare diagnostic" \
@@ -685,27 +685,30 @@ run_hook 1 0 "unshare: Operation not permitted"
 
 missing_dir="$(mktemp -d)"
 ln -s "$(command -v bash)" "$missing_dir/bash"
+printf '#!/usr/bin/env bash\necho invoked > "%s"\nexit 0\n' "$missing_dir/unshare-invoked" > "$missing_dir/unshare"
+chmod +x "$missing_dir/unshare"
 OUT="$(PATH="$missing_dir" "$HOOK" 2>&1)"; RC=$?
-rm -rf "$missing_dir"
 [[ $RC -ne 0 ]] && pass "bwrap missing: fails the container create" || fail "bwrap missing: fails the container create" "exited 0"
 [[ "$OUT" == *"Bubblewrap is not installed"* ]] && pass "bwrap missing: names the problem" || fail "bwrap missing: names the problem" "$OUT"
 [[ "$OUT" == *"cannot apply edits"* ]] && pass "bwrap missing: names the consequence" || fail "bwrap missing: names the consequence" "$OUT"
 [[ "$OUT" == *"bubblewrap package"* && "$OUT" == *"rebuild"* ]] && pass "bwrap missing: names the package remedy" || fail "bwrap missing: names the package remedy" "$OUT"
+[[ ! -e "$missing_dir/unshare-invoked" ]] && pass "bwrap missing: skips the secondary unshare diagnostic" || fail "bwrap missing: skips the secondary unshare diagnostic" "unshare was invoked"
+rm -rf "$missing_dir"
 [[ "$OUT" == *"command -v bwrap said: no output"* ]] && pass "bwrap missing: frames the underlying lookup output" || fail "bwrap missing: frames the underlying lookup output" "$OUT"
 
-run_hook 1 1 "bwrap: No permissions to create a new namespace"
+run_hook 1 1 "unshare sentinel: Operation not permitted" "bwrap sentinel: No permissions to create a new namespace"
 [[ $RC -ne 0 ]] && pass "bwrap blocked: fails the container create" \
   || fail "bwrap blocked: fails the container create" "exited 0"
 [[ "$OUT" == *"Bubblewrap"* ]] && pass "bwrap blocked: distinct message from the userns case" \
   || fail "bwrap blocked: distinct message from the userns case" "$OUT"
-[[ "$OUT" == *"bwrap said: bwrap: No permissions"* ]] \
+[[ "$OUT" == *"codex: bwrap said: bwrap sentinel: No permissions to create a new namespace"* ]] \
   && pass "bwrap blocked: relays the underlying error" \
   || fail "bwrap blocked: relays the underlying error" "$OUT"
-[[ "$OUT" == *"unshare said: bwrap: No permissions"* ]] \
+[[ "$OUT" == *"codex: unshare said: unshare sentinel: Operation not permitted"* ]] \
   && pass "bwrap blocked: reports the secondary unshare failure" \
   || fail "bwrap blocked: reports the secondary unshare failure" "$OUT"
 
-run_hook 0 1 "bwrap probe failed"
+run_hook 0 1 "" "bwrap probe failed"
 [[ $RC -ne 0 ]] && pass "bwrap blocked with userns available: fails the container create" \
   || fail "bwrap blocked with userns available: fails the container create" "exited 0"
 [[ "$OUT" == *"bwrap said: bwrap probe failed"* ]] \
@@ -843,7 +846,7 @@ chmod +x .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postC
 .devcontainer/local-features/codex/test/test-postcreate.sh
 ```
 
-Expected: all assertions `ok`, ending `18 passed, 0 failed`.
+Expected: all assertions `ok`, ending `19 passed, 0 failed`.
 
 The two "relays the underlying error" assertions are the ones that matter most, and they have been checked against a hook *without* the fix: a naive version that prints its own message but swallows the command's stderr fails exactly those two and passes the other diagnostic assertions. That is why they assert on the wrapper's framing (`unshare said: ...`) rather than on the bare error text, which the failing command writes to stderr on its own.
 
