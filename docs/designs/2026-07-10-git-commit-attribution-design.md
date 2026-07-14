@@ -293,26 +293,51 @@ that fire no trigger — the human-authored ones.
 
 Exiting 0 when no repository hook exists is only correct for hooks whose no-op
 equals absence — vetoes and notifications, which is most of githooks(5). Two
-hooks change git's behavior by merely existing, and each gets an
-absence-equivalent adapter in the dispatcher, both verified by experiment:
+hooks change git's behavior by merely existing, and each gets an adapter in the
+dispatcher.
+
+**Absence-equivalent means ref, worktree, and index outcomes are identical to
+having no hook installed.** It does not mean identical diagnostics: git
+attributes a refusal to the hook that made it, so the operator sees
+`push-to-checkout hook declined` where an uninstalled gate would have said
+`Working directory has unstaged changes`. The push is refused either way and
+the repository is left in the same state. Equivalence is claimed for what the
+control protects — refs and working trees — and nowhere else.
 
 - **`push-to-checkout`**: under `receive.denyCurrentBranch=updateInstead`, an
-  exit-0 hook tells git the worktree update was handled. A bare `exit 0` let
-  the ref advance while the worktree and index stayed at the old commit,
-  leaving the repository dirty. When no repository hook exists, the dispatcher
-  emulates git's built-in default: refuse when the worktree or index differ
-  from `HEAD`, otherwise `git read-tree -u -m HEAD "$1"`. The hook runs with
-  its cwd inside `$GIT_DIR`, where a file named `HEAD` exists, so every
-  revision argument needs `--` disambiguation.
+  exit-0 hook tells git the worktree update was handled. A bare `exit 0` lets
+  the ref advance while the worktree and index stay at the old commit, leaving
+  the repository dirty. When no repository hook exists, the dispatcher emulates
+  git's built-in default — refuse when the worktree or index differ from
+  `HEAD`, otherwise update both:
+
+  ```sh
+  git update-index -q --ignore-submodules --refresh &&
+  git diff-files --quiet --ignore-submodules -- &&
+  git diff-index --quiet --cached --ignore-submodules HEAD -- &&
+  git read-tree -u -m HEAD "$1"
+  ```
+
+  The `--` on `diff-index` is load-bearing and is the reason the chain is given
+  verbatim. The hook's cwd is `$GIT_DIR`, which contains a file named `HEAD`,
+  so `diff-index`, whose argument grammar is `<tree-ish> [--] [<path>…]`, reads
+  a bare `HEAD` as ambiguous and aborts the adapter. `read-tree` takes only
+  tree-ish arguments and parses no pathspec, so it needs no `--` — adding one
+  is harmless but does not address the ambiguity, which arises before
+  `read-tree` runs.
+
 - **`proc-receive`**: replaces receive-pack's internal command execution for
   refs matching `receive.procReceiveRefs`, speaking a pkt-line protocol no
   generic script can emulate. A repository hook, when present, gets the
   protocol passed through untouched by `exec`. When none exists the dispatcher
-  exits non-zero: a missing hook and a failing hook reject the push with the
-  same `fail to run proc-receive hook` outcome, so failing fast is
-  absence-equivalent. Nothing in this container sets
-  `receive.procReceiveRefs`; the adapter exists so nothing breaks if
-  something ever does.
+  exits non-zero, which rejects the matched ref exactly as an absent hook does.
+  Equivalence here is ref-level only, and narrower than it looks: it is
+  established for the single-ref rejection path, not for multi-ref or atomic
+  pushes, and the two paths report different remote errors. That is sufficient,
+  because both outcomes are *reject the push*; a dispatcher that instead exited
+  0 would tell receive-pack the refs were handled when nothing had handled
+  them. Nothing in this container sets `receive.procReceiveRefs`; the adapter
+  exists so nothing breaks if something ever does.
 
 Every other githooks(5) hook is delegation-safe: the `pre-*` and `*-msg`
 families veto, the `post-*` family and `reference-transaction` observe, and
@@ -573,10 +598,10 @@ Fixtures are drawn from real artifacts.
 | repository `.git/hooks/pre-commit` present | still runs with the gate installed |
 | repository hook present but not executable | warning printed; treated as absent |
 | commit from a linked worktree | default hooks resolve via the common dir; gate applies |
-| `updateInstead` push, clean worktree, no repo hook | worktree and index update, as with the gate absent |
-| `updateInstead` push, dirty worktree, no repo hook | refused, as with the gate absent |
+| `updateInstead` push, clean worktree, no repo hook | ref advances; worktree and index match the pushed tip; tree clean |
+| `updateInstead` push, dirty worktree, no repo hook | refused; ref unmoved; local edit preserved |
 | `updateInstead` push, repo `push-to-checkout` present | repo hook runs |
-| push to a `receive.procReceiveRefs` ref, no repo hook | rejected, as with the gate absent |
+| push to a `receive.procReceiveRefs` ref, no repo hook | ref rejected, as with the gate absent |
 | `GIT_CONFIG_NOSYSTEM=1` | gate absent |
 
 The fabricated-block fixture rejects only because `Skills:` became mandatory.
@@ -606,14 +631,21 @@ These were established by experiment in the container, not assumed.
 - A present-but-no-op `push-to-checkout` under
   `receive.denyCurrentBranch=updateInstead` lets the ref advance while the
   worktree and index stay at the old commit, leaving the repository dirty —
-  presence alone overrides git's built-in update. The emulation (refuse when
-  worktree or index differ from `HEAD`, else `git read-tree -u -m HEAD "$1"`)
-  behaves identically to hook absence in both the clean and dirty cases. The
-  hook's cwd is inside `$GIT_DIR`, so `HEAD` needs `--` disambiguation against
-  the file of that name.
-- A push to a `receive.procReceiveRefs`-matched ref fails with the same
-  `fail to run proc-receive hook` rejection whether the hook is missing or
-  present-and-failing, so a fail-fast adapter is absence-equivalent.
+  presence alone overrides git's built-in update.
+- The emulation chain given under *Presence-Sensitive Hooks* reproduces git's
+  built-in `updateInstead` behavior: the clean case advances the ref and
+  updates the worktree and index, and the dirty case refuses and preserves the
+  local edit, each matching a control push made with no hook installed.
+- The hook's cwd is `$GIT_DIR`. `git diff-index … HEAD` there is ambiguous
+  against the `HEAD` file and aborts the chain; `--` after `HEAD` resolves it.
+  `git read-tree -u -m HEAD "$1"` is unaffected, parsing no pathspec — a chain
+  whose only `--` is on `diff-index` completes and updates the worktree.
+- A push to a `receive.procReceiveRefs`-matched ref is rejected whether the
+  hook is missing or present-and-failing, so a fail-fast adapter preserves the
+  ref outcome. The remote's error text differs between the two
+  (`cannot find hook 'proc-receive'` versus
+  `fail to negotiate version with proc-receive hook`), so the equivalence is
+  ref-level, not diagnostic.
 - `git commit --no-verify` bypasses the `commit-msg` hook.
 - `/etc/gitconfig` is absent in the image; `~/.gitconfig` is provided by
   `hube/devcontainer-dotfiles` at container-create time.
