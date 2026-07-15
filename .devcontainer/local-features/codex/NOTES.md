@@ -32,9 +32,8 @@ The exact entries are `seccomp=unconfined` and `apparmor=unconfined`.
 ]
 ```
 
-The controlled Docker Desktop capability-subtraction test produced an empty
-final set, so the Codex feature does not add Docker capabilities. The
-default-security control must fail through the instrumented system Bubblewrap
+The embedded and published `capAdd` is exactly `[]`, so no Docker capabilities
+are added. The default-security control must fail through the instrumented system Bubblewrap
 path with `bwrap: pivot_root: Operation not permitted`. If that control begins
 to pass, it is the retirement signal: reevaluate and redesign the outer runtime
 before preserving either unconfined option.

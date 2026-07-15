@@ -20,6 +20,7 @@ DOCKER_PATH="docker"
 CLI_HOME="$HOME"
 WORKSPACE=""
 CONTAINER_ID=""
+CONTAINERS=()
 VOLUMES=()
 fixture_started=false
 
@@ -231,29 +232,53 @@ discover_fixture_volumes() {
   done <<<"$output"
 }
 
+discover_fixture_containers() {
+  local output status container known
+  output="$(docker ps -aq --filter "label=$FIXTURE_LABEL" 2>&1)" || {
+    status=$?
+    diagnostic \
+      "Codex image-consumer fixture-container discovery failed for exact label '$FIXTURE_LABEL'." \
+      "The harness cannot guarantee cleanup of containers created before a container ID was reported." \
+      "Resolve Docker access, remove containers carrying label '$FIXTURE_LABEL', and rerun the test." \
+      "docker ps" "$output" "$status"
+    return "$status"
+  }
+  while IFS= read -r container; do
+    [[ -n "$container" ]] || continue
+    known=false
+    for existing in "${CONTAINERS[@]}"; do
+      [[ "$existing" == "$container" ]] && known=true
+    done
+    [[ "$known" == false ]] && CONTAINERS+=("$container")
+  done <<<"$output"
+}
+
 cleanup() {
   local original_status=$?
-  local cleanup_failed=false output status volume
+  local cleanup_failed=false output status container volume
   trap - EXIT
 
+  if [[ "$fixture_started" == true ]] && ! discover_fixture_containers; then
+    cleanup_failed=true
+  fi
   if [[ "$fixture_started" == true ]] && ! discover_fixture_volumes; then
     cleanup_failed=true
   fi
 
-  if [[ -n "$CONTAINER_ID" ]]; then
+  for container in "${CONTAINERS[@]}"; do
     set +e
-    output="$(docker rm -f -v "$CONTAINER_ID" 2>&1)"
+    output="$(docker rm -f -v "$container" 2>&1)"
     status=$?
     set -e
     if [[ $status -ne 0 ]]; then
       diagnostic \
-        "Codex image-consumer cleanup failed because container '$CONTAINER_ID' could not be removed." \
+        "Codex image-consumer cleanup failed because exact-label fixture container '$container' could not be removed." \
         "The temporary consumer container remains on the Docker engine." \
-        "Resolve Docker access and remove it with 'docker rm -f -v $CONTAINER_ID'." \
+        "Resolve Docker access and remove it with 'docker rm -f -v $container'." \
         "docker rm" "$output" "$status"
       cleanup_failed=true
     fi
-  fi
+  done
 
   for volume in "${VOLUMES[@]}"; do
     set +e
@@ -358,6 +383,7 @@ for line in reversed(sys.argv[1].splitlines()):
         break
 PY
 )"
+discover_fixture_containers || exit $?
 discover_fixture_volumes || exit $?
 if [[ $up_status -ne 0 ]]; then
   diagnostic \

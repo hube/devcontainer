@@ -38,7 +38,7 @@ required_notes = {
     "retirement signal": "`bwrap: pivot_root: Operation not permitted`",
     "local acceptance": "test-image-consumer.sh codex-runtime-test:",
     "post-publication acceptance": "test-image-consumer.sh ghcr.io/hube/devcontainer:latest",
-    "empty capability result": "does not add Docker capabilities",
+    "empty capability contract": "published `capAdd` is exactly `[]`, so no Docker capabilities are added",
 }
 failures = [
     f"NOTES missing {label}: {text}"
@@ -48,6 +48,8 @@ failures = [
 for capability in manifest.get("capAdd", []):
     if f"`{capability}`" not in normalized_notes:
         failures.append(f"NOTES missing final capability: {capability}")
+if "controlled Docker Desktop capability-subtraction test produced" in normalized_notes:
+    failures.append("NOTES defends the settled capAdd contract with an empirical claim")
 
 notes_link = ".devcontainer/local-features/codex/NOTES.md"
 if notes_link not in readme:
@@ -87,6 +89,12 @@ required_consumer = {
     "UID rewrite bypass": 'run_devcontainer up --update-remote-user-uid-default never',
     "Docker wrapper preflight": 'preflight_docker() {',
     "captured wrapper preflight": 'preflight_output="$(preflight_docker 2>&1)"',
+    "fixture container tracking": 'CONTAINERS=()',
+    "exact-label container discovery": 'discover_fixture_containers() {',
+    "exact-label Docker filter": 'docker ps -aq --filter "label=$FIXTURE_LABEL"',
+    "post-up container discovery": 'discover_fixture_containers || exit $?\ndiscover_fixture_volumes || exit $?',
+    "cleanup container rediscovery": 'if [[ "$fixture_started" == true ]] && ! discover_fixture_containers; then',
+    "all matched-container cleanup": 'for container in "${CONTAINERS[@]}"; do',
 }
 for label, text in required_consumer.items():
     if text not in consumer:
@@ -95,6 +103,8 @@ for label, text in required_consumer.items():
 for forbidden in ('"features"', '"runArgs"', '"mounts"', '"securityOpt"', '"capAdd"'):
     if forbidden in consumer:
         failures.append(f"consumer test adds forbidden config material: {forbidden}")
+if 'if [[ -n "$CONTAINER_ID" ]]; then' in consumer:
+    failures.append("consumer cleanup still depends on the parsed containerId")
 
 if failures:
     raise SystemExit("Codex documentation contract failed:\n- " + "\n- ".join(failures))
@@ -145,6 +155,9 @@ assert_mutation_rejected \
   "required NOTES content" "$NOTES" \
   '`seccomp=unconfined`'
 assert_mutation_rejected \
+  "settled empty capability contract" "$NOTES" \
+  'published `capAdd` is exactly `[]`'
+assert_mutation_rejected \
   "README security-detail rejection" "$README" \
   "The image includes Codex" \
   "The image includes Codex with seccomp=unconfined"
@@ -163,3 +176,12 @@ assert_mutation_rejected \
 assert_mutation_rejected \
   "Docker wrapper preflight" "$CONSUMER_TEST" \
   "preflight_docker() {"
+assert_mutation_rejected \
+  "exact-label container discovery" "$CONSUMER_TEST" \
+  "discover_fixture_containers() {"
+assert_mutation_rejected \
+  "post-up container discovery" "$CONSUMER_TEST" \
+  $'discover_fixture_containers || exit $?\ndiscover_fixture_volumes || exit $?'
+assert_mutation_rejected \
+  "cleanup container rediscovery" "$CONSUMER_TEST" \
+  'if [[ "$fixture_started" == true ]] && ! discover_fixture_containers; then'
