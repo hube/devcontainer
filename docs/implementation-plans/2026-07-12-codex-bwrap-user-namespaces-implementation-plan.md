@@ -1,5 +1,13 @@
 # Codex Bubblewrap User Namespaces Implementation Plan
 
+> **Superseded (2026-07-14):** This plan implemented the custom seccomp-profile
+> design in PR #41. PR #42 reverted that implementation because published-image
+> consumers could not resolve the host-side Feature path. Do not execute this
+> plan. Its replacement will implement
+> [`2026-07-14-codex-unconfined-runtime-design.md`](../designs/2026-07-14-codex-unconfined-runtime-design.md)
+> using self-contained `seccomp=unconfined` and `apparmor=unconfined` runtime
+> metadata. This file remains as a historical record.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let Codex's Bubblewrap-based patch helper apply edits in this devcontainer by shipping a custom seccomp profile that permits unprivileged user namespaces, scoped entirely to the Codex local feature.
