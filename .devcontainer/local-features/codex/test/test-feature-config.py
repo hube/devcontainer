@@ -35,6 +35,12 @@ REQUIRED_INSTALLER_COMMANDS = {
     "Bubblewrap metadata verification": re.compile(
         r"(?:^|\$\()stat\s+-c\s+['\"]%U:%G %a['\"]\s+/usr/bin/bwrap(?:\s|\)|$)"
     ),
+    "executable hook copy": re.compile(
+        r"(?:^|\$\(|\s)rsync\s+-rp\s+"
+        r"--chown=\$\{_CONTAINER_USER\}:\$\{_CONTAINER_USER\}\s+"
+        r"--chmod=D755,F755\s+bin/\.\s+"
+        r"/home/\$\{_CONTAINER_USER\}/bin(?:\s|$)"
+    ),
 }
 
 
@@ -101,6 +107,8 @@ def test_installer_command_mutations() -> None:
         "DEBIAN_FRONTEND=noninteractive apt-get install -y bubblewrap",
         "chown root:root /usr/bin/bwrap && chmod 4755 /usr/bin/bwrap",
         "metadata=\"$(stat -c '%U:%G %a' /usr/bin/bwrap)\"",
+        "rsync -rp --chown=${_CONTAINER_USER}:${_CONTAINER_USER} "
+        "--chmod=D755,F755 bin/. /home/${_CONTAINER_USER}/bin",
     ]
     comments = [f"# {command}" for command in commands]
     valid_installer = "\n".join(commands + comments)
@@ -111,6 +119,7 @@ def test_installer_command_mutations() -> None:
         "chown": "chown root:root /usr/bin/bwrap && ",
         "chmod": " && chmod 4755 /usr/bin/bwrap",
         "stat": commands[2],
+        "executable hook copy": commands[3],
     }
     for command in mutations.values():
         mutated = valid_installer.replace(command, "", 1)

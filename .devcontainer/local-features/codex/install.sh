@@ -57,10 +57,16 @@ then
   echo ">Copying config to the remote user's home directory"
 
   # Copy files over while setting ownership and permissions
-  copy_output="$(rsync -rp \
+  copy_output="$({
+    rsync -rp \
       --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
       --chmod=D755,F644 \
-      home/. /home/${_CONTAINER_USER} 2>&1)" || {
+      home/. /home/${_CONTAINER_USER} &&
+    rsync -rp \
+      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chmod=D755,F755 \
+      bin/. /home/${_CONTAINER_USER}/bin
+  } 2>&1)" || {
     status=$?
     printf '%s\n' \
       "Codex configuration copy failed. Codex cannot install its configuration for the container user. Verify the Feature files and target home permissions, then rebuild. rsync said: ${copy_output:-rsync exited with status $status without diagnostic output}" >&2
