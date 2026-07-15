@@ -1,6 +1,6 @@
 # Run Codex's Bubblewrap sandbox inside the published devcontainer image
 
-**Status:** Approved in PR #46; implementation in progress.
+**Status:** Approved; implementation complete and under review.
 
 Supersedes
 [`2026-07-11-codex-bwrap-user-namespaces-design.md`](2026-07-11-codex-bwrap-user-namespaces-design.md)

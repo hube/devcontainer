@@ -4,7 +4,7 @@
 > `superpowers:subagent-driven-development` to implement this plan task by task.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** In progress.
+**Status:** Complete; implementation under review.
 
 **Goal:** Make the published devcontainer image able to run Codex's Linux
 Bubblewrap sandbox on Docker Desktop without consumer-side files.
@@ -65,7 +65,7 @@ tests establish the contract before documentation records it.
 - Uses the full five-capability candidate list until Task 3 replaces it with
   the controlled-subtraction result.
 
-- [ ] **Step 1: Write the failing static contract test**
+- [x] **Step 1: Write the failing static contract test**
 
   Create a Python script that loads the Feature JSON, reads the installer, and
   checks these exact initial values:
@@ -91,7 +91,7 @@ tests establish the contract before documentation records it.
   in-memory installer string and prove the assertion helper rejects the
   mutation; a comment containing the same words must not satisfy the helper.
 
-- [ ] **Step 2: Run the contract test and verify RED**
+- [x] **Step 2: Run the contract test and verify RED**
 
   Run:
 
@@ -102,7 +102,7 @@ tests establish the contract before documentation records it.
   Expected: failure because the current manifest lacks `securityOpt`, `capAdd`,
   and `postCreateCommand`, and the installer lacks the Bubblewrap commands.
 
-- [ ] **Step 3: Add the initial Feature metadata**
+- [x] **Step 3: Add the initial Feature metadata**
 
   Add these top-level fields without changing existing dependencies or mounts:
 
@@ -121,7 +121,7 @@ tests establish the contract before documentation records it.
   "postCreateCommand": "~/bin/devcontainer-feature/codex/postCreateScript.sh"
   ```
 
-- [ ] **Step 4: Install and verify Bubblewrap before user re-execution**
+- [x] **Step 4: Install and verify Bubblewrap before user re-execution**
 
   Add `set -euo pipefail`, validate `_CONTAINER_USER`, and in the root branch:
 
@@ -159,7 +159,7 @@ tests establish the contract before documentation records it.
   re-execution, and Codex installer so any failure adds the required
   problem/consequence/remedy prefix before the captured command output.
 
-- [ ] **Step 5: Verify GREEN and installer syntax**
+- [x] **Step 5: Verify GREEN and installer syntax**
 
   Run:
 
@@ -170,7 +170,7 @@ tests establish the contract before documentation records it.
 
   Expected: both commands exit zero without output.
 
-- [ ] **Step 6: Run the existing non-Docker regression suite and commit**
+- [x] **Step 6: Run the existing non-Docker regression suite and commit**
 
   Run the agent-skills post-start test and all three github-cli-config tests.
   Expected: 30 agent-skills checks and 27 GitHub CLI post-start checks pass;
@@ -194,7 +194,7 @@ tests establish the contract before documentation records it.
   `codex sandbox -P :workspace` creates and reads `codex-sandbox-marker` in its
   temporary working directory.
 
-- [ ] **Step 1: Write the failing health-hook tests**
+- [x] **Step 1: Write the failing health-hook tests**
 
   Build a temporary `PATH` containing executable `stat`, `timeout`, `codex`,
   and `rm` stubs. The success-world `stat` prints `root:root 4755`; the Codex
@@ -205,7 +205,7 @@ tests establish the contract before documentation records it.
   failure, and simultaneous metadata/Codex failure. Assert non-zero status,
   aggregation, and problem/consequence/remedy/wrapped-output ordering.
 
-- [ ] **Step 2: Run the hook test and verify RED**
+- [x] **Step 2: Run the hook test and verify RED**
 
   Run:
 
@@ -215,7 +215,7 @@ tests establish the contract before documentation records it.
 
   Expected: failure because `postCreateScript.sh` does not exist.
 
-- [ ] **Step 3: Implement the minimal hook**
+- [x] **Step 3: Implement the minimal hook**
 
   The hook must use `set -uo pipefail`, an `errors=()` array, and a cleanup trap.
   Capture `stat -c '%U:%G %a' /usr/bin/bwrap` output and continue to the Codex
@@ -236,7 +236,7 @@ tests establish the contract before documentation records it.
   directories and files mode `755`. Extend the static contract to require that
   copy command and mutation-check its removal.
 
-- [ ] **Step 4: Verify GREEN and script syntax**
+- [x] **Step 4: Verify GREEN and script syntax**
 
   Run:
 
@@ -247,7 +247,7 @@ tests establish the contract before documentation records it.
 
   Expected: all named health-hook checks pass and syntax checking exits zero.
 
-- [ ] **Step 5: Run Task 1 and existing regressions, then commit**
+- [x] **Step 5: Run Task 1 and existing regressions, then commit**
 
   Re-run the Task 1 Python contract and the existing non-Docker suite. Stage
   only the four Task 2 files and create the signed task commit.
@@ -268,7 +268,7 @@ tests establish the contract before documentation records it.
 - Accepts optional `CODEX_RUNTIME_TEST_IMAGE`; otherwise uses a unique
   `codex-runtime-test:<timestamp>-<pid>` tag and removes it through a trap.
 
-- [ ] **Step 1: Write the built-image and controlled-runtime test**
+- [x] **Step 1: Write the built-image and controlled-runtime test**
 
   The script must capture build output in a temporary file and print it on
   failure. Build with:
@@ -297,7 +297,7 @@ tests establish the contract before documentation records it.
   required only when omission fails and restoration passes. Finally run the
   exact required set and require success.
 
-- [ ] **Step 2: Run the controlled test and record its empirical result**
+- [x] **Step 2: Run the controlled test and record its empirical result**
 
   Run the script on the connected Docker Desktop engine. Expected sequence:
   control failure, full treatment success, one omission result and one restored
@@ -310,7 +310,7 @@ tests establish the contract before documentation records it.
 
   where the names and order are derived solely by the subtraction rule.
 
-- [ ] **Step 3: Make the empirical result a failing static expectation**
+- [x] **Step 3: Make the empirical result a failing static expectation**
 
   Replace `CAPABILITY_CANDIDATES` in the Python contract with
   `EXPECTED_CAP_ADD` containing exactly the ordered names printed by Step 2,
@@ -318,7 +318,7 @@ tests establish the contract before documentation records it.
   Run the Python test. Expected: failure because the manifest still contains
   at least one capability whose omission passed.
 
-- [ ] **Step 4: Update the manifest to the final set and verify GREEN**
+- [x] **Step 4: Update the manifest to the final set and verify GREEN**
 
   Replace `capAdd` with exactly `EXPECTED_CAP_ADD`. Re-run the Python test, then
   rebuild and rerun `test-runtime.sh`. Expected: metadata reports the final set,
@@ -326,7 +326,7 @@ tests establish the contract before documentation records it.
   capability's omission fails, restoration passes, and the wrapper proves
   system-Bubblewrap selection.
 
-- [ ] **Step 5: Run the full repository test suite and commit**
+- [x] **Step 5: Run the full repository test suite and commit**
 
   Run every Feature test, including the existing built-image install-order test
   and the new runtime test. Preserve the exact controlled-comparison output in
@@ -353,7 +353,7 @@ tests establish the contract before documentation records it.
   `devcontainer.json` contains only `image` and
   `appPort: ["127.0.0.1::2222"]`.
 
-- [ ] **Step 1: Write the failing documentation contract**
+- [x] **Step 1: Write the failing documentation contract**
 
   Require NOTES to name the exact two security options, every final capability,
   `/usr/bin/bwrap`, root ownership and mode `4755`, system-versus-bundled
@@ -364,7 +364,7 @@ tests establish the contract before documentation records it.
   `.devcontainer/local-features/codex/NOTES.md` while rejecting the detailed
   security-option and capability strings there.
 
-- [ ] **Step 2: Run the documentation test and verify RED**
+- [x] **Step 2: Run the documentation test and verify RED**
 
   Run:
 
@@ -374,7 +374,7 @@ tests establish the contract before documentation records it.
 
   Expected: failure listing the missing Codex runtime documentation.
 
-- [ ] **Step 3: Update NOTES and README, then verify GREEN**
+- [x] **Step 3: Update NOTES and README, then verify GREEN**
 
   Keep the existing remote-control SSH section in NOTES. Add sections for the
   supported runtime, exact outer runtime settings, system Bubblewrap and inner
@@ -383,7 +383,7 @@ tests establish the contract before documentation records it.
   one README sentence: the image includes Codex, with a link to the Feature
   NOTES. Re-run the documentation test and require zero status.
 
-- [ ] **Step 4: Write the unrelated-consumer acceptance test**
+- [x] **Step 4: Write the unrelated-consumer acceptance test**
 
   The script must require one image argument, create and clean a temporary
   workspace, run `devcontainer up`, preserve its full output on failure, and
@@ -394,7 +394,7 @@ tests establish the contract before documentation records it.
   volumes through cleanup traps. Its success output names the image and states
   that post-create health and sandboxed patch persistence were verified.
 
-- [ ] **Step 5: Verify the local image consumer and publication command**
+- [x] **Step 5: Verify the local image consumer and publication command**
 
   Run Task 3 with a stable temporary tag, then pass that tag to
   `test-image-consumer.sh`. Expected: the unrelated config starts, its embedded
@@ -403,7 +403,7 @@ tests establish the contract before documentation records it.
   `ghcr.io/hube/devcontainer:latest`; do not claim issue #36 is resolved until
   that command is run after merge and publication.
 
-- [ ] **Step 6: Update artifact status and run final verification**
+- [x] **Step 6: Update artifact status and run final verification**
 
   Change the design status to `Approved; implementation complete and under
   review.` and this plan status to `Complete; implementation under review.` Run
