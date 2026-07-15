@@ -6,7 +6,7 @@ Supersedes
 [`2026-07-11-codex-bwrap-user-namespaces-design.md`](2026-07-11-codex-bwrap-user-namespaces-design.md)
 and
 [`2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`](../implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md),
-and resolves the remaining work in
+and defines the replacement design for the remaining work in
 [`issue #36`](https://github.com/hube/devcontainer/issues/36).
 
 ## Problem
@@ -28,7 +28,7 @@ The replacement must satisfy all of these constraints:
 - projects that specify only the published image receive a working Codex
   sandbox without copying host-side support files;
 - Codex continues to run as the non-root container user;
-- the same image supports Docker Desktop and native Linux Docker;
+- the image supports Docker Desktop in Linux-container mode;
 - failures surface during container creation with the underlying command
   output;
 - Docker runtime relaxations are explicit, documented, and removable when no
@@ -80,9 +80,11 @@ Feature documentation must state this consequence directly.
 
 **Decided (owner, 2026-07-14, in session):** the Feature explicitly installs
 the distribution `bubblewrap` package and sets the setuid bit on
-`/usr/bin/bwrap`. Codex uses the first `bwrap` executable on `PATH`, giving the
-Feature a stable executable independent of Codex's versioned internal package
-layout.
+`/usr/bin/bwrap`. Codex prefers the first system `bwrap` executable on `PATH`
+only when its capability probe accepts that executable, including support for
+the `--perms` option; otherwise Codex falls back to its bundled Bubblewrap.
+Verification therefore confirms that Codex selects `/usr/bin/bwrap`, rather
+than merely confirming that the executable is present on `PATH`.
 
 The Feature also contributes the minimum Docker capability set required for
 that executable and the current Codex sandbox path. Implementation starts from
@@ -105,25 +107,20 @@ dependency.
 `NET_ADMIN` and `NET_RAW` are not candidates. OpenAI uses them for its
 container firewall, not for Bubblewrap.
 
-### Support Docker Desktop and native Linux Docker
+### Support Docker Desktop only
 
-**Decided (owner, 2026-07-14, in session):** both Docker Desktop and native
-Linux Docker are supported targets.
+**Decided (owner, 2026-07-15: [review
+comment](https://github.com/hube/devcontainer/pull/46#discussion_r3584710055)):**
+Docker Desktop in Linux-container mode is the only supported runtime target.
+Native Linux Docker, rootless Docker, Podman, and other Dev Container backends
+are out of scope.
 
-The supported runtime contract is Docker Desktop in Linux-container mode or a
-rootful native Docker Engine that accepts the declared capabilities and
-security options. Rootless Docker, Podman, and other Dev Container backends are
-out of scope for this change because their privilege and LSM models differ.
-
-`seccomp=unconfined` addresses the Docker seccomp restriction on both targets.
-`apparmor=unconfined` addresses native Linux hosts where Docker's AppArmor
-profile blocks Bubblewrap. Hosts that do not enforce AppArmor still receive the
-same declarative configuration; compatibility is verified by container-create
-tests rather than inferred from the host name.
-
-Native Linux behavior is automated in CI. Docker Desktop requires a one-time
-manual acceptance run because the repository's Linux CI runner cannot emulate
-Docker Desktop's Linux VM and host integration.
+The Feature still declares both `seccomp=unconfined` and
+`apparmor=unconfined`, matching the selected outer-runtime contract. The
+implementation is verified on Docker Desktop rather than treating a native
+Linux Docker Engine as a proxy for Docker Desktop's Linux VM and host
+integration. This repository does not add a GitHub Actions test environment
+for the unsupported native-Linux target.
 
 ### Define health by Codex's sandbox, not by a preliminary syscall probe
 
@@ -152,11 +149,8 @@ distinguish installation/runtime failure from a Codex CLI integration failure.
 
 The CLI is intentionally installed from OpenAI's unpinned installer in the
 current project. Consequently the health script is allowed to fail when a new
-Codex release changes its sandbox interface: that failure prevents publishing
-or silently starting an image whose Codex integration has not been updated.
-The publish workflow must run the same sandbox verification before its image
-push step; the lifecycle hook alone would detect the problem only after a
-consumer pulled the image.
+Codex release changes its sandbox interface: that failure prevents silently
+starting a container whose Codex integration has not been updated.
 
 ## Components and data flow
 
@@ -213,8 +207,15 @@ it already captured.
 Docker may reject a security option or capability before the health script can
 run. In that case Docker's container-create error is the authoritative output;
 the Feature notes must explain that the host does not support the published
-runtime contract and that the remedy is to use a supported Docker Desktop or
-native Linux Docker configuration.
+runtime contract and that the remedy is to use a supported Docker Desktop
+configuration.
+
+Dev Container tooling merges a consumer's `securityOpt` entries with the
+entries embedded in the image; it does not replace the image entries. A
+consumer-supplied seccomp or AppArmor setting in addition to the Feature's
+unconfined setting conflicts with the published runtime contract and is
+unsupported. The Feature notes must identify that conflict and direct the
+consumer to remove the additional setting.
 
 There is no automatic fallback to deprecated Landlock, `danger-full-access`, a
 custom profile, or a different image. Falling back would either weaken the
@@ -222,7 +223,7 @@ selected security model silently or reintroduce the distribution failure.
 
 ## Verification
 
-The implementation provides four layers of verification.
+The implementation provides three layers of verification.
 
 ### Structural Feature tests
 
@@ -241,10 +242,13 @@ The implementation provides four layers of verification.
   image boundary.
 - Inspect `/usr/bin/bwrap` as the non-root runtime image and confirm its owner
   and mode.
+- Run the Codex sandbox probe through an instrumented `bwrap` wrapper and
+  confirm that Codex selects the system executable instead of its bundled
+  fallback.
 - Preserve and print build output on failure; remove temporary images through
   cleanup traps.
 
-### Native Linux behavioral tests
+### Docker Desktop behavioral tests
 
 - Establish a control using Docker's default security settings and require it
   to reproduce the relevant Bubblewrap restriction. If the control begins to
@@ -260,9 +264,8 @@ directory; only the runtime security configuration changes. This rules out a
 different image or probe command as the benign explanation for the observed
 behavior.
 
-### Docker Desktop acceptance
-
-After merge and publication:
+The implementation is accepted on Docker Desktop by exercising the original
+published-image consumer path:
 
 1. create an unrelated project whose `devcontainer.json` specifies only
    `ghcr.io/hube/devcontainer:latest` plus its application port;
@@ -276,14 +279,29 @@ not merely the source repository's local Feature path.
 
 ## Documentation and lifecycle
 
-The Codex Feature `NOTES.md` and repository `README.md` describe:
+**Decided (owner, 2026-07-15: [review
+comment](https://github.com/hube/devcontainer/pull/46#discussion_r3584744928)):**
+the repository `README.md` provides only a high-level summary of the Codex
+Feature when needed and links readers to the Feature's `NOTES.md` for its
+runtime and security details.
 
-- that the published image enables a setuid Bubblewrap sandbox for Codex;
+The Codex Feature `NOTES.md` is the detailed operator reference. It documents:
+
 - the exact Docker security options and capabilities ultimately retained;
+- the setuid system Bubblewrap installation and the assertion that Codex
+  selects it rather than its bundled fallback;
 - the distinction between Docker's relaxed outer boundary and Codex's inner
   sandbox;
-- supported host families and failure remedies;
-- the control test as the retirement signal.
+- Docker Desktop as the supported runtime and the remedies for creation or
+  health-check failures;
+- the unsupported conflict created by additional consumer `securityOpt`
+  entries;
+- the control test as the retirement signal; and
+- the Docker Desktop acceptance procedure.
+
+The repository `README.md` does not duplicate those details. If its existing
+feature summary needs a Codex entry, that entry states only that Codex is
+included and links to the Codex Feature `NOTES.md`.
 
 The previous custom-profile design and its implementation plan remain in the
 repository as historical records with prominent supersession notices linking
@@ -297,6 +315,9 @@ container firewall, pin Codex or the base image, introduce a second published
 image, or change Docker-outside-of-Docker. Those concerns require separate
 designs because they alter independent trust and update boundaries.
 
+Native Linux Docker, rootless Docker, Podman, and other Dev Container backends
+are excluded by the supported-runtime decision above.
+
 ## Risks and trade-offs
 
 - Docker's outer seccomp and AppArmor protections are disabled for every
@@ -308,6 +329,6 @@ designs because they alter independent trust and update boundaries.
 - The unpinned Codex installer can change the sandbox CLI contract between
   image builds. Failing image or post-create tests are the deliberate signal to
   update the integration.
-- Native Linux distributions and Docker Desktop releases can differ in kernel
-  and LSM behavior. The two-host acceptance model makes that difference
-  explicit rather than claiming one environment represents both.
+- Docker Desktop releases can change the Linux VM's kernel and security
+  behavior. The lifecycle health check and Docker Desktop acceptance procedure
+  expose that drift at container creation and before release acceptance.
