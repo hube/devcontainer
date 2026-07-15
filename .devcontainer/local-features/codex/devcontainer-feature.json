@@ -6,6 +6,18 @@
     "ghcr.io/devcontainers/features/sshd:1": {}
   },
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "securityOpt": [
+    "seccomp=unconfined",
+    "apparmor=unconfined"
+  ],
+  "capAdd": [
+    "SYS_ADMIN",
+    "SYS_CHROOT",
+    "SETUID",
+    "SETGID",
+    "SYS_PTRACE"
+  ],
+  "postCreateCommand": "~/bin/devcontainer-feature/codex/postCreateScript.sh",
   "mounts": [
     {
       "type": "volume",
