@@ -19,11 +19,6 @@
     },
     {
       "type": "bind",
-      "source": "${localEnv:HOME}/.claude/rules",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/rules"
-    },
-    {
-      "type": "bind",
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/CLAUDE.md"
     }
