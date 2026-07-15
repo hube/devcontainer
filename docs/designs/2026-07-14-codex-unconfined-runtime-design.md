@@ -152,6 +152,16 @@ current project. Consequently the health script is allowed to fail when a new
 Codex release changes its sandbox interface: that failure prevents silently
 starting a container whose Codex integration has not been updated.
 
+**Decided (owner, 2026-07-15, in session):** the publication workflow does not
+run the Codex sandbox health probe on its native-Linux GitHub Actions runner.
+Docker Desktop is the only supported runtime, and treating the hosted Linux
+runner as a release gate would create a second runtime environment to maintain.
+An image can therefore publish after an unpinned Codex update breaks the
+sandbox integration; the supported-runtime failure is first detected by the
+post-create health check when a consumer creates the container. A pre-publish
+gate requires a separately provisioned Docker Desktop runner and is out of
+scope for this design.
+
 ## Components and data flow
 
 ### Feature metadata
