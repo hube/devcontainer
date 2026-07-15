@@ -76,6 +76,26 @@ def assert_equal(actual: object, expected: object) -> None:
     assert actual == expected, f"expected {expected!r}, got {actual!r}"
 
 
+def test_installer_rejects_uid_zero_container_user() -> None:
+    lines = executable_shell_lines(INSTALLER_PATH.read_text(encoding="utf-8"))
+    uid_zero_guard = 'if [[ "$container_user_id" -eq 0 ]]'
+    euid_branch = "if [[ $EUID -ne $container_user_id ]]"
+    error = (
+        '"Codex container user validation failed for \'${_CONTAINER_USER}\'. '
+        "Codex cannot safely install Bubblewrap or the CLI as the intended user. "
+        "Set _CONTAINER_USER to an existing non-root account and rebuild the container. "
+        "id said: '${_CONTAINER_USER}' resolved to UID $container_user_id\" >&2"
+    )
+
+    assert uid_zero_guard in lines, "installer does not reject a UID-0 container user"
+    assert lines.index(uid_zero_guard) < lines.index(euid_branch), (
+        "UID-0 rejection must precede the EUID branch"
+    )
+    assert any(error in line for line in lines), (
+        "UID-0 rejection lacks the required ordered diagnostic"
+    )
+
+
 def test_installer_command_mutations() -> None:
     commands = [
         "DEBIAN_FRONTEND=noninteractive apt-get install -y bubblewrap",
@@ -105,6 +125,7 @@ def test_security_option_path_mutation() -> None:
 
 
 def main() -> None:
+    test_installer_rejects_uid_zero_container_user()
     test_installer_command_mutations()
     test_security_option_path_mutation()
 

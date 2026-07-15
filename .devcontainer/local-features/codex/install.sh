@@ -18,6 +18,13 @@ container_user_id="$(id -u "${_CONTAINER_USER}" 2>&1)" || {
   exit "$status"
 }
 
+if [[ "$container_user_id" -eq 0 ]]
+then
+  printf '%s\n' \
+    "Codex container user validation failed for '${_CONTAINER_USER}'. Codex cannot safely install Bubblewrap or the CLI as the intended user. Set _CONTAINER_USER to an existing non-root account and rebuild the container. id said: '${_CONTAINER_USER}' resolved to UID $container_user_id" >&2
+  exit 1
+fi
+
 if [[ $EUID -ne $container_user_id ]]
 then
   apt_output="$(apt-get update 2>&1 && DEBIAN_FRONTEND=noninteractive \
