@@ -36,6 +36,15 @@ assert_ordered() {
   done
 }
 
+assert_physical_line_count() {
+  local text="$1"
+  local expected="$2"
+  local description="$3"
+  local actual
+  actual="$(printf '%s\n' "$text" | awk 'END { print NR }')"
+  [[ "$actual" -eq "$expected" ]] || fail "$description: expected $expected physical lines, got $actual in '$text'"
+}
+
 stub_dir="$test_root/stubs"
 mkdir -p "$stub_dir"
 
@@ -46,7 +55,20 @@ if [[ "${STAT_WORLD:-good}" == "fail" ]]; then
   printf '%s\n' 'stat exploded' >&2
   exit 19
 fi
+if [[ "${STAT_WORLD:-good}" == "multiline-fail" ]]; then
+  printf 'stat exploded\r\nstat detail\n' >&2
+  exit 19
+fi
 printf '%s\n' "${STAT_METADATA:-root:root 4755}"
+EOF
+
+cat >"$stub_dir/mktemp" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${MKTEMP_WORLD:-good}" == "multiline-fail" ]]; then
+  printf 'mktemp exploded\r\nmktemp detail\n' >&2
+  exit 17
+fi
+exec /usr/bin/mktemp "$@"
 EOF
 
 cat >"$stub_dir/timeout" <<'EOF'
@@ -62,6 +84,10 @@ cat >"$stub_dir/codex" <<'EOF'
 printf '%s\n' "$@" >"$TEST_LOG/codex-args"
 if [[ "${CODEX_WORLD:-good}" == "fail" ]]; then
   printf '%s\n' 'codex exploded' >&2
+  exit 23
+fi
+if [[ "${CODEX_WORLD:-good}" == "multiline-fail" ]]; then
+  printf 'codex exploded\r\ncodex detail\n' >&2
   exit 23
 fi
 
@@ -80,6 +106,9 @@ if [[ "${CODEX_WORLD:-good}" == "bad-marker" ]]; then
 else
   printf '%s\n' codex-sandbox-ok >"$workdir/codex-sandbox-marker"
 fi
+if [[ "${CODEX_WORLD:-good}" == "banner" ]]; then
+  printf '%s\n' 'Codex sandbox notice: using Bubblewrap'
+fi
 printf '%s\n' codex-sandbox-ok
 EOF
 
@@ -89,7 +118,7 @@ printf '%s\n' "$*" >>"$TEST_LOG/rm-args"
 exec /bin/rm "$@"
 EOF
 
-chmod +x "$stub_dir/stat" "$stub_dir/timeout" "$stub_dir/codex" "$stub_dir/rm"
+chmod +x "$stub_dir/stat" "$stub_dir/mktemp" "$stub_dir/timeout" "$stub_dir/codex" "$stub_dir/rm"
 
 run_world() {
   local name="$1"
@@ -124,6 +153,10 @@ expected_timeout_args=(30s codex "${expected_codex_args[@]}")
 assert_not_contains "$WORLD_STDERR" "failed" "success diagnostics"
 printf '%s\n' 'PASS: valid metadata and Codex marker readback succeed with exact arguments and cleanup'
 
+run_world banner-success CODEX_WORLD=banner
+[[ $WORLD_STATUS -eq 0 ]] || fail "benign banner world exited $WORLD_STATUS: $WORLD_STDERR"
+printf '%s\n' 'PASS: an exact sentinel output line succeeds alongside a benign Codex banner'
+
 run_world bad-metadata STAT_METADATA="root:root 0755"
 [[ $WORLD_STATUS -ne 0 ]] || fail "bad metadata world unexpectedly succeeded"
 assert_ordered "$WORLD_STDERR" \
@@ -144,6 +177,22 @@ assert_ordered "$WORLD_STDERR" \
 [[ -s "$WORLD_DIR/log/codex-args" ]] || fail "Codex probe did not run after stat failure"
 printf '%s\n' 'PASS: stat failure is wrapped and does not skip the Codex probe'
 
+run_world multiline-stat-failure STAT_WORLD=multiline-fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "multiline stat failure world unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "Codex Bubblewrap health check failed because Bubblewrap metadata could not be read" \
+  "stat said: stat exploded\\r\\nstat detail"
+assert_physical_line_count "$WORLD_STDERR" 1 "multiline stat wrapper"
+printf '%s\n' 'PASS: multiline stat output is preserved in one wrapper-added diagnostic line'
+
+run_world multiline-mktemp-failure MKTEMP_WORLD=multiline-fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "multiline mktemp failure world unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "Codex sandbox health check failed because a temporary workspace could not be created" \
+  "mktemp said: mktemp exploded\\r\\nmktemp detail"
+assert_physical_line_count "$WORLD_STDERR" 1 "multiline mktemp wrapper"
+printf '%s\n' 'PASS: multiline mktemp output is preserved in one wrapper-added diagnostic line'
+
 run_world codex-failure CODEX_WORLD=fail
 [[ $WORLD_STATUS -ne 0 ]] || fail "Codex failure world unexpectedly succeeded"
 assert_ordered "$WORLD_STDERR" \
@@ -153,6 +202,14 @@ assert_ordered "$WORLD_STDERR" \
   "codex sandbox said: codex exploded"
 assert_not_contains "$WORLD_STDERR" "Bubblewrap metadata could not be read" "independent Codex failure"
 printf '%s\n' 'PASS: Codex failure is wrapped with ordered problem, consequence, remedy, and output'
+
+run_world multiline-codex-failure CODEX_WORLD=multiline-fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "multiline Codex failure world unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "Codex sandbox health check failed because the Codex sandbox probe exited with status 23" \
+  "codex sandbox said: codex exploded\\r\\ncodex detail"
+assert_physical_line_count "$WORLD_STDERR" 1 "multiline Codex wrapper"
+printf '%s\n' 'PASS: multiline Codex output is preserved in one wrapper-added diagnostic line'
 
 run_world marker-failure CODEX_WORLD=bad-marker
 [[ $WORLD_STATUS -ne 0 ]] || fail "marker mismatch world unexpectedly succeeded"
@@ -172,3 +229,11 @@ assert_ordered "$WORLD_STDERR" \
   "codex sandbox said: codex exploded"
 [[ "$(printf '%s\n' "$WORLD_STDERR" | grep -c 'health check failed')" -eq 2 ]] || fail "combined failure did not aggregate exactly two diagnostics: $WORLD_STDERR"
 printf '%s\n' 'PASS: simultaneous metadata and Codex failures are aggregated in stable order'
+
+run_world combined-multiline-failure STAT_WORLD=multiline-fail CODEX_WORLD=multiline-fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "combined multiline failure world unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "stat said: stat exploded\\r\\nstat detail" \
+  "codex sandbox said: codex exploded\\r\\ncodex detail"
+assert_physical_line_count "$WORLD_STDERR" 2 "combined multiline wrappers"
+printf '%s\n' 'PASS: each simultaneous multiline failure occupies one physical diagnostic line'
