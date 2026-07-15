@@ -1,6 +1,10 @@
 # Enable unprivileged user namespaces for Codex's patch helper
 
-**Status:** Design approved; implementation plan under review in PR #40.
+**Status:** Superseded on 2026-07-14 by
+[`2026-07-14-codex-unconfined-runtime-design.md`](2026-07-14-codex-unconfined-runtime-design.md).
+The custom seccomp profile was implemented in PR #41 and reverted in PR #42
+because published-image consumers could not resolve its host-side Feature path.
+This file remains as the historical record of the superseded design.
 
 Resolves [issue #36](https://github.com/hube/devcontainer/issues/36).
 
