@@ -79,7 +79,8 @@ then
       "Codex user re-execution preparation failed. Codex cannot install its CLI as the container user. Verify the Feature installer path and rebuild. realpath said: ${installer_path:-realpath exited with status $status without diagnostic output}" >&2
     exit "$status"
   }
-  user_install_output="$(sudo -iu "${_CONTAINER_USER}" "$installer_path" 2>&1)" || {
+  user_install_output="$(sudo -iu "${_CONTAINER_USER}" env \
+    _CONTAINER_USER="${_CONTAINER_USER}" "$installer_path" 2>&1)" || {
     status=$?
     printf '%s\n' \
       "Codex user re-execution failed. Codex cannot install its CLI as the container user. Verify sudo can start the configured container user, then rebuild. sudo said: ${user_install_output:-sudo exited with status $status without diagnostic output}" >&2

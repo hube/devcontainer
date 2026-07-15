@@ -10,13 +10,7 @@
     "seccomp=unconfined",
     "apparmor=unconfined"
   ],
-  "capAdd": [
-    "SYS_ADMIN",
-    "SYS_CHROOT",
-    "SETUID",
-    "SETGID",
-    "SYS_PTRACE"
-  ],
+  "capAdd": [],
   "postCreateCommand": "~/bin/devcontainer-feature/codex/postCreateScript.sh",
   "mounts": [
     {
