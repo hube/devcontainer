@@ -142,6 +142,50 @@ def assert_runtime_build_status_contract(source: str) -> None:
     )
 
 
+def assert_runtime_desktop_contract(source: str) -> None:
+    info = "docker info --format '{{.OperatingSystem}}'"
+    check = '[[ "$DOCKER_OPERATING_SYSTEM" != "Docker Desktop" ]]'
+    build = "if npx -y @devcontainers/cli@latest build"
+    for fragment in (info, check, build):
+        assert fragment in source, f"runtime test missing Docker Desktop gate: {fragment}"
+    assert source.index(info) < source.index(check) < source.index(build), (
+        "runtime test must verify Docker Desktop identity before building or deriving capabilities"
+    )
+
+
+def assert_runtime_control_contract(source: str) -> None:
+    run = 'run_probe control-default-security "${control_args[@]}"'
+    restriction = 'CONTROL_RESTRICTION="bwrap: pivot_root: Operation not permitted"'
+    check = (
+        '[[ -z "$PROBE_BWRAP_LOG" || '
+        '"$PROBE_OUTPUT" != *"$CONTROL_RESTRICTION"* ]]'
+    )
+    treatment = 'run_probe treatment-full-candidates "${full_runtime_args[@]}"'
+    for fragment in (run, restriction, check, "control_evidence=", treatment):
+        assert fragment in source, f"runtime test missing valid-control contract: {fragment}"
+    assert source.index(run) < source.index(check) < source.index(treatment), (
+        "runtime test must validate control output and wrapper evidence before treatment"
+    )
+
+
+def assert_runtime_omission_contract(source: str) -> None:
+    run = 'run_probe "omit-$omitted" "${omission_args[@]}"'
+    saved = (
+        "omission_status=$PROBE_STATUS",
+        "omission_output=$PROBE_OUTPUT",
+        "omission_bwrap_log=$PROBE_BWRAP_LOG",
+    )
+    check = 'if [[ -z "$omission_bwrap_log" ]]; then'
+    evidence = "omission_evidence="
+    restore = 'run_probe "restore-after-$omitted" "${full_runtime_args[@]}"'
+    for fragment in (run, *saved, check, evidence, restore):
+        assert fragment in source, f"runtime test missing omission evidence contract: {fragment}"
+    positions = [source.index(fragment) for fragment in (run, *saved, check, restore)]
+    assert positions == sorted(positions), (
+        "runtime test must save and validate omission evidence before restoration overwrites it"
+    )
+
+
 def assert_rejects(assertion, value: object) -> None:
     try:
         assertion(value)
@@ -299,6 +343,68 @@ def test_runtime_build_status_contract_mutations() -> None:
     )
 
 
+def test_runtime_desktop_contract_mutations() -> None:
+    valid_source = "\n".join(
+        (
+            "DOCKER_OPERATING_SYSTEM=\"$(docker info --format '{{.OperatingSystem}}')\"",
+            '[[ "$DOCKER_OPERATING_SYSTEM" != "Docker Desktop" ]]',
+            "if npx -y @devcontainers/cli@latest build; then",
+        )
+    )
+    assert_runtime_desktop_contract(valid_source)
+    for fragment in valid_source.splitlines():
+        assert_rejects(
+            assert_runtime_desktop_contract,
+            valid_source.replace(fragment, ""),
+        )
+
+
+def test_runtime_control_contract_mutations() -> None:
+    valid_source = "\n".join(
+        (
+            'CONTROL_RESTRICTION="bwrap: pivot_root: Operation not permitted"',
+            'run_probe control-default-security "${control_args[@]}"',
+            '[[ -z "$PROBE_BWRAP_LOG" || "$PROBE_OUTPUT" != *"$CONTROL_RESTRICTION"* ]]',
+            "control_evidence=output-and-log",
+            'run_probe treatment-full-candidates "${full_runtime_args[@]}"',
+        )
+    )
+    assert_runtime_control_contract(valid_source)
+    for fragment in valid_source.splitlines():
+        assert_rejects(
+            assert_runtime_control_contract,
+            valid_source.replace(fragment, ""),
+        )
+
+
+def test_runtime_omission_contract_mutations() -> None:
+    valid_source = "\n".join(
+        (
+            'run_probe "omit-$omitted" "${omission_args[@]}"',
+            "omission_status=$PROBE_STATUS",
+            "omission_output=$PROBE_OUTPUT",
+            "omission_bwrap_log=$PROBE_BWRAP_LOG",
+            'if [[ -z "$omission_bwrap_log" ]]; then',
+            "omission_evidence=output-and-log",
+            'run_probe "restore-after-$omitted" "${full_runtime_args[@]}"',
+        )
+    )
+    assert_runtime_omission_contract(valid_source)
+    for fragment in valid_source.splitlines():
+        assert_rejects(
+            assert_runtime_omission_contract,
+            valid_source.replace(fragment, ""),
+        )
+    assert_rejects(
+        assert_runtime_omission_contract,
+        valid_source.replace(
+            'if [[ -z "$omission_bwrap_log" ]]; then\nomission_evidence=output-and-log',
+            "omission_evidence=output-and-log",
+        )
+        + '\nif [[ -z "$omission_bwrap_log" ]]; then',
+    )
+
+
 def main() -> None:
     test_installer_rejects_uid_zero_container_user()
     test_installer_command_mutations()
@@ -308,6 +414,9 @@ def main() -> None:
     test_runtime_codex_path_contract_mutations()
     test_runtime_capability_contract_mutations()
     test_runtime_build_status_contract_mutations()
+    test_runtime_desktop_contract_mutations()
+    test_runtime_control_contract_mutations()
+    test_runtime_omission_contract_mutations()
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
@@ -341,6 +450,18 @@ def main() -> None:
         (
             "runtime build status",
             lambda: assert_runtime_build_status_contract(runtime_test),
+        ),
+        (
+            "runtime Docker Desktop identity",
+            lambda: assert_runtime_desktop_contract(runtime_test),
+        ),
+        (
+            "runtime default-security control",
+            lambda: assert_runtime_control_contract(runtime_test),
+        ),
+        (
+            "runtime omission evidence",
+            lambda: assert_runtime_omission_contract(runtime_test),
         ),
     ]
     for description, check in checks:

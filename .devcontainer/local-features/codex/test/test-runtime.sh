@@ -57,6 +57,22 @@ fail_with_output() {
   exit 1
 }
 
+DOCKER_OPERATING_SYSTEM="$(docker info --format '{{.OperatingSystem}}' 2>&1)" || {
+  status=$?
+  fail_with_output \
+    "Codex runtime Docker daemon identity inspection failed." \
+    "Capability derivation cannot verify that it targets the supported Docker Desktop runtime." \
+    "Connect a working Docker Desktop Linux engine and rerun this test." \
+    "docker info OperatingSystem" "$DOCKER_OPERATING_SYSTEM" "$status"
+}
+if [[ "$DOCKER_OPERATING_SYSTEM" != "Docker Desktop" ]]; then
+  fail_with_output \
+    "Codex runtime Docker daemon identity was '$DOCKER_OPERATING_SYSTEM', expected 'Docker Desktop'." \
+    "A native-Linux or other engine cannot publish the supported-runtime capability derivation result." \
+    "Connect Docker Desktop in Linux-container mode and rerun this test." \
+    "docker info OperatingSystem" "$DOCKER_OPERATING_SYSTEM" 1
+fi
+
 if npx -y @devcontainers/cli@latest build \
   --workspace-folder "$REPO_ROOT" --image-name "$IMAGE" >"$BUILD_LOG" 2>&1; then
   :
@@ -319,6 +335,16 @@ if [[ $PROBE_STATUS -eq 0 ]]; then
     "Reevaluate and redesign the outer-runtime contract before updating this test." \
     "control probe" "$PROBE_OUTPUT" "$PROBE_STATUS"
 fi
+CONTROL_RESTRICTION="bwrap: pivot_root: Operation not permitted"
+if [[ -z "$PROBE_BWRAP_LOG" || "$PROBE_OUTPUT" != *"$CONTROL_RESTRICTION"* ]]; then
+  control_evidence="$(printf 'OUTPUT_BEGIN\n%s\nOUTPUT_END\nBWRAP_LOG_BEGIN\n%s\nBWRAP_LOG_END' \
+    "$PROBE_OUTPUT" "$PROBE_BWRAP_LOG")"
+  fail_with_output \
+    "Codex runtime default-security control failed without proving the expected '$CONTROL_RESTRICTION' restriction through the instrumented system Bubblewrap path." \
+    "The treatment comparison and capability subtraction would be based on an invalid startup, timeout, or unrelated failure." \
+    "Resolve the control-path failure and rerun the complete Docker Desktop comparison." \
+    "control probe evidence" "$control_evidence" "$PROBE_STATUS"
+fi
 
 run_probe treatment-full-candidates "${full_runtime_args[@]}"
 if [[ $PROBE_STATUS -ne 0 ]]; then
@@ -350,6 +376,17 @@ for omitted in "${CANDIDATES[@]}"; do
 
   run_probe "omit-$omitted" "${omission_args[@]}"
   omission_status=$PROBE_STATUS
+  omission_output=$PROBE_OUTPUT
+  omission_bwrap_log=$PROBE_BWRAP_LOG
+  if [[ -z "$omission_bwrap_log" ]]; then
+    omission_evidence="$(printf 'OUTPUT_BEGIN\n%s\nOUTPUT_END\nBWRAP_LOG_BEGIN\n%s\nBWRAP_LOG_END' \
+      "$omission_output" "$omission_bwrap_log")"
+    fail_with_output \
+      "Codex runtime omission for '$omitted' did not invoke the instrumented system Bubblewrap path." \
+      "Its status cannot determine whether '$omitted' is required by the intended Codex sandbox path." \
+      "Restore system Bubblewrap selection and rerun the complete controlled subtraction." \
+      "omission probe evidence" "$omission_evidence" "$omission_status"
+  fi
   run_probe "restore-after-$omitted" "${full_runtime_args[@]}"
   if [[ $PROBE_STATUS -ne 0 ]]; then
     fail_with_output \
