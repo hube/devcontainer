@@ -34,7 +34,11 @@ tests establish the contract before documentation records it.
 - The health check must not authenticate or call a model. It must run
   `codex sandbox -P :workspace` in a temporary working directory, create and
   read a marker there, aggregate independent failures, preserve underlying
-  output, and clean up.
+  output, and clean up before the final aggregate decision. Cleanup failure is
+  a health failure and joins the aggregate diagnostics exactly once.
+- Runtime-test cleanup must preserve the incoming status, attempt all required
+  cleanup, preserve each failing command's output, and return nonzero when any
+  required cleanup fails.
 - Every Feature-owned error states the problem, consequence, remedy, and
   captured command output in that order.
 - The publication workflow remains unchanged; it does not run the probe on its
@@ -202,8 +206,9 @@ tests establish the contract before documentation records it.
   `codex-sandbox-ok` to `codex-sandbox-marker`, and prints the same sentinel.
   Assert success, exact `sandbox -P :workspace -C` arguments, marker readback,
   and cleanup. Add failure worlds for bad metadata, `stat` failure, Codex
-  failure, and simultaneous metadata/Codex failure. Assert non-zero status,
-  aggregation, and problem/consequence/remedy/wrapped-output ordering.
+  failure, cleanup failure, simultaneous metadata/Codex failure, and combined
+  metadata/Codex/cleanup failure. Assert non-zero status, exact diagnostic
+  count and order, and problem/consequence/remedy/wrapped-output ordering.
 
 - [x] **Step 2: Run the hook test and verify RED**
 
@@ -228,9 +233,10 @@ tests establish the contract before documentation records it.
   ```
 
   Capture combined output and status. Require zero status, sentinel output,
-  and marker contents. Append a complete one-line diagnostic for each
-  independent failure, print all diagnostics to stderr, and exit one when the
-  array is non-empty.
+  and marker contents. Attempt temporary-workspace cleanup before deciding the
+  aggregate result; append its captured failure as a complete one-line
+  diagnostic. Print each independent diagnostic once to stderr and exit one
+  when the array is non-empty.
 
   Update the installer to copy `bin` to the container user's home with
   directories and files mode `755`. Extend the static contract to require that
@@ -257,6 +263,7 @@ tests establish the contract before documentation records it.
 **Files:**
 
 - Create: `.devcontainer/local-features/codex/test/test-runtime.sh`
+- Create: `.devcontainer/local-features/codex/test/test-runtime-cleanup.sh`
 - Modify: `.devcontainer/local-features/codex/devcontainer-feature.json`
 - Modify: `.devcontainer/local-features/codex/test/test-feature-config.py`
 
@@ -297,6 +304,12 @@ tests establish the contract before documentation records it.
   required only when omission fails and restoration passes. Finally run the
   exact required set and require success.
 
+  Add a focused behavior test for the runtime finalizer using failing Docker
+  test doubles rather than real resources. Require successful cleanup to
+  preserve zero and nonzero incoming statuses; require volume failure, image
+  failure, and simultaneous failures to return nonzero, retain ordered output,
+  and attempt every required cleanup operation.
+
 - [x] **Step 2: Run the controlled test and record its empirical result**
 
   Run the script on the connected Docker Desktop engine. Expected sequence:
@@ -320,18 +333,20 @@ tests establish the contract before documentation records it.
 
 - [x] **Step 4: Update the manifest to the final set and verify GREEN**
 
-  Replace `capAdd` with exactly `EXPECTED_CAP_ADD`. Re-run the Python test, then
-  rebuild and rerun `test-runtime.sh`. Expected: metadata reports the final set,
-  the control still fails, the final treatment passes, each retained
+  Replace `capAdd` with exactly `EXPECTED_CAP_ADD`. Re-run the Python test and
+  `test-runtime-cleanup.sh`, then rebuild and rerun `test-runtime.sh`. Expected:
+  cleanup behavior passes without Docker resources, metadata reports the final
+  set, the control still fails, the final treatment passes, each retained
   capability's omission fails, restoration passes, and the wrapper proves
   system-Bubblewrap selection.
 
 - [x] **Step 5: Run the full repository test suite and commit**
 
-  Run every Feature test, including the existing built-image install-order test
-  and the new runtime test. Preserve the exact controlled-comparison output in
-  the task report, including the benign explanation ruled out: all probes used
-  the same image, command, user, and working directory. Stage the three Task 3
+  Run every Feature test, including the existing built-image install-order test,
+  the runtime cleanup behavior test, and the Docker Desktop runtime test.
+  Preserve the exact controlled-comparison output in the task report, including
+  the benign explanation ruled out: all probes used the same image, command,
+  user, and working directory. Stage the four Task 3
   files and create the signed task commit.
 
 ### Task 4: Document the contract and accept an unrelated image consumer

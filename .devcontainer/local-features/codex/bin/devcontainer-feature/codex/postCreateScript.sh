@@ -11,12 +11,31 @@ encode_diagnostic_output() {
   printf '%s' "$output"
 }
 
-cleanup() {
-  if [[ -n "$workdir" ]]; then
-    rm -rf "$workdir"
+cleanup_workdir() {
+  local cleanup_output cleanup_status cleanup_detail
+  [[ -n "$workdir" ]] || return 0
+
+  cleanup_output="$(rm -rf "$workdir" 2>&1)"
+  cleanup_status=$?
+  if [[ $cleanup_status -ne 0 ]]; then
+    cleanup_detail="$(encode_diagnostic_output "${cleanup_output:-rm exited with status $cleanup_status without diagnostic output}")"
+    errors+=("Codex sandbox health check cleanup failed because the temporary workspace '$workdir' could not be removed. Codex sandbox health cannot be reported as successful. Remove the temporary workspace after restoring filesystem access, then rerun the hook. rm said: $cleanup_detail")
   fi
+  workdir=""
+  return "$cleanup_status"
 }
-trap cleanup EXIT
+
+finish() {
+  local original_status="$1"
+  trap - EXIT
+  cleanup_workdir || true
+  if ((${#errors[@]})); then
+    printf '%s\n' "${errors[@]}" >&2
+    exit 1
+  fi
+  exit "$original_status"
+}
+trap 'finish $?' EXIT
 
 bwrap_metadata="$(stat -c '%U:%G %a' /usr/bin/bwrap 2>&1)"
 stat_status=$?
@@ -66,7 +85,4 @@ else
   fi
 fi
 
-if ((${#errors[@]})); then
-  printf '%s\n' "${errors[@]}" >&2
-  exit 1
-fi
+finish 0

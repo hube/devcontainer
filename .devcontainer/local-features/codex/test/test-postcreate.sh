@@ -115,6 +115,10 @@ EOF
 cat >"$stub_dir/rm" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$TEST_LOG/rm-args"
+if [[ "${RM_WORLD:-good}" == "multiline-fail" ]]; then
+  printf 'rm exploded\r\nrm detail\n' >&2
+  exit 29
+fi
 exec /bin/rm "$@"
 EOF
 
@@ -237,3 +241,24 @@ assert_ordered "$WORLD_STDERR" \
   "codex sandbox said: codex exploded\\r\\ncodex detail"
 assert_physical_line_count "$WORLD_STDERR" 2 "combined multiline wrappers"
 printf '%s\n' 'PASS: each simultaneous multiline failure occupies one physical diagnostic line'
+
+run_world cleanup-failure RM_WORLD=multiline-fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "cleanup failure world unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "Codex sandbox health check cleanup failed because the temporary workspace" \
+  "Codex sandbox health cannot be reported as successful" \
+  "Remove the temporary workspace after restoring filesystem access, then rerun the hook" \
+  "rm said: rm exploded\\r\\nrm detail"
+assert_physical_line_count "$WORLD_STDERR" 1 "cleanup failure wrapper"
+[[ "$(printf '%s\n' "$WORLD_STDERR" | grep -c 'health check.*failed')" -eq 1 ]] || fail "cleanup failure did not produce exactly one diagnostic: $WORLD_STDERR"
+printf '%s\n' 'PASS: cleanup failure makes an otherwise healthy hook fail with relayed rm output'
+
+run_world combined-cleanup-failure STAT_WORLD=multiline-fail CODEX_WORLD=multiline-fail RM_WORLD=multiline-fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "combined cleanup failure world unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "stat said: stat exploded\\r\\nstat detail" \
+  "codex sandbox said: codex exploded\\r\\ncodex detail" \
+  "rm said: rm exploded\\r\\nrm detail"
+assert_physical_line_count "$WORLD_STDERR" 3 "combined metadata, Codex, and cleanup wrappers"
+[[ "$(printf '%s\n' "$WORLD_STDERR" | grep -c 'health check.*failed')" -eq 3 ]] || fail "combined cleanup failure did not aggregate exactly three diagnostics: $WORLD_STDERR"
+printf '%s\n' 'PASS: metadata, Codex, and cleanup failures aggregate once each in stable order'

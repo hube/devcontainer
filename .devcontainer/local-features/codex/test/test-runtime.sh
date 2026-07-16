@@ -18,17 +18,32 @@ else
 fi
 
 cleanup() {
-  local cleanup_output cleanup_status
-  rm -f "$BUILD_LOG"
+  local original_status=$?
+  local cleanup_failed=false cleanup_output cleanup_status cleanup_detail
+  trap - EXIT
+
+  set +e
+  cleanup_output="$(rm -f "$BUILD_LOG" 2>&1)"
+  cleanup_status=$?
+  set -e
+  if [[ $cleanup_status -ne 0 ]]; then
+    cleanup_detail="${cleanup_output//$'\r'/\\r}"
+    cleanup_detail="${cleanup_detail//$'\n'/\\n}"
+    printf '%s\n' \
+      "Codex runtime test cleanup failed because build log '$BUILD_LOG' could not be removed. Temporary test output remains on the filesystem. Remove it after restoring filesystem access. rm said: ${cleanup_detail:-rm exited with status $cleanup_status without diagnostic output}" >&2
+    cleanup_failed=true
+  fi
   if [[ "$volume_created" == true ]]; then
     set +e
     cleanup_output="$(docker volume rm -f "$WRAPPER_VOLUME" 2>&1)"
     cleanup_status=$?
     set -e
     if [[ $cleanup_status -ne 0 ]]; then
+      cleanup_detail="${cleanup_output//$'\r'/\\r}"
+      cleanup_detail="${cleanup_detail//$'\n'/\\n}"
       printf '%s\n' \
-        "Codex runtime test cleanup failed because wrapper volume '$WRAPPER_VOLUME' could not be removed. The test volume remains on the Docker engine. Remove it with 'docker volume rm -f $WRAPPER_VOLUME' after resolving Docker access. docker volume rm said:" >&2
-      printf '%s\n' "${cleanup_output:-docker volume rm exited with status $cleanup_status without diagnostic output}" >&2
+        "Codex runtime test cleanup failed because wrapper volume '$WRAPPER_VOLUME' could not be removed. The test volume remains on the Docker engine. Remove it with 'docker volume rm -f $WRAPPER_VOLUME' after resolving Docker access. docker volume rm said: ${cleanup_detail:-docker volume rm exited with status $cleanup_status without diagnostic output}" >&2
+      cleanup_failed=true
     fi
   fi
   if [[ "$generated_image" == true ]]; then
@@ -37,13 +52,28 @@ cleanup() {
     cleanup_status=$?
     set -e
     if [[ $cleanup_status -ne 0 ]]; then
+      cleanup_detail="${cleanup_output//$'\r'/\\r}"
+      cleanup_detail="${cleanup_detail//$'\n'/\\n}"
       printf '%s\n' \
-        "Codex runtime test cleanup failed because the temporary image '$IMAGE' could not be removed. The temporary image remains on the Docker engine. Remove it with 'docker image rm -f $IMAGE' after resolving Docker access. docker image rm said:" >&2
-      printf '%s\n' "${cleanup_output:-docker image rm exited with status $cleanup_status without diagnostic output}" >&2
+        "Codex runtime test cleanup failed because the temporary image '$IMAGE' could not be removed. The temporary image remains on the Docker engine. Remove it with 'docker image rm -f $IMAGE' after resolving Docker access. docker image rm said: ${cleanup_detail:-docker image rm exited with status $cleanup_status without diagnostic output}" >&2
+      cleanup_failed=true
     fi
   fi
+  if [[ "$cleanup_failed" == true ]]; then
+    exit 1
+  fi
+  exit "$original_status"
 }
 trap cleanup EXIT
+
+if [[ "${CODEX_RUNTIME_CLEANUP_TEST:-}" == 1 ]]; then
+  BUILD_LOG="${CODEX_RUNTIME_CLEANUP_TEST_BUILD_LOG:?cleanup test build log is required}"
+  WRAPPER_VOLUME="${CODEX_RUNTIME_CLEANUP_TEST_VOLUME:?cleanup test volume is required}"
+  IMAGE="${CODEX_RUNTIME_CLEANUP_TEST_IMAGE:?cleanup test image is required}"
+  volume_created=true
+  generated_image=true
+  exit "${CODEX_RUNTIME_CLEANUP_TEST_STATUS:?cleanup test status is required}"
+fi
 
 fail_with_output() {
   local problem="$1"
