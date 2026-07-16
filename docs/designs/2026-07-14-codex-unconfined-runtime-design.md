@@ -1,6 +1,6 @@
 # Run Codex's Bubblewrap sandbox inside the published devcontainer image
 
-**Status:** Design direction approved; written design under review.
+**Status:** Approved.
 
 Supersedes
 [`2026-07-11-codex-bwrap-user-namespaces-design.md`](2026-07-11-codex-bwrap-user-namespaces-design.md)
@@ -137,7 +137,9 @@ The Feature installs a `postCreateCommand` health script under
    directory;
 3. requires the sandboxed command to create and read a marker in its allowed
    working directory;
-4. removes the temporary directory and exits once with the aggregate result.
+4. removes the temporary directory before deciding the aggregate result;
+5. treats cleanup failure as a health failure, preserving the cleanup command's
+   output alongside any metadata or sandbox-probe diagnostics.
 
 The probe does not authenticate or call a model. It exercises the Codex-owned
 sandbox launcher that the patch helper relies on while remaining deterministic
@@ -211,8 +213,10 @@ Every Feature-owned error states, in order:
 4. the captured stdout/stderr from the command that failed.
 
 The health script collects independent applicable failures before returning a
-single non-zero status. It does not ask the user to rerun a command whose output
-it already captured.
+single non-zero status. Temporary-workspace cleanup is part of that aggregate:
+the script attempts it before printing the final diagnostics, and a cleanup
+failure prevents a successful health result. It does not ask the user to rerun
+a command whose output it already captured.
 
 Docker may reject a security option or capability before the health script can
 run. In that case Docker's container-create error is the authoritative output;
@@ -268,6 +272,11 @@ The implementation provides three layers of verification.
 - Run the controlled capability-subtraction matrix and final minimal set.
 - Run the Feature health script's success and failure paths with distinct
   captured-output sentinels.
+- Exercise health-script cleanup failure with a failing `rm` test double and
+  require it to join metadata and Codex failures exactly once in stable order.
+- Exercise the runtime harness finalizer with failing `rm` and Docker test
+  doubles and require build-log, volume, and image removal failures to make the
+  harness fail without skipping later cleanup attempts.
 
 The control and treatment use the same built image, command, user, and working
 directory; only the runtime security configuration changes. This rules out a
@@ -306,12 +315,24 @@ The Codex Feature `NOTES.md` is the detailed operator reference. It documents:
   health-check failures;
 - the unsupported conflict created by additional consumer `securityOpt`
   entries;
-- the control test as the retirement signal; and
-- the Docker Desktop acceptance procedure.
+- the control test as the retirement signal.
 
 The repository `README.md` does not duplicate those details. If its existing
 feature summary needs a Codex entry, that entry states only that Codex is
 included and links to the Codex Feature `NOTES.md`.
+
+**Decided (owner, 2026-07-16: https://github.com/hube/devcontainer/pull/47#discussion_r3598141874):**
+`NOTES.md` is the user reference for people who consume the Codex Feature. It
+contains the supported runtime, inherited settings, sandbox boundaries and
+consequences, conflicting consumer configuration, and creation and health
+remedies.
+
+**Decided (owner, 2026-07-16, in session):**
+`.devcontainer/local-features/codex/MAINTAINERS.md` is the operational authority
+for local acceptance, publication, post-publication acceptance, issue closure,
+cleanup, and retirement procedures. Feature NOTES links to it for
+discoverability. The design records the required verification boundaries but
+does not duplicate the operational commands.
 
 The previous custom-profile design and its implementation plan remain in the
 repository as historical records with prominent supersession notices linking

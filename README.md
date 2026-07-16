@@ -6,6 +6,8 @@ development machines. The devcontainer in this repo includes:
 * Zsh and Oh My Zsh
 * Git
 * Claude Code
+* Codex; its supported runtime and operator guidance are in the
+  [Codex feature notes](.devcontainer/local-features/codex/NOTES.md).
 
 Code is mounted in the `/workspaces` dir. The devcontainer image makes the
 `/workspaces` parent directory writable by the configured container user so that
