@@ -230,6 +230,7 @@ discover_fixture_volumes() {
     done
     [[ "$known" == false ]] && VOLUMES+=("$volume")
   done <<<"$output"
+  return 0
 }
 
 discover_fixture_containers() {
@@ -251,6 +252,7 @@ discover_fixture_containers() {
     done
     [[ "$known" == false ]] && CONTAINERS+=("$container")
   done <<<"$output"
+  return 0
 }
 
 cleanup() {

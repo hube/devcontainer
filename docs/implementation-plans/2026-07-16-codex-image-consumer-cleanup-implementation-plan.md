@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** In progress.
+**Status:** Complete.
 
 **Goal:** Make successful fixture rediscovery preserve a zero cleanup status while retaining real discovery and removal failures.
 
@@ -35,7 +35,7 @@
 - Consumes: `test-image-consumer.sh IMAGE`, including its exact-label container discovery, deterministic volume suffix, exit trap, and Docker-path wrapper.
 - Produces: a non-Docker regression command, `bash .devcontainer/local-features/codex/test/test-image-consumer-cleanup.sh`, plus explicit zero-status contracts for `discover_fixture_containers` and `discover_fixture_volumes`.
 
-- [ ] **Step 1: Write the failing whole-wrapper regression test**
+- [x] **Step 1: Write the failing whole-wrapper regression test**
 
 Create `test-image-consumer-cleanup.sh`. It must:
 
@@ -224,7 +224,7 @@ printf '%s\n' 'PASS: successful cleanup preserves the original nonzero status'
 
 The Docker stub must derive the suffix from the exact label rather than accepting every volume name. This preserves the production ownership boundary in the regression.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -234,7 +234,7 @@ bash .devcontainer/local-features/codex/test/test-image-consumer-cleanup.sh
 
 Expected: nonzero. The success world prints the real consumer success line but the test reports `duplicate rediscovery changed successful status to 1`. This is the intended failure: the wrapped operation succeeds and only the exit trap changes its status.
 
-- [ ] **Step 3: Implement the minimal successful-return contract**
+- [x] **Step 3: Implement the minimal successful-return contract**
 
 In each production discovery function, add an explicit zero return after the existing `while ... done` loop:
 
@@ -246,7 +246,7 @@ In each production discovery function, add an explicit zero return after the exi
 
 Do not change the loop body or the existing Docker-command failure block.
 
-- [ ] **Step 4: Run the focused test and verify GREEN**
+- [x] **Step 4: Run the focused test and verify GREEN**
 
 Run:
 
@@ -263,7 +263,7 @@ PASS: successful cleanup preserves the original nonzero status
 
 Expected status: zero.
 
-- [ ] **Step 5: Run complete verification**
+- [x] **Step 5: Run complete verification**
 
 Run:
 
@@ -291,6 +291,6 @@ bash .devcontainer/local-features/codex/test/test-image-consumer.sh ghcr.io/hube
 
 Expected: zero and `Image 'ghcr.io/hube/devcontainer:latest': post-create health and sandboxed patch persistence were verified.` This verifies the local harness change against the published image; the image itself is unchanged.
 
-- [ ] **Step 6: Complete the execution record and commit**
+- [x] **Step 6: Complete the execution record and commit**
 
 Change this plan's status to `Complete.` and mark all Task 1 checkboxes complete only after the commands in Steps 4 and 5 exit zero. Before committing, run `git status --short`, `git diff`, `git diff --check`, `ssh-add -l`, and `codex --version`. Stage only the three task files and commit with the current Codex metadata, the skills actually used, and the required OpenAI co-author trailer.
