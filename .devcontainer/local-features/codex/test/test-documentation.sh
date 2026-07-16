@@ -32,6 +32,7 @@ readme = readme_path.read_text(encoding="utf-8")
 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 consumer = consumer_path.read_text(encoding="utf-8")
 design = design_path.read_text(encoding="utf-8")
+normalized_design = " ".join(design.split())
 plan = plan_path.read_text(encoding="utf-8")
 normalized_plan = " ".join(plan.split())
 maintainers = (
@@ -131,10 +132,14 @@ maintainers_link = ".devcontainer/local-features/codex/MAINTAINERS.md"
 if f"`{maintainers_link}` is the operational authority" not in design:
     failures.append("design does not identify Codex MAINTAINERS as the operational authority")
 maintainer_section = re.search(
-    r"(?ms)^## Maintainer documentation\n\n(?P<body>.*?)(?=^#|\Z)", readme
+    r"(?ms)^## Maintainer documentation\n\n(?P<body>.*?)(?=^#|\Z)", notes
 )
-if maintainer_section is None or maintainers_link not in maintainer_section.group("body"):
-    failures.append("README does not link to Codex maintainer documentation")
+if maintainer_section is None or "](MAINTAINERS.md)" not in maintainer_section.group("body"):
+    failures.append("NOTES does not link to Codex maintainer documentation")
+if maintainers_link in readme:
+    failures.append("README contains feature-specific Codex maintainer documentation")
+if "Feature NOTES links to it for discoverability" not in normalized_design:
+    failures.append("design does not assign maintainer-guide discovery to Feature NOTES")
 
 required_maintainers = {
     "supported runtime": "Docker Desktop in Linux-container mode",
@@ -313,8 +318,12 @@ assert_mutation_rejected \
   "design maintainer operational authority" "$DESIGN" \
   ".devcontainer/local-features/codex/MAINTAINERS.md"
 assert_mutation_rejected \
-  "README maintainer documentation link" "$README" \
-  ".devcontainer/local-features/codex/MAINTAINERS.md"
+  "NOTES maintainer documentation link" "$NOTES" \
+  "](MAINTAINERS.md)"
+assert_mutation_rejected \
+  "README maintainer documentation rejection" "$README" \
+  "This devcontainer can be further customized" \
+  $'Codex maintainers: .devcontainer/local-features/codex/MAINTAINERS.md\n\nThis devcontainer can be further customized'
 assert_mutation_rejected \
   "maintainer local acceptance" "$MAINTAINERS" \
   "bash .devcontainer/local-features/codex/test/test-runtime.sh"

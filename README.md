@@ -25,11 +25,6 @@ The [`github-cli-config`](.devcontainer/local-features/github-cli-config/NOTES.m
 local feature persists `gh` authentication for processes that do not inherit
 Dev Container `remoteEnv`.
 
-## Maintainer documentation
-
-Codex local acceptance, publication, and post-publication procedures are in the
-[Codex Feature maintenance guide](.devcontainer/local-features/codex/MAINTAINERS.md).
-
 This devcontainer can be further customized on a per-project basis by creating a
 `.devcontainer` directory in the project directory with a
 [devcontainer.json file][4] and adding [Dev Container features][2]

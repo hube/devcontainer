@@ -71,5 +71,10 @@ cleanup output. Correct the reported installation or runtime problem, rebuild
 the container, and rerun creation. There is no automatic fallback to a custom
 profile, a different image, or an unsandboxed Codex command.
 
+## Maintainer documentation
+
+Maintainers can find local acceptance, publication, post-publication,
+cleanup, and retirement procedures in the [maintenance guide](MAINTAINERS.md).
+
 [1]: https://github.com/devcontainers/features/tree/main/src/sshd
 [2]: https://containers.dev/implementors/json_reference/#image-specific

@@ -330,7 +330,7 @@ remedies.
 **Decided (owner, 2026-07-16, in session):**
 `.devcontainer/local-features/codex/MAINTAINERS.md` is the operational authority
 for local acceptance, publication, post-publication acceptance, issue closure,
-cleanup, and retirement procedures. The repository README links to it for
+cleanup, and retirement procedures. Feature NOTES links to it for
 discoverability. The design records the required verification boundaries but
 does not duplicate the operational commands.
 
