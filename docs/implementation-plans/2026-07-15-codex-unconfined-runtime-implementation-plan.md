@@ -36,9 +36,9 @@ tests establish the contract before documentation records it.
   read a marker there, aggregate independent failures, preserve underlying
   output, and clean up before the final aggregate decision. Cleanup failure is
   a health failure and joins the aggregate diagnostics exactly once.
-- Runtime-test cleanup must preserve the incoming status, attempt all required
-  cleanup, preserve each failing command's output, and return nonzero when any
-  required cleanup fails.
+- Runtime-test cleanup must preserve the incoming status, attempt build-log,
+  wrapper-volume, and generated-image removal, preserve each failing command's
+  output, and return nonzero when any required cleanup fails.
 - Every Feature-owned error states the problem, consequence, remedy, and
   captured command output in that order.
 - The publication workflow remains unchanged; it does not run the probe on its
@@ -304,11 +304,11 @@ tests establish the contract before documentation records it.
   required only when omission fails and restoration passes. Finally run the
   exact required set and require success.
 
-  Add a focused behavior test for the runtime finalizer using failing Docker
-  test doubles rather than real resources. Require successful cleanup to
-  preserve zero and nonzero incoming statuses; require volume failure, image
-  failure, and simultaneous failures to return nonzero, retain ordered output,
-  and attempt every required cleanup operation.
+  Add a focused behavior test for the runtime finalizer using failing `rm` and
+  Docker test doubles rather than real resources. Require successful cleanup
+  to preserve zero and nonzero incoming statuses; require build-log failure,
+  volume failure, image failure, and simultaneous Docker failures to return
+  nonzero, retain ordered output, and attempt every required cleanup operation.
 
 - [x] **Step 2: Run the controlled test and record its empirical result**
 

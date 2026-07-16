@@ -2,7 +2,7 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-runtime_test="$test_dir/test-runtime.sh"
+runtime_test="${CODEX_RUNTIME_CLEANUP_TEST_SCRIPT:-$test_dir/test-runtime.sh}"
 test_root="$(mktemp -d)"
 trap '/bin/rm -rf "$test_root"' EXIT
 
@@ -52,6 +52,17 @@ esac
 EOF
 chmod +x "$stub_dir/docker"
 
+cat >"$stub_dir/rm" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$CLEANUP_TEST_LOG/rm-args"
+if [[ "${RM_WORLD:-good}" == "fail" ]]; then
+  printf 'build log removal exploded\r\nbuild log detail\n' >&2
+  exit 29
+fi
+exec /bin/rm "$@"
+EOF
+chmod +x "$stub_dir/rm"
+
 run_world() {
   local name="$1"
   shift
@@ -83,6 +94,17 @@ printf '%s\n' 'PASS: successful cleanup removes every resource in order'
 run_world status-preservation CODEX_RUNTIME_CLEANUP_TEST_STATUS=17
 [[ $WORLD_STATUS -eq 17 ]] || fail "successful cleanup did not preserve original status 17: got $WORLD_STATUS"
 printf '%s\n' 'PASS: successful cleanup preserves the original nonzero status'
+
+run_world build-log-failure CODEX_RUNTIME_CLEANUP_TEST_STATUS=0 RM_WORLD=fail
+[[ $WORLD_STATUS -ne 0 ]] || fail "build-log cleanup failure unexpectedly succeeded"
+assert_ordered "$WORLD_STDERR" \
+  "Codex runtime test cleanup failed because build log '$WORLD_DIR/build.log' could not be removed" \
+  "Temporary test output remains on the filesystem" \
+  "Remove it after restoring filesystem access" \
+  "rm said: build log removal exploded\\r\\nbuild log detail"
+mapfile -t docker_args <"$WORLD_DIR/log/docker-args"
+[[ "${docker_args[*]}" == "volume rm -f runtime-volume image rm -f runtime-image:test" ]] || fail "build-log cleanup failure skipped later volume or image cleanup: ${docker_args[*]}"
+printf '%s\n' 'PASS: build-log cleanup failure fails the test without skipping volume or image cleanup'
 
 run_world volume-failure CODEX_RUNTIME_CLEANUP_TEST_STATUS=0 VOLUME_RM_WORLD=fail
 [[ $WORLD_STATUS -ne 0 ]] || fail "volume cleanup failure unexpectedly succeeded"

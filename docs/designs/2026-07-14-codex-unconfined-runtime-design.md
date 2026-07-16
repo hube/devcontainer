@@ -274,9 +274,9 @@ The implementation provides three layers of verification.
   captured-output sentinels.
 - Exercise health-script cleanup failure with a failing `rm` test double and
   require it to join metadata and Codex failures exactly once in stable order.
-- Exercise the runtime harness finalizer with failing Docker test doubles and
-  require volume and image removal failures to make the harness fail without
-  skipping later cleanup attempts.
+- Exercise the runtime harness finalizer with failing `rm` and Docker test
+  doubles and require build-log, volume, and image removal failures to make the
+  harness fail without skipping later cleanup attempts.
 
 The control and treatment use the same built image, command, user, and working
 directory; only the runtime security configuration changes. This rules out a
