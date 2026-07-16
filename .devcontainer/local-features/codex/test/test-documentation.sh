@@ -8,17 +8,24 @@ MANIFEST="$ROOT/.devcontainer/local-features/codex/devcontainer-feature.json"
 CONSUMER_TEST="$ROOT/.devcontainer/local-features/codex/test/test-image-consumer.sh"
 DESIGN="$ROOT/docs/designs/2026-07-14-codex-unconfined-runtime-design.md"
 PLAN="$ROOT/docs/implementation-plans/2026-07-15-codex-unconfined-runtime-implementation-plan.md"
+MAINTAINERS="$ROOT/.devcontainer/local-features/codex/MAINTAINERS.md"
 
 check_documentation() {
-  python3 - "$NOTES" "$README" "$MANIFEST" "$CONSUMER_TEST" "$DESIGN" "$PLAN" <<'PY'
+  python3 - "$NOTES" "$README" "$MANIFEST" "$CONSUMER_TEST" "$DESIGN" "$PLAN" "$MAINTAINERS" <<'PY'
 import json
 import re
 import sys
 from pathlib import Path
 
-notes_path, readme_path, manifest_path, consumer_path, design_path, plan_path = map(
-    Path, sys.argv[1:]
-)
+(
+    notes_path,
+    readme_path,
+    manifest_path,
+    consumer_path,
+    design_path,
+    plan_path,
+    maintainers_path,
+) = map(Path, sys.argv[1:])
 notes = notes_path.read_text(encoding="utf-8")
 normalized_notes = " ".join(notes.split())
 readme = readme_path.read_text(encoding="utf-8")
@@ -27,6 +34,12 @@ consumer = consumer_path.read_text(encoding="utf-8")
 design = design_path.read_text(encoding="utf-8")
 plan = plan_path.read_text(encoding="utf-8")
 normalized_plan = " ".join(plan.split())
+maintainers = (
+    maintainers_path.read_text(encoding="utf-8")
+    if maintainers_path.is_file()
+    else ""
+)
+normalized_maintainers = " ".join(maintainers.split())
 
 required_notes = {
     "Docker Desktop support": "Docker Desktop in Linux-container mode",
@@ -114,8 +127,33 @@ if audience_decision not in design:
     failures.append("design missing the owner-decided NOTES audience boundary")
 if "`NOTES.md` is the user reference" not in design:
     failures.append("design does not identify NOTES as the user reference")
-if "maintainer acceptance procedures remain in this design" not in design:
-    failures.append("design does not preserve maintainer acceptance ownership")
+maintainers_link = ".devcontainer/local-features/codex/MAINTAINERS.md"
+if f"`{maintainers_link}` is the operational authority" not in design:
+    failures.append("design does not identify Codex MAINTAINERS as the operational authority")
+maintainer_section = re.search(
+    r"(?ms)^## Maintainer documentation\n\n(?P<body>.*?)(?=^#|\Z)", readme
+)
+if maintainer_section is None or maintainers_link not in maintainer_section.group("body"):
+    failures.append("README does not link to Codex maintainer documentation")
+
+required_maintainers = {
+    "supported runtime": "Docker Desktop in Linux-container mode",
+    "stable local image": "codex-runtime-test:acceptance",
+    "runtime matrix": "bash .devcontainer/local-features/codex/test/test-runtime.sh",
+    "local unrelated consumer": "test-image-consumer.sh codex-runtime-test:acceptance",
+    "install-order acceptance": "bash .devcontainer/local-features/agent-skills/test/test-install-order.sh",
+    "publication workflow": ".github/workflows/publish.yaml",
+    "publication monitoring": "gh run list --workflow publish.yaml --branch main --limit 1",
+    "published image pull": "docker pull ghcr.io/hube/devcontainer:latest",
+    "post-publication consumer": "test-image-consumer.sh ghcr.io/hube/devcontainer:latest",
+    "issue closure gate": "Close issue #36 only after",
+    "local image cleanup": "docker image rm -f codex-runtime-test:acceptance",
+}
+if not maintainers_path.is_file():
+    failures.append(f"Codex maintainer documentation is missing: {maintainers_path}")
+for label, text in required_maintainers.items():
+    if text not in normalized_maintainers:
+        failures.append(f"MAINTAINERS missing {label}: {text}")
 
 required_plan = {
     "README list item": "README image contents list",
@@ -272,8 +310,23 @@ assert_mutation_rejected \
   "design NOTES audience boundary" "$DESIGN" \
   '`NOTES.md` is the user reference'
 assert_mutation_rejected \
-  "design maintainer acceptance ownership" "$DESIGN" \
-  "maintainer acceptance procedures remain in this design"
+  "design maintainer operational authority" "$DESIGN" \
+  ".devcontainer/local-features/codex/MAINTAINERS.md"
+assert_mutation_rejected \
+  "README maintainer documentation link" "$README" \
+  ".devcontainer/local-features/codex/MAINTAINERS.md"
+assert_mutation_rejected \
+  "maintainer local acceptance" "$MAINTAINERS" \
+  "bash .devcontainer/local-features/codex/test/test-runtime.sh"
+assert_mutation_rejected \
+  "maintainer publication workflow" "$MAINTAINERS" \
+  "gh run list --workflow publish.yaml --branch main --limit 1"
+assert_mutation_rejected \
+  "maintainer post-publication acceptance" "$MAINTAINERS" \
+  "test-image-consumer.sh ghcr.io/hube/devcontainer:latest"
+assert_mutation_rejected \
+  "maintainer issue closure gate" "$MAINTAINERS" \
+  "Close issue #36 only after"
 assert_mutation_rejected \
   "plan NOTES audience boundary" "$PLAN" \
   "NOTES is the user reference"

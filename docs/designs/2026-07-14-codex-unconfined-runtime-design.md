@@ -325,8 +325,14 @@ included and links to the Codex Feature `NOTES.md`.
 `NOTES.md` is the user reference for people who consume the Codex Feature. It
 contains the supported runtime, inherited settings, sandbox boundaries and
 consequences, conflicting consumer configuration, and creation and health
-remedies. The maintainer acceptance procedures remain in this design, the
-implementation plan, and the test scripts rather than in Feature NOTES.
+remedies.
+
+**Decided (owner, 2026-07-16, in session):**
+`.devcontainer/local-features/codex/MAINTAINERS.md` is the operational authority
+for local acceptance, publication, post-publication acceptance, issue closure,
+cleanup, and retirement procedures. The repository README links to it for
+discoverability. The design records the required verification boundaries but
+does not duplicate the operational commands.
 
 The previous custom-profile design and its implementation plan remain in the
 repository as historical records with prominent supersession notices linking
