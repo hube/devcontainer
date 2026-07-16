@@ -43,9 +43,12 @@ tests establish the contract before documentation records it.
   captured command output in that order.
 - The publication workflow remains unchanged; it does not run the probe on its
   native-Linux GitHub Actions runner.
-- The repository README contains only a high-level Codex summary and a link;
-  the Codex Feature NOTES owns runtime, security, failure, retirement, and
-  acceptance details.
+- The README image contents list contains only a high-level Codex summary and a
+  link to the Codex Feature NOTES.
+- Codex Feature NOTES is the user reference for runtime, inherited settings,
+  sandbox boundaries and consequences, conflicting consumer configuration,
+  and creation and health remedies. Maintainer acceptance procedures remain in
+  this plan and the test scripts rather than in Feature NOTES.
 - Do not add a firewall, pin Codex or the base image, add a second image, or
   change Docker-outside-of-Docker.
 - Each behavior change follows RED-GREEN-REFACTOR and each task ends in a
@@ -372,12 +375,15 @@ tests establish the contract before documentation records it.
 
   Require NOTES to name the exact two security options, every final capability,
   `/usr/bin/bwrap`, root ownership and mode `4755`, system-versus-bundled
-  selection, the relaxed outer boundary, the Codex inner sandbox, container-wide
-  exposure, Docker Desktop-only support, creation and health remedies,
-  `securityOpt` merge conflicts, the control retirement signal, and both local
-  and post-publication acceptance commands. Require README to link to
-  `.devcontainer/local-features/codex/NOTES.md` while rejecting the detailed
-  security-option and capability strings there.
+  selection, the relaxed outer boundary, the Codex inner sandbox,
+  container-wide exposure, Docker Desktop-only support, creation and health
+  remedies, `securityOpt` merge conflicts, and the control retirement signal.
+  Reject maintainer-only local-build, local-image, and post-publication
+  acceptance commands in NOTES. Require the README Codex summary and link to be
+  a bullet in the existing image contents list while rejecting detailed
+  security-option and capability strings there. Consume the design and this
+  plan, require the user-audience boundary in both, and reject any design status
+  other than `Approved.`
 
 - [x] **Step 2: Run the documentation test and verify RED**
 
@@ -391,12 +397,13 @@ tests establish the contract before documentation records it.
 
 - [x] **Step 3: Update NOTES and README, then verify GREEN**
 
-  Keep the existing remote-control SSH section in NOTES. Add sections for the
-  supported runtime, exact outer runtime settings, system Bubblewrap and inner
-  sandbox, consequences for non-Codex processes, conflicting consumer
-  `securityOpt`, failure remedies, retirement signal, and acceptance. Add only
-  one README sentence: the image includes Codex, with a link to the Feature
-  NOTES. Re-run the documentation test and require zero status.
+  Keep the existing remote-control SSH section in NOTES. Add user-facing
+  sections for the supported runtime, exact outer runtime settings, system
+  Bubblewrap and inner sandbox, consequences for non-Codex processes,
+  conflicting consumer `securityOpt`, failure remedies, and retirement signal.
+  Do not add maintainer acceptance procedures to Feature NOTES. Add one
+  high-level Codex bullet with a link to the Feature NOTES in the README image
+  contents list. Re-run the documentation test and require zero status.
 
 - [x] **Step 4: Write the unrelated-consumer acceptance test**
 
@@ -413,15 +420,15 @@ tests establish the contract before documentation records it.
 
   Run Task 3 with a stable temporary tag, then pass that tag to
   `test-image-consumer.sh`. Expected: the unrelated config starts, its embedded
-  post-create health hook passes, and the sandboxed patch persists. NOTES must
-  also give the post-publication command using
-  `ghcr.io/hube/devcontainer:latest`; do not claim issue #36 is resolved until
-  that command is run after merge and publication.
+  post-create health hook passes, and the sandboxed patch persists. Keep the
+  post-publication command using `ghcr.io/hube/devcontainer:latest` in this plan
+  and the test scripts rather than Feature NOTES; do not claim issue #36 is
+  resolved until that command is run after merge and publication.
 
 - [x] **Step 6: Update artifact status and run final verification**
 
-  Change the design status to `Approved; implementation complete and under
-  review.` and this plan status to `Complete; implementation under review.` Run
+  Keep the design status as the design-only `Approved.` and this plan status as
+  `Complete; implementation under review.` Run
   every Feature test, JSON parsing, Bash syntax checks for every changed shell
   file, `git diff --check`, the Docker Desktop runtime matrix, and the unrelated
   consumer test. Stage only the six Task 4 files and create the signed task

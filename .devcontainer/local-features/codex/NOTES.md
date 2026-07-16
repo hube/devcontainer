@@ -71,35 +71,5 @@ cleanup output. Correct the reported installation or runtime problem, rebuild
 the container, and rerun creation. There is no automatic fallback to a custom
 profile, a different image, or an unsandboxed Codex command.
 
-## Docker Desktop acceptance
-
-Before publication, build and validate a stable local tag from the repository
-root, then exercise that tag from an unrelated temporary workspace:
-
-```bash
-CODEX_RUNTIME_TEST_IMAGE=codex-runtime-test:task-4 \
-  bash .devcontainer/local-features/codex/test/test-runtime.sh
-bash .devcontainer/local-features/codex/test/test-image-consumer.sh \
-  codex-runtime-test:task-4
-```
-
-The local consumer acceptance command is
-`test-image-consumer.sh codex-runtime-test:task-4` from the test directory.
-
-After merge and publication, exercise the original consumer path separately:
-
-```bash
-bash .devcontainer/local-features/codex/test/test-image-consumer.sh \
-  ghcr.io/hube/devcontainer:latest
-```
-
-The post-publication consumer acceptance command is
-`test-image-consumer.sh ghcr.io/hube/devcontainer:latest` from the test
-directory.
-
-The local command validates the implementation but does not establish that the
-published tag contains it. Treat the publication check as pending until its
-command actually succeeds on Docker Desktop.
-
 [1]: https://github.com/devcontainers/features/tree/main/src/sshd
 [2]: https://containers.dev/implementors/json_reference/#image-specific

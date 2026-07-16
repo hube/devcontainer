@@ -1,6 +1,6 @@
 # Run Codex's Bubblewrap sandbox inside the published devcontainer image
 
-**Status:** Approved; implementation complete and under review.
+**Status:** Approved.
 
 Supersedes
 [`2026-07-11-codex-bwrap-user-namespaces-design.md`](2026-07-11-codex-bwrap-user-namespaces-design.md)
@@ -315,12 +315,18 @@ The Codex Feature `NOTES.md` is the detailed operator reference. It documents:
   health-check failures;
 - the unsupported conflict created by additional consumer `securityOpt`
   entries;
-- the control test as the retirement signal; and
-- the Docker Desktop acceptance procedure.
+- the control test as the retirement signal.
 
 The repository `README.md` does not duplicate those details. If its existing
 feature summary needs a Codex entry, that entry states only that Codex is
 included and links to the Codex Feature `NOTES.md`.
+
+**Decided (owner, 2026-07-16: https://github.com/hube/devcontainer/pull/47#discussion_r3598141874):**
+`NOTES.md` is the user reference for people who consume the Codex Feature. It
+contains the supported runtime, inherited settings, sandbox boundaries and
+consequences, conflicting consumer configuration, and creation and health
+remedies. The maintainer acceptance procedures remain in this design, the
+implementation plan, and the test scripts rather than in Feature NOTES.
 
 The previous custom-profile design and its implementation plan remain in the
 repository as historical records with prominent supersession notices linking
