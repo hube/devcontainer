@@ -289,7 +289,7 @@ Then, against Docker Desktop and the explicitly pulled post-merge image, run:
 bash .devcontainer/local-features/codex/test/test-image-consumer.sh ghcr.io/hube/devcontainer:latest
 ```
 
-Expected: zero and `Image 'ghcr.io/hube/devcontainer:latest': post-create health and sandboxed patch persistence were verified.` This verifies the local harness change against the published image; the image itself is unchanged.
+Expected: zero and `Image 'ghcr.io/hube/devcontainer:latest': post-create health and sandboxed patch persistence were verified.` This verifies the successful consumer path and cleanup-status fix against the published image; it does not inject discovery or removal failures, and the image itself is unchanged.
 
 - [x] **Step 6: Complete the execution record and commit**
 

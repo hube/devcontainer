@@ -36,9 +36,7 @@ pre-existing nonzero test status to remain unchanged after successful cleanup.
 
 The regression test must fail against the current implementation because
 duplicate rediscovery leaks status 1, then pass after the explicit successful
-returns are added. Existing discovery and removal failure behavior remains
-covered by the production diagnostics and the full published-image acceptance
-test.
+returns are added.
 
 ## Rejected alternatives
 
