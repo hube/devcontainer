@@ -544,8 +544,9 @@ validate commit-msg --spec PATH <msgfile>   (dispatcher passes --spec; see
   │    missing, malformed, or unsupported version
   │      → REJECT, naming the path and the offending line
   │
-  ├─ trigger?  raw text match on ^<Key>: for each trailer key in the spec,
-  │            or ^Co-Authored-By: <address listed as agent-author>
+  ├─ trigger?  raw text match on ^<Key>: for each trailer key in the spec
+  │            except Co-Authored-By, or
+  │            ^Co-Authored-By: <address listed as agent-author>
   │    no → PASS, silently
   │
   ├─ validate: git interpret-trailers --parse <msgfile> → ordered key list
