@@ -823,8 +823,10 @@ These were established by experiment in the container, not assumed.
   local edit, each matching a control push made with no hook installed.
 - The hook's cwd is `$GIT_DIR`. `git diff-index … HEAD` there is ambiguous
   against the `HEAD` file and aborts the chain; `--` after `HEAD` resolves it.
-  `git read-tree -u -m HEAD "$1"` is unaffected, parsing no pathspec — a chain
-  whose only `--` is on `diff-index` completes and updates the worktree.
+  `git read-tree -u -m HEAD "$1"` is unaffected, parsing no pathspec — the only
+  load-bearing `--` in the chain is the one on `diff-index` (`diff-files` takes
+  no tree-ish, so its `--` is cosmetic), and with it in place the chain completes
+  and updates the worktree.
 - A push to a `receive.procReceiveRefs`-matched ref is rejected whether the
   hook is missing or present-and-failing, so a fail-fast adapter preserves the
   ref outcome. The remote's error text differs between the two
