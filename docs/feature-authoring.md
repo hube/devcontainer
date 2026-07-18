@@ -75,8 +75,9 @@ A shell shim is justified only by a reason that is not stylistic. Two recur:
 When you reach for shell, name which of these applies; if neither does, the code
 has a decision in it and belongs in TypeScript.
 
-*Established by `git-commit-attribution` (TypeScript validator; `install.sh` and
-the hook dispatcher the only shell).*
+*Established by `git-commit-attribution`: the logic is a TypeScript validator,
+while `install.sh` (a bootstrap) and the hook dispatcher (a hot path) stay
+shell for the two reasons above.*
 
 ## Feature-owned vs. consumer-owned mounts
 
