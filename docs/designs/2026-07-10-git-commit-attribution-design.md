@@ -924,15 +924,17 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
 
 ## Changelog
 
-Substantive design changes, newest first. The body above always describes the
-current settled design; this section records how it got there.
+Substantive design changes, newest first. The body above describes the current
+settled design; the entries below list what changed between revisions. This
+section is a deliberate exception to the general guidance against narrating a
+document's revision history, kept at the owner's request
+([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
 - **2026-07-17** — Spec resolution reworked to a fixed, system-wide path
   (`/etc/devcontainer-feature/git-commit-attribution/trailer-contract`) that
   serves `root` and every user identically. The validator compiles that path in
   as its default, so the hook passes no `--spec` and the dispatcher is static;
-  `--spec` remains a CI-only override. This supersedes the same-day intermediate
-  in which the dispatcher passed a user-home `--spec` path. Dependency chain
+  `--spec` remains a CI-only override. Dependency chain
   (refactor → `#9` → `enforce`) stated explicitly, with the gate landing in warn
   mode outside it. TypeScript-for-logic and non-blocking-postStart conventions
   published in `docs/feature-authoring.md`; rollout tracked in `#51`.
