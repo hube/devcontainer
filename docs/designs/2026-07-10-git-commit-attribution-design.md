@@ -240,7 +240,7 @@ caller-side composition change with no producer code at all.
 | `/usr/local/share/git-commit-attribution/validate` (bundle, copied verbatim) | image layer | `root:root` 0755 |
 | `/usr/local/bin/node` → `/usr/local/share/nvm/current/bin/node` | image layer | `root:root` symlink |
 | `/etc/gitconfig` (`core.hooksPath`) | image layer | `root:root` 0644 |
-| `/etc/devcontainer-feature/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf`, declared in `devcontainer.json` | host file |
+| `/etc/devcontainer/feature/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf`, declared in `devcontainer.json` | host file |
 | `~/bin/devcontainer-feature/git-commit-attribution/postStartScript.sh` | image layer | container user |
 
 The spec is the only piece on the fast channel. Everything else is code, changes
@@ -256,11 +256,22 @@ bypass available, and the only one that leaves no trace in the commit.
 ### Spec Resolution
 
 The contract is mounted at a fixed, system-wide path,
-`/etc/devcontainer-feature/git-commit-attribution/trailer-contract`, identical
+`/etc/devcontainer/feature/git-commit-attribution/trailer-contract`, identical
 for every user. `core.hooksPath` lives in system scope, so the gate also runs
 for commits made as `root`, whose home directory is not where a user-scoped
 spec would be; a system path is the one place `root` and every other user
 resolve the same spec, with no `~` to expand and nothing per-user to bake.
+
+The path follows the FHS, not the XDG Base Directory Specification, and the
+distinction is deliberate. XDG describes a *per-user* resolution mechanism —
+`$XDG_CONFIG_HOME` shadowing a `$XDG_CONFIG_DIRS` system default (`/etc/xdg`),
+which an application opts into by honoring that search order. This gate does the
+opposite on purpose: one canonical contract that `root` and every user resolve
+identically, by absolute path, with no per-user override and nothing here
+reading `$XDG_CONFIG_DIRS`. That is a fixed system configuration file, which FHS
+places directly under `/etc/<name>`. Putting it at `/etc/xdg/…` would borrow the
+XDG location while implementing none of the XDG mechanism it signals. `/etc` also
+keeps it beside the `/etc/gitconfig` this Feature already writes.
 
 The validator compiles that path in as its default. The dispatcher therefore
 invokes `validate commit-msg <msgfile>` with no path argument, `install.sh`
@@ -684,7 +695,7 @@ Agent-authored commits must end with this contiguous block, Co-Authored-By last:
   Skills: <skills used, comma-separated, or 'none'>
   Co-Authored-By: <model display name> <noreply address>
 
-Spec: /etc/devcontainer-feature/git-commit-attribution/trailer-contract
+Spec: /etc/devcontainer/feature/git-commit-attribution/trailer-contract
 ```
 
 The spec path shown is the validator's compiled-in default — the same fixed
@@ -930,8 +941,8 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
-- **2026-07-17** — Spec resolution reworked to a fixed, system-wide path
-  (`/etc/devcontainer-feature/git-commit-attribution/trailer-contract`) that
+- **2026-07-17** — Spec resolution reworked to a fixed, system-wide FHS path
+  (`/etc/devcontainer/feature/git-commit-attribution/trailer-contract`) that
   serves `root` and every user identically. The validator compiles that path in
   as its default, so the hook passes no `--spec` and the dispatcher is static;
   `--spec` remains a CI-only override. Dependency chain
