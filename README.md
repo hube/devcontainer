@@ -24,8 +24,9 @@ This devcontainer can be further customized on a per-project basis by creating a
 [devcontainer.json file][4] and adding [Dev Container Features][2]
 
 Conventions for writing the local Features in this repo — git config placement,
-non-blocking postStart, Feature-owned vs. consumer-owned mounts, and the
-docs split — are in [`docs/feature-authoring.md`](docs/feature-authoring.md).
+non-blocking postStart, logic in TypeScript vs. thin shell shims, Feature-owned
+vs. consumer-owned mounts, and the docs split — are in
+[`docs/feature-authoring.md`](docs/feature-authoring.md).
 
 # Getting started
 

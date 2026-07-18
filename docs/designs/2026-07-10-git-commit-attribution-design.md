@@ -1,9 +1,7 @@
 # Git Commit Attribution Design
 
-Status: Draft — revised after the owner review pass on `hube/devcontainer#38`
-(spec resolved through `--spec`, contract path moved under
-`~/.config/devcontainer-feature`, open questions verified, reconciled with
-`main`)
+Status: Draft — in review on `hube/devcontainer#38`. See the *Changelog* at the
+end for what has changed across revisions.
 
 ## Context
 
@@ -170,14 +168,12 @@ neither the `claude` nor the `codex` Feature.
 .devcontainer/local-features/git-commit-attribution/
     devcontainer-feature.json    dependsOn node:2; documents the spec mount
                                  the consumer must declare
-    install.sh                   install symlinks and bundle verbatim;
-                                 render dispatch.sh with the container's spec
-                                 path; symlink node; write /etc/gitconfig
-    dispatch.sh                  POSIX sh hook dispatcher template; install
-                                 bakes the absolute `--spec` path into it
-                                 (see Hook Dispatch, Spec Resolution)
+    install.sh                   install symlinks, dispatcher, and bundle
+                                 verbatim; symlink node; write /etc/gitconfig
+    dispatch.sh                  static POSIX sh hook dispatcher (see Hook
+                                 Dispatch); no per-container substitution
     dist/validate                committed validator bundle, copied byte for
-                                 byte — no path or shebang rewriting
+                                 byte — spec path is a compiled-in default
     NOTES.md                     the four bypasses, stated plainly
     bin/devcontainer-feature/git-commit-attribution/postStartScript.sh
     test/                        install, postStart, and integration suites
@@ -195,13 +191,30 @@ display-name mapping moves to `skills/write-worklog/SKILL.md`, where the
 invoking agent already knows both values. `src/worklog/git.ts` no longer builds
 a trailer block.
 
-This producer change must land on top of the fallback-safety refactor described
-in `hube/agent-skills`'
-[`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md),
-so the two must not collide. That design retypes the worklog Git and GitHub
-helpers to return `OperationResult<T>` instead of `boolean`, so evidence
-survives to the diagnostic. This design does **not** implement that boundary
-and does not depend on it; it only constrains the `--trailer` work to be
+Three moving parts are in play — this gate, the producer fix (`#9`), and the
+fallback-safety refactor in `hube/agent-skills`'
+[`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md).
+Only one of the dependencies among them is hard, so it is worth being exact:
+
+- **The gate (this design) depends on neither of the others.** It ships in
+  `mode warn`, where it observes and warns but rejects nothing, so it lands
+  while `worklog-contribute` still emits its current message. Nothing in
+  `agent-skills` blocks it.
+- **The producer fix (`#9`) should follow the fallback-safety refactor —
+  for rework and collision avoidance, not correctness.** That refactor retypes
+  the worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`, and
+  both it and `#9` edit `src/worklog/git.ts`. `#9` would *function* if it landed
+  first, but it would add a Boolean-returning path the refactor then has to
+  retype, and the two would conflict in that file. Landing the refactor first
+  avoids both.
+- **The `enforce` flip depends on `#9`.** The moment the gate rejects, the
+  current hardcoded `worklog-contribute` message fails, so `enforce` must wait
+  for `#9`. This is the one hard ordering constraint, and satisfying it is why
+  the rollout is warn-first (see *Rollout*).
+
+So the chain is refactor → `#9` → `enforce`; the gate landing in warn mode sits
+outside it. This design does **not** implement the `OperationResult` boundary
+and does not depend on it — it only constrains the `--trailer` work to be
 forwards-compatible with it:
 
 - The `--trailer` flag is passed *through* to `git commit`; a commit that fails
@@ -214,10 +227,6 @@ forwards-compatible with it:
   (`SKILL.md` composes the flags), which is the same direction the diagnostics
   design pushes: `git.ts` shrinks toward a typed command wrapper that neither
   formats messages nor decides policy.
-- The design order is deliberate: the fallback-safety refactor merges first
-  (it is already in review), then `#9` adds `--trailer` against the typed
-  helpers. If `#9` were done first it would add a Boolean-returning path the
-  refactor would immediately have to retype.
 
 The foundation this lays: once `--trailer` exists and the contract lives in the
 spec, a future `Subagents:` trailer (see *Capturing subagent detail*) is a
@@ -231,7 +240,7 @@ caller-side composition change with no producer code at all.
 | `/usr/local/share/git-commit-attribution/validate` (bundle, copied verbatim) | image layer | `root:root` 0755 |
 | `/usr/local/bin/node` → `/usr/local/share/nvm/current/bin/node` | image layer | `root:root` symlink |
 | `/etc/gitconfig` (`core.hooksPath`) | image layer | `root:root` 0644 |
-| `~/.config/devcontainer-feature/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf`, declared in `devcontainer.json` | host file |
+| `/etc/devcontainer-feature/git-commit-attribution/trailer-contract` | read-only bind mount of `${localEnv:HOME}/.claude/git-commit-attribution.conf`, declared in `devcontainer.json` | host file |
 | `~/bin/devcontainer-feature/git-commit-attribution/postStartScript.sh` | image layer | container user |
 
 The spec is the only piece on the fast channel. Everything else is code, changes
@@ -246,34 +255,28 @@ bypass available, and the only one that leaves no trace in the commit.
 
 ### Spec Resolution
 
-The validator never resolves the spec itself; the caller passes it as
-`--spec PATH`. Both entry points already carry a caller — the dispatcher for the
-hook, a workflow for CI — so a single required flag serves both, and the
-committed bundle needs no container-specific edit. This is the whole reason the
-bundle is copied byte for byte (see *The mechanism*): the container-varying
-value lives in the per-container dispatcher, not in the shared artifact, so
-`dist/validate` stays identical to what CI runs and the build-diff check
-(see *Testing*) can prove it.
+The contract is mounted at a fixed, system-wide path,
+`/etc/devcontainer-feature/git-commit-attribution/trailer-contract`, identical
+for every user. `core.hooksPath` lives in system scope, so the gate also runs
+for commits made as `root`, whose home directory is not where a user-scoped
+spec would be; a system path is the one place `root` and every other user
+resolve the same spec, with no `~` to expand and nothing per-user to bake.
 
-The hook must not resolve the spec through `~`. `core.hooksPath` lives in system
-scope, so the gate also applies to commits made as `root`, whose home directory
-is not where the spec is mounted. `install.sh` knows `_CONTAINER_USER`, so it
-renders `dispatch.sh` from its template with the absolute path
-`/home/${_CONTAINER_USER}/.config/devcontainer-feature/git-commit-attribution/trailer-contract`
-baked into the `--spec` argument the dispatcher passes to the validator. The
-dispatcher is per-container installed state, so this is a one-line substitution
-in a script `install.sh` already writes, not a rewrite of a committed file.
-Every user in the container then resolves the same spec. Diagnostics print that
-baked absolute path, never `~` — a message printed during a root commit would
-otherwise point at `/root`, where the spec is not.
+The validator compiles that path in as its default. The dispatcher therefore
+invokes `validate commit-msg <msgfile>` with no path argument, `install.sh`
+substitutes nothing into the dispatcher, and `dispatch.sh` is a static script.
 
-This replaces an earlier design that baked the path (and a rewritten shebang)
-into the copied bundle. Passing `--spec` instead keeps the bundle pristine,
-collapses the hook and CI code paths onto one required flag, and removes the
-only reason `install.sh` had to edit the artifact's bytes. The node interpreter
-is reached the same way for both paths: the committed bundle's shebang is a
-fixed `#!/usr/local/bin/node`, and `install.sh` guarantees that symlink exists
-(see *Node*), so no shebang rewrite is needed either.
+`--spec PATH` overrides the default and exists for the one caller with no bind
+mount: CI, which runs the committed bundle against a checkout and must aim it at
+the contract revision it pinned. The hook never passes it. Because the default
+is a source constant — the same bytes in the committed `dist/validate` and in a
+clean rebuild — the bundle is still copied verbatim (see *The mechanism*), which
+the build-diff check proves (see *Testing*). The interpreter is reached the same
+way: the committed bundle's shebang is a fixed `#!/usr/local/bin/node`, and
+`install.sh` guarantees that symlink exists (see *Node*).
+
+Diagnostics print the fixed system path, never `~` — a message printed during a
+root commit names the same `/etc` path as one printed for any other user.
 
 If the host file does not exist, Docker is expected to create a **directory** at
 the bind mount's source rather than fail — unverified, and the implementation
@@ -486,16 +489,16 @@ shebang is a fixed `#!/usr/local/bin/node`, so that symlink — not a per-contai
 rewrite — is what points every commit at a working interpreter. `install.sh`
 validates the interpreter is executable and fails the install loudly if not,
 rather than deferring the discovery to someone's first commit. Fixing the
-shebang at build time is what lets the bundle be copied byte for byte, which the
-`--spec` flag (see *Spec Resolution*) completes by removing the last
-container-specific value from the artifact.
+shebang at build time, together with the compiled-in default spec path
+(see *Spec Resolution*), is what leaves no container-specific value in the
+artifact, so the bundle is copied byte for byte.
 
 The bundle is **committed**, built by esbuild into a single dependency-free file
 using only `node:fs` and `node:child_process`. The image build never runs
-`npm install`. One bundle serves both entry points, dispatching on argv, and
-each is given its spec explicitly: `commit-msg --spec PATH <msgfile>` when the
-dispatcher invokes it, and `--range BASE..HEAD --spec PATH` when CI runs the
-committed `dist/validate` directly from a checkout.
+`npm install`. One bundle serves both entry points, dispatching on argv:
+`commit-msg <msgfile>` when the dispatcher invokes it (the validator uses its
+default spec path), and `--range BASE..HEAD --spec PATH` when CI runs the
+committed `dist/validate` directly from a checkout against a pinned contract.
 
 Measured node startup in this image is 17–19 ms, negligible beside SSH signing.
 
@@ -535,12 +538,17 @@ scan, neither of which carries contract decisions. The net effect is that the
 shell holds no rule the contract depends on — only a bootstrap, a router, and a
 warning.
 
+This split — logic in TypeScript, thin shell shims justified by a
+bootstrap-or-hot-path reason — is generalized for future Feature authors in
+[`docs/feature-authoring.md`](../feature-authoring.md).
+
 ## Validation Flow
 
 ```
-validate commit-msg --spec PATH <msgfile>   (dispatcher passes --spec; see
-  │                                            Spec Resolution)
-  ├─ read spec  ← the PATH given on the command line
+validate commit-msg <msgfile>          (dispatcher passes no --spec)
+  │
+  ├─ read spec  ← the compiled-in default path, or --spec if CI overrides it
+  │             (see Spec Resolution)
   │    missing, malformed, or unsupported version
   │      → REJECT, naming the path and the offending line
   │
@@ -676,11 +684,11 @@ Agent-authored commits must end with this contiguous block, Co-Authored-By last:
   Skills: <skills used, comma-separated, or 'none'>
   Co-Authored-By: <model display name> <noreply address>
 
-Spec: /home/devcontainer/.config/devcontainer-feature/git-commit-attribution/trailer-contract
+Spec: /etc/devcontainer-feature/git-commit-attribution/trailer-contract
 ```
 
-The spec path shown is the same absolute path the dispatcher passes as
-`--spec`, for the reason given under *Spec Resolution*.
+The spec path shown is the validator's compiled-in default — the same fixed
+system path for every user, for the reason given under *Spec Resolution*.
 
 The postStart script never blocks container start, matching the idiom
 `local-features/agent-skills/bin/.../postStartScript.sh` establishes and now
@@ -729,14 +737,13 @@ GitHub offers no `pre-receive` hook outside Enterprise. Per-repo CI is the
 correct second line of defence and is filed separately.
 
 To keep that cheap, the validator is built as a script with two entry points:
-`commit-msg --spec PATH <msgfile>` for the hook, and
-`--range BASE..HEAD --spec PATH` for CI over a pull request's commits. Same
-code, same spec grammar, no second implementation, and `--spec` is **required**
-on both — neither entry point guesses a default. The dispatcher supplies the
-container's mounted spec path; CI supplies the revision it pinned. How a
-per-repo workflow obtains and pins the contract revision it validates against
-is a decision for that deferred design; this repo's own `tests.yml` exercises
-range mode against fixture specs committed under `test/`.
+`commit-msg <msgfile>` for the hook, and `--range BASE..HEAD --spec PATH` for CI
+over a pull request's commits. Same code, same spec grammar, no second
+implementation. The hook uses the compiled-in default spec path; CI has no bind
+mount, so it must supply `--spec` pointing at the contract revision it pinned.
+How a per-repo workflow obtains and pins that revision is a decision for that
+deferred design; this repo's own `tests.yml` exercises range mode against
+fixture specs committed under `test/`.
 
 ## Testing
 
@@ -774,9 +781,10 @@ Fixtures are drawn from real artifacts.
 | spec path is a directory | reject, naming the path |
 | spec malformed | reject, naming the line |
 | spec with an unsupported `version` | reject, naming the remedy |
-| commit made as `root` | resolves the same spec; gate applies |
+| commit made as `root` | resolves the same fixed system-path spec; gate applies |
 | committed `dist/validate` vs. a clean rebuild | byte-identical; build-diff check passes |
-| dispatcher invocation | passes `--spec` with the installed absolute path |
+| hook invocation (no `--spec`) | validator uses its compiled-in default spec path |
+| CI `--range` with `--spec` | validates the pinned contract; default overridden |
 | `mode warn` with a violation | exit 0, diagnosis printed |
 | repository `.git/hooks/commit-msg` present | runs; its non-zero status propagates |
 | repo `commit-msg` present, message trips no trigger | repo hook still runs |
@@ -906,9 +914,40 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
 - `hube/devcontainer#51` — the warn-then-enforce rollout tracker.
 - `hube/agent-skills#9` — the producer fix this design depends on.
 - `hube/agent-skills` `docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`
-  — the fallback-safety refactor the producer change must land on top of.
+  — the fallback-safety refactor the producer fix should follow (see *The
+  producer*).
 - `hube/devcontainer#32` and `hube/devcontainer#15` — git SSH signing extraction,
   which inherits the git config placement rule, now generalized in
   `docs/feature-authoring.md`.
 - `docs/feature-authoring.md` — general Feature-authoring conventions extracted
   from this design.
+
+## Changelog
+
+Substantive design changes, newest first. The body above always describes the
+current settled design; this section records how it got there.
+
+- **2026-07-17** — Spec resolution reworked to a fixed, system-wide path
+  (`/etc/devcontainer-feature/git-commit-attribution/trailer-contract`) that
+  serves `root` and every user identically. The validator compiles that path in
+  as its default, so the hook passes no `--spec` and the dispatcher is static;
+  `--spec` remains a CI-only override. This supersedes the same-day intermediate
+  in which the dispatcher passed a user-home `--spec` path. Dependency chain
+  (refactor → `#9` → `enforce`) stated explicitly, with the gate landing in warn
+  mode outside it. TypeScript-for-logic and non-blocking-postStart conventions
+  published in `docs/feature-authoring.md`; rollout tracked in `#51`.
+- **2026-07-17** — Reconciled with the tip of `main` after the Codex
+  unconfined-runtime work merged. Both prior open questions verified in the
+  container: Codex loads `AGENTS.md` wholesale with no `@path` import, and
+  `GIT_CONFIG_NOSYSTEM=1` is live in tooling but only on a non-committing path.
+  The remaining open question is Codex inner-sandbox visibility of the gate.
+- **2026-07-14** — `push-to-checkout` emulation given as a verbatim chain;
+  absence-equivalence defined as identical ref/worktree/index outcomes, not
+  identical diagnostics, and scoped accordingly for `proc-receive`.
+- **2026-07-10** — Hook composition reworked: `core.hooksPath` plus a chaining
+  dispatcher across every githooks(5) name, with presence-sensitive adapters for
+  `push-to-checkout` and `proc-receive`; spec mount decoupled to the consumer.
+  `Skills:` made mandatory with a `none` sentinel.
+- **2026-07-10** — Initial design: `commit-msg` gate, `git interpret-trailers`
+  as the parser, spec on the `claude-home` fast channel, warn-then-enforce
+  rollout.

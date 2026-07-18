@@ -55,6 +55,29 @@ re-run it.
 *Established by `agent-skills` and `github-cli-config`; both come up even when
 their clone, auth, or setup step fails.*
 
+## Logic goes in TypeScript, not shell
+
+Anything with a decision in it — parsing, validation, comparison, diagnostics —
+belongs in TypeScript, built to a committed, dependency-free bundle and tested
+with Vitest. Shell is for thin plumbing with no branching a test would want to
+assert on: a bootstrap, a router, an `exec`.
+
+A shell shim is justified only by a reason that is not stylistic. Two recur:
+
+- **A bootstrap cannot depend on what it installs.** `install.sh` runs at image
+  build and sets up the interpreter (e.g. the `node` symlink), so it cannot
+  itself be TypeScript.
+- **A hot path shared by unrelated hooks should not take on a heavy runtime.**
+  A dispatcher that runs for every git hook stays POSIX `sh` so that a broken
+  interpreter, or startup cost, does not reach hooks that never needed it — only
+  the one branch that needs the logic shells out to the bundle.
+
+When you reach for shell, name which of these applies; if neither does, the code
+has a decision in it and belongs in TypeScript.
+
+*Established by `git-commit-attribution` (TypeScript validator; `install.sh` and
+the hook dispatcher the only shell).*
+
 ## Feature-owned vs. consumer-owned mounts
 
 A Dev Container Feature cannot interpolate its options into a mount declaration,
