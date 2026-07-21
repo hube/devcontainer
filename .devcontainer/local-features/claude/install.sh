@@ -7,11 +7,11 @@ if [[ $EUID -ne $(id -u ${_CONTAINER_USER}) ]]
 then
   echo ">Copying config to the remote user's home directory"
 
-  # copy files over while setting ownership and permissions
+  # Copy files over while setting ownership and permissions
   rsync -rp \
       --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
       --chmod=D755,F644 \
-      home/. /home/${_CONTAINER_USER}
+      "home/." "/home/${_CONTAINER_USER}"
 
   # Create additional Claude Code configuration dirs owned by the container
   # user, to support multiple accounts
@@ -21,6 +21,12 @@ then
       "/home/${_CONTAINER_USER}/.claude-${i}"
     install -d -o ${_CONTAINER_USER} -g ${_CONTAINER_USER} -m 0755 \
       "/home/${_CONTAINER_USER}/.claude-${i}/projects"
+
+  # Copy files over while setting ownership and permissions
+  rsync -rp \
+      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chmod=D755,F644 \
+      "home/.claude/." "/home/${_CONTAINER_USER}/.claude-${i}"
   done
 
   exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)" $CLAUDE_CONFIG_DIR
