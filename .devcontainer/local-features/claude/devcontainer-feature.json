@@ -7,6 +7,7 @@
   },
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
   "mounts": [
+    // Primary Claude Code configuration
     {
       "type": "volume",
       "source": "claude-code-config-${devcontainerId}",
@@ -21,6 +22,54 @@
       "type": "bind",
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/CLAUDE.md"
+    }
+    // Claude Code configuration 1
+    {
+      "type": "volume",
+      "source": "claude-code-config-1-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-1"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/projects",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-1/projects"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/CLAUDE.md",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-1/CLAUDE.md"
+    }
+    // Claude Code configuration 2
+    {
+      "type": "volume",
+      "source": "claude-code-config-2-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-2"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/projects",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-2/projects"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/CLAUDE.md",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-2/CLAUDE.md"
+    }
+    // Claude Code configuration 3
+    {
+      "type": "volume",
+      "source": "claude-code-config-3-${devcontainerId}",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-3"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/projects",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-3/projects"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:HOME}/.claude/CLAUDE.md",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-3/CLAUDE.md"
     }
   ]
 }
