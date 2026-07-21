@@ -5,3 +5,6 @@ export PATH="$HOME/.local/bin:$PATH"
 # `.claude.json` are stored in the same location, which can then be preserved in
 # a volume mount
 export CLAUDE_CONFIG_DIR="$HOME/.claude"
+
+# Claude Code seems to default to using Bash
+export CLAUDE_CODE_SHELL="/usr/bin/zsh"
