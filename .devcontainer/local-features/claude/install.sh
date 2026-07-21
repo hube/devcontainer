@@ -13,6 +13,16 @@ then
       --chmod=D755,F644 \
       home/. /home/${_CONTAINER_USER}
 
+  # Create additional Claude Code configuration dirs owned by the container
+  # user, to support multiple accounts
+  for i in {1..3}
+  do
+    install -d -o ${_CONTAINER_USER} -g ${_CONTAINER_USER} -m 0755 \
+      "/home/${_CONTAINER_USER}/.claude-${i}"
+    install -d -o ${_CONTAINER_USER} -g ${_CONTAINER_USER} -m 0755 \
+      "/home/${_CONTAINER_USER}/.claude-${i}/projects"
+  done
+
   exec sudo -iu "${_CONTAINER_USER}" "$(realpath $0)" $CLAUDE_CONFIG_DIR
 fi
 
