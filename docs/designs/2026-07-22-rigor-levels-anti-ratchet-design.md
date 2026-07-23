@@ -242,9 +242,10 @@ Record answers as `provisional (author-proposed)` levels in the draft.
 ### Thresholds
 
 The breaker's **3 consecutive same-mechanism rounds** and the checkpoint's **10
-rounds** are stated as concrete defaults, proven on fin, with an explicit "tune
-per project" note. `CLAUDE.md` states the rules; the numbers live in the
-reference.
+rounds** are stated as concrete defaults — the values fin uses, carried forward
+by owner decision — with an explicit "tune per project" note. They are a chosen
+starting point, not an empirically measured optimum. `CLAUDE.md` states the
+rules; the numbers live in the reference.
 
 ## Placement across harnesses
 
@@ -289,16 +290,36 @@ container; the global config is not.
 
 ### The mount
 
-A new bind mount, added to each harness feature, exposes the shared directory at
-one **harness-neutral container path** so a single pointer resolves everywhere:
+A **read-only** bind mount exposes the shared directory at one **harness-neutral
+container path** so a single pointer resolves everywhere:
 
 ```
-host  ~/.claude/instructions/  →  ~/.agents/instructions   (all harnesses)
+host  ~/.claude/instructions/  →  ~/.agents/instructions   (bind, readonly)
 ```
 
 `~/.agents/instructions` sits under neither `.claude` nor `.codex`, so the same
 pointer string in the shared file resolves in every harness's container. The
 same container user runs every harness, so `~` is identical across them.
+
+**Ownership: consumer-declared, once.** Per the repo's mount-ownership convention
+(`docs/feature-authoring.md`), a source path specific to one harness or host
+layout is **consumer-declared**, so hardcoding it does not leak that layout into
+otherwise-neutral Feature source. `~/.claude/instructions` is Claude-layout-
+specific, so the mount is declared **once** in the project `devcontainer.json`,
+not by each Feature. Declaring it per Feature would both leak the `.claude`
+layout into the neutral Codex Feature and give the single `~/.agents/instructions`
+target duplicate owners. Each harness Feature owns only the stable container
+*target* — it references the path in its guidance pointer and **warns at
+postStart when the mount is absent** (problem/consequence/remedy, non-blocking).
+This mirrors the `git-commit-attribution` consumer-declared spec mount already
+cited below.
+
+**Read-only.** The instructions are read, never written, so the mount is
+`readonly`: an approved/full-access command in any harness must not be able to
+alter the shared host guidance that every container and session reads. (The
+`ssh` Feature's `known_hosts` `bind,readonly` is the in-repo precedent.)
+Implementation verifies both that a container write is refused and that a host
+edit remains visible.
 
 ### Harness-neutral content
 
@@ -312,12 +333,15 @@ transports unchanged.
 
 ### Extensibility to new harnesses
 
-To add harness *N*, its devcontainer feature adds two mounts:
+To add harness *N*:
 
-1. the shared canonical file under *N*'s instruction filename (e.g.
-   `GEMINI.md`) — already the existing pattern; and
-2. the shared `instructions/` directory at `~/.agents/instructions` — the new
-   pattern.
+1. its devcontainer Feature mounts the shared canonical file under *N*'s
+   instruction filename (e.g. `GEMINI.md`) — the existing per-Feature pattern,
+   each harness's file mount having its own distinct target; and
+2. **no new instructions mount is needed** — the single consumer-declared
+   `~/.agents/instructions` mount already serves every harness in the container.
+   *N*'s Feature owns only the target-path reference and the postStart
+   absent-mount warning.
 
 Content stays neutral; add a per-harness subsection only where dispatch
 mechanics differ.
@@ -343,15 +367,18 @@ mechanics differ.
 
 ### `hube/devcontainer` (plumbing)
 
-- **`local-features/claude/devcontainer-feature.json`** and
-  **`local-features/codex/devcontainer-feature.json`** — each gains **one** bind
-  mount `source: ${localEnv:HOME}/.claude/instructions` →
-  `target: /home/${localEnv:USERNAME:devcontainer}/.agents/instructions`. Because
-  the target is account-neutral, a single mount per harness feature suffices —
-  unlike the `CLAUDE.md` binds, which repeat per account only because their
-  targets differ (`~/.claude-N/CLAUDE.md`). Not repeating the instructions mount
-  per account is the whole payoff of the neutral `~/.agents` path.
-- Feature `NOTES.md` updated per the repo's docs conventions.
+- **Consumer `devcontainer.json`** — declares the mount **once**, read-only:
+  `source: ${localEnv:HOME}/.claude/instructions` →
+  `target: /home/${localEnv:USERNAME:devcontainer}/.agents/instructions`, `readonly`.
+  One consumer-declared mount serves every harness in the container — no
+  per-Feature and no per-`.claude-N`-account duplication.
+- **`local-features/claude`** and **`local-features/codex`** — own only the
+  stable container target `~/.agents/instructions`: each references it in the
+  shared guidance pointer and **warns at postStart when the mount is absent**
+  (problem/consequence/remedy, exit 0 — the repo's non-blocking convention), so a
+  container missing the consumer mount stays usable.
+- Feature `NOTES.md` documents the consumer mount users must add, per the repo's
+  docs conventions.
 
 ## Rejected alternatives
 
@@ -392,7 +419,7 @@ mounted directory.
 
 Rejected. Qualitative-only guidance ("a few rounds", "periodically") is not
 actionable out of the box. fin's 3-round breaker and 10-round checkpoint ship as
-concrete, proven defaults with a "tune per project" note.
+concrete defaults with a "tune per project" note.
 
 ### Exclude the owner-checkpoint cadence from global guidance
 
@@ -410,12 +437,17 @@ change.
 
 ## Open questions
 
-- **Host/container path parity.** The pointer names `~/.agents/instructions`,
-  which exists in containers via the mount. An agent run **directly on the
-  host** (outside any devcontainer) has the files at `~/.claude/instructions/`
-  and would not resolve `~/.agents/instructions`. Options for the plan: create a
-  host symlink `~/.agents/instructions → ~/.claude/instructions`, or document
-  host-run agents as out of scope. Leaning toward the symlink for parity.
+- **Host/container path parity — resolved (author-proposed, pending owner
+  ratification).** An agent run **directly on the host** (outside any
+  devcontainer) has the files at `~/.claude/instructions/` and would not resolve
+  the container-only `~/.agents/instructions`. Resolution: the claude-home
+  install/deploy step creates a host symlink
+  `~/.agents/instructions → ~/.claude/instructions`, so the single pointer
+  resolves in every environment, host or container. The alternative — declaring
+  direct-host sessions out of scope and keeping the mount devcontainer-only — is
+  available if the owner prefers a smaller surface; it is not the default because
+  it would strand direct-host Codex/Claude sessions that the shared pointer
+  otherwise reaches.
 - **Confirm deployed `CLAUDE.md` parity at implementation time.** The deployed
   `~/.claude/CLAUDE.md` must match claude-home's tracked copy before the new
   inline discipline and pointer ship. They are byte-identical in the current
@@ -447,3 +479,11 @@ change.
   `0.144.4`, not the inherited `0.144.5`, and the wholesale-read behavior is
   patch-stable, so the citation now names the loader behavior and prior design
   without a rotting version pin).
+- 2026-07-23: Review round 4 (devcontainer#55, Codex reviewer). Instructions
+  mount is now **consumer-declared once** (Claude-layout-specific source, per
+  `feature-authoring.md`) and **read-only**, replacing the per-Feature mount that
+  duplicated ownership; Features own only the container target and warn at
+  postStart when it is absent. Resolved the host/container parity open question
+  to an author-proposed host symlink (pending owner ratification). Removed the
+  unsubstantiated "proven on fin" wording from the thresholds (owner-chosen
+  defaults, not a measured optimum).
