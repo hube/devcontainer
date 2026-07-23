@@ -322,11 +322,14 @@ This mirrors the `git-commit-attribution` consumer-declared spec mount already
 cited below.
 
 **Read-only.** The instructions are read, never written, so the mount is
-`readonly`: an approved/full-access command in any harness must not be able to
-alter the shared host guidance that every container and session reads. (The
-`ssh` Feature's `known_hosts` `bind,readonly` is the in-repo precedent.)
-Implementation verifies both that a container write is refused and that a host
-edit remains visible.
+`readonly`: no approved/full-access command in any harness can alter the shared
+**`instructions/` files** through this mount. (The `ssh` Feature's `known_hosts`
+`bind,readonly` is the in-repo precedent.) This protects only the `instructions/`
+subset; the pre-existing `CLAUDE.md`/`AGENTS.md` bind mounts remain plain
+writable `bind` and are deliberately left unchanged — hardening them is
+pre-existing plumbing outside this PR's scope. Implementation verifies both that
+a container write to the instructions mount is refused and that a host edit
+remains visible.
 
 ### Harness-neutral content
 
@@ -487,3 +490,7 @@ change.
   scope — the mechanism is devcontainer-only. Dropped the round-4 host symlink,
   recorded direct-host as a Non-goal with the owner's decision link, and closed
   the parity open question.
+- 2026-07-23: Review round 5 (devcontainer#55). Narrowed the read-only rationale
+  to the `instructions/` subset it actually protects; noted the pre-existing
+  `CLAUDE.md`/`AGENTS.md` mounts remain writable `bind` and are out of scope
+  (claim precision, not added mechanism).
