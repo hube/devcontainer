@@ -184,6 +184,10 @@ complement and presents them as a pair:
   record an owner options memo: *finish the machinery / simplify to a weaker
   stated level / accept the risk explicitly*. **(new)**
 
+The thresholds differ deliberately: disagreement is a sharper signal than
+agreement, so a contested decision escalates after two rounds while accretion is
+allowed three before the breaker fires.
+
 **Guard against false positives.** The breaker fires on *repetition on the same
 ground*, not on breadth. Deliberate multi-angle review that sweeps many
 mechanisms once is not churn; three rounds circling the *same* mechanism is.
@@ -263,7 +267,9 @@ consequences:
    with no mount is invisible inside every container.
 2. **`@import` diverges.** Claude Code expands `@path` imports in `CLAUDE.md`;
    Codex reads `AGENTS.md` **wholesale** and does not. An `@import` pointer would
-   silently no-op in Codex.
+   silently no-op in Codex. (Established in the git-commit-attribution design
+   against `codex-cli 0.144.5` — the version installed in this image — whose
+   `agents_md` loader reads the file wholesale with no `@path` expansion.)
 
 So fin's three-file split cannot simply be replicated on the host `~/.claude`
 tree — fin transports because a project repo is checked out whole in the
@@ -337,11 +343,13 @@ mechanics differ.
 ### `hube/devcontainer` (plumbing)
 
 - **`local-features/claude/devcontainer-feature.json`** and
-  **`local-features/codex/devcontainer-feature.json`** — each gains a bind mount
-  `source: ${localEnv:HOME}/.claude/instructions` →
-  `target: /home/${localEnv:USERNAME:devcontainer}/.agents/instructions`. The
-  Claude feature repeats it for the `.claude-1/2/3` accounts if those need the
-  reference (all point at the same host source).
+  **`local-features/codex/devcontainer-feature.json`** — each gains **one** bind
+  mount `source: ${localEnv:HOME}/.claude/instructions` →
+  `target: /home/${localEnv:USERNAME:devcontainer}/.agents/instructions`. Because
+  the target is account-neutral, a single mount per harness feature suffices —
+  unlike the `CLAUDE.md` binds, which repeat per account only because their
+  targets differ (`~/.claude-N/CLAUDE.md`). Not repeating the instructions mount
+  per account is the whole payoff of the neutral `~/.agents` path.
 - Feature `NOTES.md` updated per the repo's docs conventions.
 
 ## Rejected alternatives
@@ -407,11 +415,12 @@ change.
   and would not resolve `~/.agents/instructions`. Options for the plan: create a
   host symlink `~/.agents/instructions → ~/.claude/instructions`, or document
   host-run agents as out of scope. Leaning toward the symlink for parity.
-- **Deployed `CLAUDE.md` divergence.** The deployed `~/.claude/CLAUDE.md` in
-  this environment currently differs from claude-home's tracked copy. The
-  implementation must reconcile the two so the new inline discipline and pointer
-  actually ship, and confirm the `instructions/` mount lands in every harness
-  container.
+- **Confirm deployed `CLAUDE.md` parity at implementation time.** The deployed
+  `~/.claude/CLAUDE.md` must match claude-home's tracked copy before the new
+  inline discipline and pointer ship. They are byte-identical in the current
+  environment; because the deployed file is a mount of the host checkout, the
+  implementation should re-confirm parity rather than assume it. Also confirm the
+  `instructions/` mount lands in every harness container.
 
 ## Related
 
@@ -427,3 +436,8 @@ change.
 ## Changelog
 
 - 2026-07-22: Initial draft.
+- 2026-07-22: Review round 1 (devcontainer#55). Instructions dir mounts **once**
+  per harness feature (account-neutral target), not per `.claude-N` account;
+  softened the deployed-`CLAUDE.md` open question to a parity check (byte-identical
+  in the current environment); cited `codex-cli 0.144.5` as the provenance for the
+  `@import`-divergence claim; noted the tripwire threshold asymmetry is deliberate.
