@@ -267,9 +267,10 @@ consequences:
    with no mount is invisible inside every container.
 2. **`@import` diverges.** Claude Code expands `@path` imports in `CLAUDE.md`;
    Codex reads `AGENTS.md` **wholesale** and does not. An `@import` pointer would
-   silently no-op in Codex. (Established in the git-commit-attribution design
-   against `codex-cli 0.144.5` — the version installed in this image — whose
-   `agents_md` loader reads the file wholesale with no `@path` expansion.)
+   silently no-op in Codex. (Established in the git-commit-attribution design:
+   Codex's `agents_md` loader reads `AGENTS.md` wholesale with no `@path`
+   expansion — a patch-stable property of the loader, not a version-specific
+   one.)
 
 So fin's three-file split cannot simply be replicated on the host `~/.claude`
 tree — fin transports because a project repo is checked out whole in the
@@ -441,3 +442,8 @@ change.
   softened the deployed-`CLAUDE.md` open question to a parity check (byte-identical
   in the current environment); cited `codex-cli 0.144.5` as the provenance for the
   `@import`-divergence claim; noted the tripwire threshold asymmetry is deliberate.
+- 2026-07-23: Review round 2 (devcontainer#55). Dropped the pinned `codex-cli`
+  patch version from the `@import`-divergence citation (installed version is
+  `0.144.4`, not the inherited `0.144.5`, and the wholesale-read behavior is
+  patch-stable, so the citation now names the loader behavior and prior design
+  without a rotting version pin).
