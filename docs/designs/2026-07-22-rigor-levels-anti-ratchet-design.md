@@ -76,6 +76,13 @@ these — the non-fin-specific parts — to cross-project, cross-harness altitud
   each harness's own.
 - **Retrofitting existing project designs.** Projects adopt the vocabulary when
   next revised; until then the weak default floor governs their drafts.
+- **Direct-host agent sessions.** Agents run directly on the host, outside the
+  devcontainer, are out of scope; the mechanism is devcontainer-only. Decided
+  (owner, 2026-07-23:
+  https://github.com/hube/devcontainer/pull/55#issuecomment-5060789892). No host
+  symlink and no host-side `AGENTS.md` wiring is added — the
+  `~/.agents/instructions` mount and the shared-file mounts exist only inside
+  containers.
 
 ## Rigor levels (the vocabulary)
 
@@ -437,17 +444,6 @@ change.
 
 ## Open questions
 
-- **Host/container path parity — resolved (author-proposed, pending owner
-  ratification).** An agent run **directly on the host** (outside any
-  devcontainer) has the files at `~/.claude/instructions/` and would not resolve
-  the container-only `~/.agents/instructions`. Resolution: the claude-home
-  install/deploy step creates a host symlink
-  `~/.agents/instructions → ~/.claude/instructions`, so the single pointer
-  resolves in every environment, host or container. The alternative — declaring
-  direct-host sessions out of scope and keeping the mount devcontainer-only — is
-  available if the owner prefers a smaller surface; it is not the default because
-  it would strand direct-host Codex/Claude sessions that the shared pointer
-  otherwise reaches.
 - **Confirm deployed `CLAUDE.md` parity at implementation time.** The deployed
   `~/.claude/CLAUDE.md` must match claude-home's tracked copy before the new
   inline discipline and pointer ship. They are byte-identical in the current
@@ -487,3 +483,7 @@ change.
   to an author-proposed host symlink (pending owner ratification). Removed the
   unsubstantiated "proven on fin" wording from the thresholds (owner-chosen
   defaults, not a measured optimum).
+- 2026-07-23: Owner decision (devcontainer#55). Direct-host sessions are out of
+  scope — the mechanism is devcontainer-only. Dropped the round-4 host symlink,
+  recorded direct-host as a Non-goal with the owner's decision link, and closed
+  the parity open question.
