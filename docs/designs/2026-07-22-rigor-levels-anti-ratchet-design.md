@@ -2,7 +2,8 @@
 
 Status: Draft — in review on `hube/devcontainer#55`. Generalizes the
 assurance-level conventions and PR circuit-breaker introduced in
-[`hube/fin#5`](https://github.com/hube/fin/pull/5) into harness-neutral,
+[`hube/fin#5`](https://github.com/hube/fin/pull/5), as since revised through
+[`hube/fin#48`](https://github.com/hube/fin/issues/48), into harness-neutral,
 user-level agent guidance.
 
 ## Context
@@ -34,6 +35,33 @@ fin#5 fixed this repo-locally with four moving parts:
 fin#5 also made its guidance harness-neutral: `AGENTS.md` is canonical and
 `CLAUDE.md` is a symlink to it, "for every authoring harness, not only Claude."
 
+### fin's conventions have evolved since fin#5
+
+The fin guidance did not stop at fin#5. Its current files (`AGENTS.md`,
+`docs/designs/CONVENTIONS.md`, `docs/prompts/design-review-dispatch.md`,
+`docs/prompts/reader-proxy-review-dispatch.md`) — revised through the fin#47
+review and the fin#48 guardrails (landed in fin PR #54) — add, generalizably:
+
+- **A breaker boundary** — the circuit-breaker routes *unresolved requirement
+  questions* to the owner; it is not a mechanism for declining an instruction
+  the owner has already given.
+- **Review-exchange proportionality** — rules for both sides of a review
+  exchange: reply in the register the finding deserves, concede separately
+  from contesting, and ask what a reply changes before writing it.
+- **Proportioned findings** — a defect whose whole remedy is a correction in
+  place is reported as one line, and a remediated error is closed.
+- **Change-sequencing guardrails** (fin#48) — design-first PR separation,
+  operator docs written before the implementation they describe, and a
+  reader-proxy review on PRs that author operator-facing prose.
+- **The reader-proxy dispatch** — a context-deprived reviewer prompt whose
+  deprivation is the instrument.
+
+This design lifts the **current** state of that guidance, not the fin#5
+snapshot; each piece lands in the sections below. (fin#48 also retired fin's
+in-repo implementation plans; the matching claude-home plan-location rules are
+tracked separately in that repository — recorded in fin#48 itself — and are
+out of scope here.)
+
 ### What the user's global guidance already has
 
 The **contest-based** half is already in `~/.claude/CLAUDE.md`: settled
@@ -47,7 +75,8 @@ rationale.
 The **uncontested-accretion** complement and the rigor vocabulary: the
 same-mechanism circuit-breaker, meets-not-exceeds / over-engineering-is-a-defect,
 the weak default floor, the altitude/delete-the-claim step, and the notion of
-rigor as an owner-controlled input. "Generalize fin#5" means lifting exactly
+rigor as an owner-controlled input — plus every post-fin#5 addition listed
+above (none is in the global guidance). "Generalize fin" means lifting exactly
 these — the non-fin-specific parts — to cross-project, cross-harness altitude.
 
 ## Goals
@@ -60,8 +89,8 @@ these — the non-fin-specific parts — to cross-project, cross-harness altitud
 3. Make the guidance reach **every harness** the devcontainer configures (Claude
    Code, Codex, and future ones) through the existing single-file config
    channel, extended minimally.
-4. Keep the always-on core lean while giving the bulk reference and the verbatim
-   reviewer scope block a stable, transportable home.
+4. Keep the always-on core lean while giving the bulk reference and the
+   verbatim dispatch blocks a stable, transportable home.
 
 ## Non-goals
 
@@ -105,9 +134,10 @@ Reusing the marker convention already in `CLAUDE.md`:
 
 - `provisional (author-proposed)` — a standing question. The first review round
   must confirm or contest it; later rounds re-surface it as a calibration
-  question until the owner ratifies or revises. Against a provisional level, a
-  mechanism/level mismatch is a calibration question routed to the owner, never
-  a defect with a prescribed fix.
+  question until the owner ratifies or revises — ratification may take longer
+  than one round, and the level stays provisional until it happens. Against a
+  provisional level, a mechanism/level mismatch is a calibration question
+  routed to the owner, never a defect with a prescribed fix.
 - `Decided (owner, YYYY-MM-DD: link)` — a settled input; the review scope rule
   applies.
 
@@ -141,8 +171,13 @@ speculatively.
 ### Format
 
 One row per mechanism area — `| Area | Level | Status |` — declared in a
-design's own "Rigor levels" section, placed directly after Non-goals. Levels are
-revised later only as a marked owner decision, never by drift.
+design's own "Rigor levels" section, grouped with wherever the design states
+its goals and scope exclusions, so levels read as owner inputs rather than
+properties discovered later in the draft. The placement rule is proximity to
+the scope statements, whatever the document's structure calls them; in
+documents following the Goals/Non-goals convention that means directly after
+Non-goals. Levels are revised later only as a marked owner decision, never by
+drift.
 
 ## Anti-ratchet review discipline (the process)
 
@@ -170,10 +205,14 @@ Extends the existing "Scope of a code review" section:
 - **Meets, not exceeds.** Verify the work MEETS each Decided level. A finding
   that it fails to EXCEED a Decided level is out of scope as a defect; an
   unintended-looking gap becomes a one-line calibration question to the owner —
-  no severity, no prescribed fix.
+  no severity, no prescribed fix, because a prescription presupposes the answer
+  (that the level should rise) and a severity label puts the question into the
+  findings queue, creating closure pressure to add mechanism before the owner
+  has decided.
 - **Over-engineering is a defect.** A mechanism defending a scenario the Decided
   levels or Non-goals exclude is a valid Important finding — recommend
-  **deletion**, not refinement.
+  **deletion**, not refinement, with equal credit for finding removable
+  machinery as for finding missing machinery.
 - **Don't infer scope or reverse a decision.** When it is unclear whether a
   Decided level applies, or a deletion would reverse a *different* settled
   decision, ask a calibration/decision-conflict question and leave the mechanism
@@ -209,6 +248,12 @@ recurrence. The breaker blocks only the churning mechanism — reviews and fixes
 elsewhere continue, and further findings against a blocked mechanism are
 collected into its memo rather than answered. Resume only after the owner picks.
 
+**The breaker routes unresolved requirement questions to the owner; it is not a
+mechanism for declining an instruction the owner has already given.** A round
+whose finding arrives with the owner's decision attached is fixed, not
+escalated, even when it is the third consecutive round confined to that
+mechanism.
+
 ### Defer implementation-level correctness
 
 Anything whose truth is established by **running code** — I/O ordering,
@@ -216,6 +261,66 @@ concurrency windows, exact library or platform semantics — is resolved against
 real code with a required fixture, not in prose. "Defer to implementation with a
 required fixture" is a legitimate disposition for such a finding, unless the
 stated guarantee is itself unmeetable.
+
+### Review exchanges: proportionality
+
+Binds both sides of a review exchange; ported from fin's current `AGENTS.md`:
+
+- **Reply in the register the finding deserves, not the one it arrived in.** An
+  inflated minor finding is answered briefly and corrected; matching its
+  apparatus doubles the cost of an error already agreed on.
+- **Concede separately from contesting.** A concession sharing a message with a
+  rebuttal reads as a preamble to the rebuttal and invites another round; post
+  the concession by itself.
+- **Ask what a reply changes before writing it.** A reply is commentary,
+  however correct, unless it changes a named artifact or is itself the one-line
+  proposal of a guard. This governs how much a reply elaborates, not whether it
+  is given — every finding still receives an explicit accept or decline.
+
+The reviewer-side complements travel inside the verbatim scope block rather
+than as separate inline rules: a defect whose whole remedy is a correction in
+place is one line naming the correction, every artifact that must change, and
+its own disposition — never its own section; and a remediated error is closed —
+a guard, if worth building, is proposed in one line as a change to a named
+artifact, and a cause is stated at most once.
+
+### Change sequencing
+
+The fin#48 guardrails, generalized:
+
+- **A design change and a change to the artifact it governs land in separate
+  PRs, design first.** Conformance to a specification written in the same PR is
+  not evidence — the author chose both sides. This binds author-originated
+  changes; when the owner directs a specification change, the direction and its
+  first application may share a PR. A design PR may carry the mechanical
+  relocation its own decision entails, but may not author new prose in the
+  governed artifact.
+- **Operator-facing guidance is written before the implementation it
+  describes**, as a check that the requirements are satisfiable. Documentation
+  written against a finished tool cannot report that the tool is missing a
+  command; it can only describe the workaround. A satisfiability check is not
+  conformance evidence, so it does not trigger the separation rule above.
+- **A reader-proxy review is dispatched on any PR that authors or revises
+  operator-facing prose.** A PR that only repairs a reference — a renamed path,
+  a deleted link — does not trigger it; there is no new prose for a new reader
+  to fail on, and firing the review there teaches everyone to treat the rule as
+  noise.
+
+### The reader-proxy dispatch
+
+A reader-proxy is a reviewer given the operator documentation under review and
+nothing else — no design, no source, no issue or PR history — reporting only:
+terms used before they are defined; steps it cannot complete from the text
+alone; artifacts named without their producer; and instructions whose success
+condition is not stated. The deprivation is the instrument: a reader-proxy
+handed the design becomes an ordinary reviewer, and those four categories are
+exactly what a design-holding reviewer is structurally unable to see — so the
+orchestrator must not supply further context even on request.
+
+Like the reviewer scope block, the dispatch is verbatim text and gets the same
+treatment: its own file in the shared `instructions/` directory. The reviewer
+scope block is **not** included in a reader-proxy dispatch, which carries no
+context beyond its own prompt and the documentation under review.
 
 ### Ratification triggers
 
@@ -233,9 +338,15 @@ schedule the checkpoint. In attended work this rule is inert.
 
 ### Brainstorming: elicit levels first
 
-When brainstorming any feature involving failure handling, durability, or
-auditability, elicit rigor levels **before designing mechanisms** — these are
-questions about the owner's tolerance, answerable on day one:
+When brainstorming any feature that touches a dimension with owner-chosen
+rigor, elicit that dimension's levels **before designing mechanisms**. Whatever
+the dimension, the questions are about the owner's tolerance, not the design —
+what outcome must hold, what may be lost or degraded, who consumes the
+evidence, how often the scenario arises — so they are answerable on day one.
+Record answers as `provisional (author-proposed)` levels in the draft.
+
+The durability/failure dimension's questions, ported from fin, are the worked
+example:
 
 - If this fails midway, is re-doing the whole operation acceptable recovery?
 - What must never be lost or damaged, even in a crash? (Usually a short list;
@@ -244,7 +355,8 @@ questions about the owner's tolerance, answerable on day one:
   conclusions be *recomputable* or *judged from evidence*?
 - How often does this run, and is a human present when it does?
 
-Record answers as `provisional (author-proposed)` levels in the draft.
+Other dimensions derive their elicitation questions the same way — from the
+owner's tolerance, not from the draft's invariants.
 
 ### Thresholds
 
@@ -287,13 +399,14 @@ container; the global config is not.
 ### Hybrid: inline discipline + directory-mounted reference
 
 - The **lean always-on discipline** (rigor levels exist + pointer, altitude
-  step, meets-not-exceeds, the matched-pair tripwire, defer-to-fixture) goes
-  **inline** in the shared `CLAUDE.md`/`AGENTS.md`, guaranteed to load in every
-  harness.
-- The **bulk reference** (`rigor-levels.md`) and the **verbatim reviewer scope
-  block** (`review-dispatch-scope.md`) go in a shared `instructions/` directory,
-  referenced by **plain textual pointer, never `@import`**, so both harnesses
-  read the pointer identically and open the file the same way.
+  step, meets-not-exceeds, the matched-pair tripwire, defer-to-fixture,
+  exchange proportionality, the change-sequencing guardrails) goes **inline**
+  in the shared `CLAUDE.md`/`AGENTS.md`, guaranteed to load in every harness.
+- The **bulk reference** (`rigor-levels.md`) and the **verbatim dispatch
+  blocks** (`review-dispatch-scope.md`, `reader-proxy-review-dispatch.md`) go
+  in a shared `instructions/` directory, referenced by **plain textual pointer,
+  never `@import`**, so both harnesses read the pointer identically and open
+  the file the same way.
 
 ### The mount
 
@@ -327,9 +440,12 @@ cited below.
 `bind,readonly` is the in-repo precedent.) This protects only the `instructions/`
 subset; the pre-existing `CLAUDE.md`/`AGENTS.md` bind mounts remain plain
 writable `bind` and are deliberately left unchanged — hardening them is
-pre-existing plumbing outside this PR's scope. Implementation verifies both that
-a container write to the instructions mount is refused and that a host edit
-remains visible.
+pre-existing plumbing outside this PR's scope. Implementation verifies the
+configuration it owns — that the consumer `devcontainer.json` declares the
+mount with the correct source, target, and `readonly` flag — and assumes Docker
+enforces a correctly declared read-only bind rather than re-testing that
+enforcement. Decided (owner, 2026-07-26:
+https://github.com/hube/devcontainer/pull/55#discussion_r3651595630).
 
 ### Harness-neutral content
 
@@ -365,12 +481,29 @@ mechanics differ.
   defer-to-fixture; "Scope of a code review" gains meets-not-exceeds,
   over-engineering-is-a-defect, and don't-infer-or-reverse; the escalation rule
   gains the same-mechanism breaker as the matched complement to the existing
-  contested-twice rule; and a plain-text pointer to `~/.agents/instructions`.
+  contested-twice rule; the review-feedback guidance gains the
+  exchange-proportionality trio; the PR workflow guidance gains the
+  change-sequencing guardrails; and a plain-text pointer to
+  `~/.agents/instructions`.
 - **`instructions/rigor-levels.md`** (new) — the full vocabulary reference,
-  breaker counting mechanics, ratification triggers, checkpoint cadence,
-  thresholds, and brainstorming elicitation prompts.
+  breaker counting mechanics (including the breaker boundary), ratification
+  triggers, checkpoint cadence, thresholds, and brainstorming elicitation
+  prompts.
 - **`instructions/review-dispatch-scope.md`** (new) — the canonical reviewer
-  scope block, included verbatim in every review dispatch.
+  scope block, ported from fin's current `design-review-dispatch.md` with
+  assurance→rigor renaming: its numbered scope rules (meets-not-exceeds with
+  the no-severity rationale, over-engineering with equal credit for removable
+  machinery, don't-infer-or-reverse, provisional-levels-are-questions,
+  defer-to-fixture, churn disclosure, proportioned findings,
+  remediated-error-is-closed, exchange binding) plus the clause making
+  level-dependent rules inert for artifacts no design governs. Included
+  verbatim in every design and code review dispatch — code reviews measure the
+  implementation against the governing design's Decided levels — and never in
+  a reader-proxy dispatch.
+- **`instructions/reader-proxy-review-dispatch.md`** (new) — the canonical
+  reader-proxy block, ported from fin: the four reporting categories, the
+  orchestrator's no-further-context rule, "cannot complete" as a finding not a
+  blocker, and refuse-context-out-loud.
 - **`.gitignore`** — the repo excludes everything by default (`*`) with an
   allow-list. New `!instructions` and `!instructions/**/*` includes are
   **required**, or the new files are silently untracked.
@@ -420,8 +553,8 @@ split only transports if a directory mount is added — which this design does.
 ### Inline everything into the one shared file (no plumbing change)
 
 Rejected as the whole answer, though its always-on half is adopted. Inlining the
-bulk reference and the verbatim block would bloat the always-loaded file and
-lose the clean copy-from-a-file model for the reviewer block. The hybrid keeps
+bulk reference and the verbatim blocks would bloat the always-loaded file and
+lose the clean copy-from-a-file model for the dispatch blocks. The hybrid keeps
 the always-on discipline inline and moves only the bulk/verbatim material to the
 mounted directory.
 
@@ -458,6 +591,9 @@ change.
 
 - `hube/fin#5` — the repo-local original this generalizes.
 - `hube/fin#1` — the review loop whose ratchet motivated fin#5.
+- `hube/fin#48` (landed in fin PR #54) — the change-sequencing guardrails and
+  reader-proxy dispatch; with the fin#47 review, the source of the post-fin#5
+  guidance this design also lifts.
 - `hube/devcontainer/docs/designs/2026-07-10-git-commit-attribution-design.md` —
   precedent for the shared-file `CLAUDE.md`→`AGENTS.md` mount and cross-repo
   agent-config designs.
@@ -494,3 +630,17 @@ change.
   to the `instructions/` subset it actually protects; noted the pre-existing
   `CLAUDE.md`/`AGENTS.md` mounts remain writable `bind` and are out of scope
   (claim precision, not added mechanism).
+- 2026-08-03: Owner review round (devcontainer#55). Addressed the four inline
+  comments: rigor-table placement is now stated as proximity to the design's
+  scope statements rather than assuming a Non-goals section; the
+  no-severity/no-prescribed-fix rule carries its rationale; brainstorming
+  elicitation is generalized across dimensions with durability as the worked
+  example; read-only mount verification is scoped to the configuration we own,
+  assuming Docker's enforcement (owner decision). Per the owner's direction,
+  harvested fin's post-fin#5 guidance (fin#48 / fin PR #54 and the current
+  `AGENTS.md`, `CONVENTIONS.md`, and dispatch prompts): the breaker boundary
+  (owner-decision-attached findings are fixed, not escalated),
+  review-exchange proportionality, proportioned findings and
+  remediated-error-closed in the scope block, equal credit for removable
+  machinery, ratification-may-take-longer, the change-sequencing guardrails,
+  and the reader-proxy dispatch as a second verbatim instructions file.
