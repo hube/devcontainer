@@ -420,10 +420,8 @@ cross-references. Everything else is a verbatim port.
 - [ ] **Step 1: Fetch the source and record what you are adapting**
 
 ```bash
-gh api repos/hube/fin/contents/docs/prompts/design-review-dispatch.md \
-  --jq '.content' \
-  -H "Accept: application/vnd.github+json" \
-  -f ref=5d9534aae16d5ce7f7869ceea3e5109d4c94ca88 | base64 -d > /tmp/fin-design-review-dispatch.md
+gh api "repos/hube/fin/contents/docs/prompts/design-review-dispatch.md?ref=5d9534aae16d5ce7f7869ceea3e5109d4c94ca88" \
+  --jq '.content' | base64 -d > /tmp/fin-design-review-dispatch.md
 grep -n "assurance\|CONVENTIONS.md\|docs/prompts\|this repository" /tmp/fin-design-review-dispatch.md
 ```
 
@@ -590,10 +588,9 @@ file carries no repo-local references.
 - [ ] **Step 1: Fetch the source and confirm it needs no adaptation**
 
 ```bash
-gh api repos/hube/fin/contents/docs/prompts/reader-proxy-review-dispatch.md \
-  --jq '.content' \
-  -f ref=5d9534aae16d5ce7f7869ceea3e5109d4c94ca88 | base64 -d > /tmp/fin-reader-proxy.md
-grep -n "assurance\|docs/\|this repository\|fin" /tmp/fin-reader-proxy.md
+gh api "repos/hube/fin/contents/docs/prompts/reader-proxy-review-dispatch.md?ref=5d9534aae16d5ce7f7869ceea3e5109d4c94ca88" \
+  --jq '.content' | base64 -d > /tmp/fin-reader-proxy.md
+grep -nE "assurance|docs/|this repository|\bfin\b" /tmp/fin-reader-proxy.md
 ```
 
 Expected: nothing (exit 1). If the grep prints anything, **stop and report** —
