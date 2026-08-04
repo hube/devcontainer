@@ -234,8 +234,11 @@ The foundation this lays: once `--trailer` exists and the contract lives in the
 spec, a future `Subagents:` trailer (see *Capturing subagent detail*) is a
 caller-side composition change with no producer code at all.
 
-The fallback-safety refactor has since merged (`hube/agent-skills#54`,
-2026-07-31), so `#9` is unblocked; only the `enforce` flip still waits on it.
+The fallback-safety refactor has since merged (`hube/agent-skills#54`) and
+`#9` itself is now closed, so the producer chain above is fully resolved. The
+`enforce` flip no longer waits on `agent-skills` work; it now gates on the
+rollout state tracked in `hube/devcontainer#51` — the warn-mode observation
+period plus the Codex-sandbox probe (see *Rollout* and *Open Questions*).
 
 ## Container Filesystem
 
@@ -954,8 +957,9 @@ document's revision history, kept at the owner's request
   `docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md`:
   the TypeScript validator, hook dispatcher, install/postStart scripts, and CI
   landed in `mode warn`. Added `test/test-codex-sandbox.sh`, the in-container
-  probe that resolves the Codex-sandbox open question. The `enforce` flip
-  still waits on `hube/agent-skills#9`.
+  probe that resolves the Codex-sandbox open question. `hube/agent-skills#9`
+  has since closed, so the `enforce` flip now gates only on the rollout state
+  tracked in `#51`.
 - **2026-07-17** — Spec resolution reworked to a fixed, system-wide FHS path
   (`/etc/devcontainer/feature/git-commit-attribution/trailer-contract`) that
   serves `root` and every user identically. The validator compiles that path in

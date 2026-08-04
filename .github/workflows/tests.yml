@@ -35,6 +35,8 @@ jobs:
           for t in .devcontainer/local-features/*/test/*.sh; do
             case "$t" in
               *test-codex-sandbox.sh) echo "skip (in-container only): $t"; continue ;;
+              *test-image-consumer.sh) echo "skip (requires a real IMAGE argument and a Docker Desktop daemon; this runner has neither): $t"; continue ;;
+              *test-runtime.sh) echo "skip (requires a Docker Desktop daemon identity; GitHub-hosted runners ship Docker Server/Client, not Docker Desktop): $t"; continue ;;
             esac
             echo "== $t"
             bash "$t"
