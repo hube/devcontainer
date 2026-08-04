@@ -14,11 +14,11 @@ fi
 # it must be removed before a bind mount can land there.
 if [[ -e "$instructions" || -L "$instructions" ]]; then
   printf '%s\n' \
-    "codex: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in .devcontainer/local-features/codex/NOTES.md, then restart the container." >&2
+    "codex: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/codex/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source." >&2
   exit 0
 fi
 
 printf '%s\n' \
-  "codex: $instructions is absent, so the shared agent instructions are not mounted. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in .devcontainer/local-features/codex/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
+  "codex: $instructions is absent, so the shared agent instructions are not mounted. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/codex/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
 
 exit 0
