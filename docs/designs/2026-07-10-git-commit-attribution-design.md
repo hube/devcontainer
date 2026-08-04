@@ -1,7 +1,9 @@
 # Git Commit Attribution Design
 
-Status: Draft — in review on `hube/devcontainer#38`. See the *Changelog* at the
-end for what has changed across revisions.
+Status: Accepted — merged via hube/devcontainer#38 (2026-07-18). Implementation:
+docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md
+and docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md.
+See the *Changelog* at the end for what has changed across revisions.
 
 ## Context
 
@@ -231,6 +233,9 @@ forwards-compatible with it:
 The foundation this lays: once `--trailer` exists and the contract lives in the
 spec, a future `Subagents:` trailer (see *Capturing subagent detail*) is a
 caller-side composition change with no producer code at all.
+
+The fallback-safety refactor has since merged (`hube/agent-skills#54`,
+2026-07-31), so `#9` is unblocked; only the `enforce` flip still waits on it.
 
 ## Container Filesystem
 
@@ -917,7 +922,9 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
   the gate active — but this was not exercised (the gate does not exist yet to
   test against). The integration suite must add a Codex-sandboxed commit case;
   until then this is the one unverified link in the "every commit passes through
-  the gate" claim.
+  the gate" claim. This is resolved by running `test/test-codex-sandbox.sh`
+  inside the first rebuilt container, before the `enforce` flip (tracked in
+  `hube/devcontainer#51`).
 
 ## Related
 
@@ -941,6 +948,14 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
+- **2026-08-04** — Implemented per
+  `docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md`
+  and the companion
+  `docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md`:
+  the TypeScript validator, hook dispatcher, install/postStart scripts, and CI
+  landed in `mode warn`. Added `test/test-codex-sandbox.sh`, the in-container
+  probe that resolves the Codex-sandbox open question. The `enforce` flip
+  still waits on `hube/agent-skills#9`.
 - **2026-07-17** — Spec resolution reworked to a fixed, system-wide FHS path
   (`/etc/devcontainer/feature/git-commit-attribution/trailer-contract`) that
   serves `root` and every user identically. The validator compiles that path in
