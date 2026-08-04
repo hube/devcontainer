@@ -1239,7 +1239,7 @@ block and **before** the `for i in {1..3}` loop, add:
 - [ ] **Step 6: Run the test to verify it passes**
 
 Run: `.devcontainer/local-features/claude/test/test-poststart.sh`
-Expected: PASS — `11 passed, 0 failed`.
+Expected: PASS — `12 passed, 0 failed`.
 
 - [ ] **Step 7: Write `NOTES.md`**
 
