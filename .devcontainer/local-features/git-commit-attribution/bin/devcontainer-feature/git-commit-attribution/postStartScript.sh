@@ -5,6 +5,10 @@ set -uo pipefail
 
 SPEC="${GCA_SPEC_PATH:-/etc/devcontainer/feature/git-commit-attribution/trailer-contract}"
 SCAN_ROOT="${GCA_SCAN_ROOT:-/workspaces}"
+# Test seam only; defaults to the installed gate's hooks directory (the value
+# every repo's EFFECTIVE core.hooksPath should resolve to via /etc/gitconfig
+# in a rebuilt container).
+GCA_HOOKS_PATH="${GCA_HOOKS_PATH:-/usr/local/share/git-commit-attribution/hooks}"
 
 if [[ ! -f "$SPEC" ]]; then
   echo "git-commit-attribution: no trailer contract at $SPEC." >&2
@@ -22,10 +26,16 @@ fi
 scan_candidate() {
   local candidate="$1"
   if git -C "$candidate" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    local local_path
-    local_path="$(git -C "$candidate" config --local --get core.hooksPath 2>/dev/null || true)"
-    if [[ -n "$local_path" ]]; then
-      echo "git-commit-attribution: $candidate sets core.hooksPath=$local_path locally; the gate is silently bypassed there." >&2
+    local effective_path
+    # The EFFECTIVE value (no --local) is what git actually uses to dispatch
+    # hooks, so this catches every scope that can shadow the gate --
+    # worktree, local, and global -- not only --local. A worktree-scoped
+    # override (extensions.worktreeConfig=true plus `git config --worktree
+    # core.hooksPath ...`) is invisible to `--local --get` (rc=1) but IS the
+    # effective value, which is what missed it before.
+    effective_path="$(git -C "$candidate" config --get core.hooksPath 2>/dev/null || true)"
+    if [[ -n "$effective_path" && "$effective_path" != "$GCA_HOOKS_PATH" ]]; then
+      echo "git-commit-attribution: $candidate sets core.hooksPath=$effective_path (effective, from worktree/local/global config); the gate is silently bypassed there." >&2
     fi
     return 0
   fi

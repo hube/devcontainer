@@ -45,12 +45,15 @@ ships unchanged either way.
 
 Four ways the gate does not apply, stated plainly:
 
-- **A repository with its own `core.hooksPath`.** Local git config outranks
-  the system-scope `core.hooksPath` this Feature writes, so a repo already
-  running husky, lefthook, or pre-commit bypasses the gate silently, by
-  accident. Not fixable from global config. The postStart script names any
-  such repository under the scan root, along with its `core.hooksPath`
-  value.
+- **A repository with its own `core.hooksPath`.** Worktree, local, or global
+  git config all outrank the system-scope `core.hooksPath` this Feature
+  writes, so a repo already running husky, lefthook, or pre-commit (or a
+  linked worktree with its own `extensions.worktreeConfig` override) bypasses
+  the gate silently, by accident. Not fixable from global config. The
+  postStart script reads each candidate repo's *effective* `core.hooksPath`
+  (not just `--local`, which misses a worktree-scoped override) and names any
+  repository under the scan root whose effective value differs from the
+  installed gate path, along with that value.
 - **`git commit --no-verify`.** One flag skips the `commit-msg` hook
   entirely. This is also the documented escape hatch for the one commit that
   needs to land while the spec itself is broken.
@@ -94,7 +97,7 @@ than a bare `exit 0`:
 
 The gate never blocks container start: `postStartScript.sh` only warns, and
 always exits 0, whether the spec is missing, misplaced, or a repository's
-local `core.hooksPath` shadows the gate. A missing spec warns at postStart
+effective `core.hooksPath` shadows the gate. A missing spec warns at postStart
 and rejects at commit time; a malformed spec passes the postStart
 file-existence check silently and is caught only at commit time — the
 fail-closed behavior described under *Behavior* above. Under an active

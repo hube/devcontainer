@@ -116,5 +116,41 @@ line_count="$(printf '%s\n' "$out" | grep -c "core.hooksPath")"
 [ "$line_count" -eq 1 ] && pass "depth-1 repo with subdir: reported exactly once, not descended into" || fail "depth-1 repo with subdir: reported exactly once, not descended into" "$out"
 teardown_world
 
+# ============================================================ 9: worktree-scoped core.hooksPath override -> named (effective read catches it; --local read does not)
+# Regression for the shadow-scan gap: extensions.worktreeConfig=true plus a
+# --worktree-scoped core.hooksPath is invisible to `git config --local --get`
+# (rc=1, no output) while it IS the effective value git actually uses for
+# hook dispatch. Controller-reproduced: `git config --local --get
+# core.hooksPath` returns rc=1 for this exact setup while `git config --get
+# core.hooksPath` (effective) returns the worktree-scoped value.
+setup_world
+: > "$GCA_SPEC_PATH"
+repo="$GCA_SCAN_ROOT/repo9"
+git init --quiet -b main "$repo" >/dev/null
+git_c "$repo" config extensions.worktreeConfig true >/dev/null
+git_c "$repo" config --worktree core.hooksPath "/tmp/evil-hooks" >/dev/null
+out="$("$SCRIPT" 2>&1)"; rc=$?
+[ "$rc" -eq 0 ] && pass "worktree-scoped hooksPath: exits 0" || fail "worktree-scoped hooksPath: exits 0" "got $rc"
+[[ "$out" == *"$repo"* ]] && pass "worktree-scoped hooksPath: names the repository" || fail "worktree-scoped hooksPath: names the repository" "$out"
+[[ "$out" == *"/tmp/evil-hooks"* ]] && pass "worktree-scoped hooksPath: names the hooksPath value" || fail "worktree-scoped hooksPath: names the hooksPath value" "$out"
+teardown_world
+
+# ============================================================ 10: effective core.hooksPath equals the installed gate path -> silent
+# The GCA_HOOKS_PATH seam lets the test pin "the installed gate path" without
+# touching the real /usr/local install; a repo whose effective value equals it
+# (as every repo's should in a rebuilt container, via /etc/gitconfig) must not
+# be warned about.
+setup_world
+: > "$GCA_SPEC_PATH"
+export GCA_HOOKS_PATH="$WORLD/installed-gate-hooks"
+repo="$GCA_SCAN_ROOT/repo10"
+git init --quiet -b main "$repo" >/dev/null
+git_c "$repo" config --local core.hooksPath "$GCA_HOOKS_PATH" >/dev/null
+out="$("$SCRIPT" 2>&1)"; rc=$?
+[ "$rc" -eq 0 ] && pass "effective hooksPath equals gate path: exits 0" || fail "effective hooksPath equals gate path: exits 0" "got $rc"
+[ -z "$out" ] && pass "effective hooksPath equals gate path: silent" || fail "effective hooksPath equals gate path: silent" "$out"
+unset GCA_HOOKS_PATH
+teardown_world
+
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [ "$failed" -eq 0 ]
