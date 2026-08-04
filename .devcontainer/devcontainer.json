@@ -14,11 +14,23 @@
     "./local-features/claude": {},
     "./local-features/codex": {},
     "./local-features/direnv": {},
+    "./local-features/git-commit-attribution": {},
     "./local-features/github-cli-config": {},
     "./local-features/ssh": {},
     "./local-features/workspaces-permissions": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
+  "mounts": [
+    // Trailer contract for the git-commit-attribution gate. The Feature owns
+    // the container path; the consumer owns this mount — see the Feature's
+    // NOTES.md. Read-only: editing the contract you are judged against would
+    // be the one bypass that leaves no trace in the commit.
+    {
+      "type": "bind,readonly",
+      "source": "${localEnv:HOME}/.claude/git-commit-attribution.conf",
+      "target": "/etc/devcontainer/feature/git-commit-attribution/trailer-contract"
+    }
+  ],
   "containerEnv": {
     "TZ": "${localEnv:TZ:America/Los_Angeles}"
   },
