@@ -2,8 +2,9 @@ import { runCommitMsg, runRange } from './validate';
 
 /**
  * Compiled into the bundle so the `commit-msg` hook (install.sh writes no
- * config of its own) always has a spec to read; install.sh guarantees this
- * mount (design, *Node*). CI overrides it with `--spec`.
+ * config of its own) always has a spec to read; install.sh guarantees the
+ * interpreter symlink, and the consumer's devcontainer.json declares the
+ * spec mount. CI overrides it with `--spec`.
  */
 export const DEFAULT_SPEC_PATH = '/etc/devcontainer/feature/git-commit-attribution/trailer-contract';
 

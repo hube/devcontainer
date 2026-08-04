@@ -94,9 +94,11 @@ than a bare `exit 0`:
 
 The gate never blocks container start: `postStartScript.sh` only warns, and
 always exits 0, whether the spec is missing, misplaced, or a repository's
-local `core.hooksPath` shadows the gate. A missing or malformed spec warns at
-postStart and rejects at commit time — the fail-closed behavior described
-under *Behavior* above. Under an active container-wide `core.hooksPath`, a
+local `core.hooksPath` shadows the gate. A missing spec warns at postStart
+and rejects at commit time; a malformed spec passes the postStart
+file-existence check silently and is caught only at commit time — the
+fail-closed behavior described under *Behavior* above. Under an active
+container-wide `core.hooksPath`, a
 plain `git init` is expected to emit benign `fatal: not a git repository`
 stderr noise twice (the `reference-transaction` hook fires before the
 repository is fully initialized); the exit status is 0 and the repository is

@@ -1,8 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_SPEC_PATH, main } from '../../src/git-commit-attribution/cli';
+
+// Whether the live spec happens to be mounted at the compiled-in path in
+// *this* environment. On a plain checkout it is not, so the missing-spec
+// assertions below run for real. Inside a rebuilt consumer container the
+// devcontainer.json mount puts a real (warn-mode) spec at exactly this path,
+// so loadSpec would succeed instead of failing — those specific assertions
+// are skipped rather than asserting a false environmental premise; the
+// missing-spec fail-closed behavior itself stays covered by loadSpec's own
+// unit tests in validate.test.ts regardless of which environment this runs in.
+const defaultSpecExists = existsSync(DEFAULT_SPEC_PATH);
+const skipIfDefaultSpecExists = (title: string): string =>
+  defaultSpecExists
+    ? `${title} (skipped: a spec is mounted at ${DEFAULT_SPEC_PATH} in this environment)`
+    : title;
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
@@ -32,20 +46,23 @@ function captureStderr(): { text: () => string } {
 }
 
 describe('main', () => {
-  it('commit-msg without --spec falls back to DEFAULT_SPEC_PATH', () => {
-    const dir = makeTmpDir();
-    const msgfile = join(dir, 'MSG');
-    writeFileSync(msgfile, 'subject\n\nbody\n');
-    const stderr = captureStderr();
+  it.skipIf(defaultSpecExists)(
+    skipIfDefaultSpecExists('commit-msg without --spec falls back to DEFAULT_SPEC_PATH'),
+    () => {
+      const dir = makeTmpDir();
+      const msgfile = join(dir, 'MSG');
+      writeFileSync(msgfile, 'subject\n\nbody\n');
+      const stderr = captureStderr();
 
-    const exitCode = main(['commit-msg', msgfile]);
+      const exitCode = main(['commit-msg', msgfile]);
 
-    // DEFAULT_SPEC_PATH does not exist on this machine (verified separately),
-    // so loadSpec's missing-spec rejection fires and names the compiled-in
-    // path — proof that no --spec override reached this call.
-    expect(exitCode).toBe(1);
-    expect(stderr.text()).toContain(DEFAULT_SPEC_PATH);
-  });
+      // DEFAULT_SPEC_PATH does not exist on this machine (verified separately),
+      // so loadSpec's missing-spec rejection fires and names the compiled-in
+      // path — proof that no --spec override reached this call.
+      expect(exitCode).toBe(1);
+      expect(stderr.text()).toContain(DEFAULT_SPEC_PATH);
+    },
+  );
 
   it('commit-msg with --spec uses the override path, not DEFAULT_SPEC_PATH', () => {
     const dir = makeTmpDir();
@@ -75,14 +92,20 @@ describe('main', () => {
     expect(text).not.toContain(DEFAULT_SPEC_PATH);
   });
 
-  it('--range BASE..HEAD without --spec falls back to DEFAULT_SPEC_PATH', () => {
-    const stderr = captureStderr();
+  // Same environmental assumption as the commit-msg case above (a rebuilt
+  // container mounts a real spec at DEFAULT_SPEC_PATH), so it gets the same
+  // skip treatment.
+  it.skipIf(defaultSpecExists)(
+    skipIfDefaultSpecExists('--range BASE..HEAD without --spec falls back to DEFAULT_SPEC_PATH'),
+    () => {
+      const stderr = captureStderr();
 
-    const exitCode = main(['--range', 'A..B']);
+      const exitCode = main(['--range', 'A..B']);
 
-    expect(exitCode).toBe(1);
-    expect(stderr.text()).toContain(DEFAULT_SPEC_PATH);
-  });
+      expect(exitCode).toBe(1);
+      expect(stderr.text()).toContain(DEFAULT_SPEC_PATH);
+    },
+  );
 
   it('no arguments exits 1 with usage on stderr', () => {
     const stderr = captureStderr();

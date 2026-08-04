@@ -257,10 +257,19 @@ describe('runCommitMsg', () => {
 });
 
 describe('runRange', () => {
+  // System-scope git config installs this Feature's own commit-msg gate
+  // (core.hooksPath -> the live validator) once the branch is consumed in a
+  // rebuilt container. Every scratch-repo git invocation below creates or
+  // reads commits, so all of them isolate against that live gate the same
+  // way the security-guidance plugin hook does (see NOTES.md's Bypasses
+  // section) — otherwise a future enforce-mode spec would reject the
+  // `violatingMessage` fixture commit and break this suite.
+  const ISOLATED_GIT_ENV = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' };
+
   function initRepo(dir: string): void {
-    spawnSync('git', ['init', '--quiet'], { cwd: dir });
-    spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: dir });
-    spawnSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
+    spawnSync('git', ['init', '--quiet'], { cwd: dir, env: ISOLATED_GIT_ENV });
+    spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: dir, env: ISOLATED_GIT_ENV });
+    spawnSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir, env: ISOLATED_GIT_ENV });
   }
 
   function runInRepo<T>(dir: string, fn: () => T): T {
@@ -293,10 +302,14 @@ describe('runRange', () => {
     initRepo(dir);
     // A base commit before the two under test, so 'HEAD~2..HEAD' (per the
     // task brief's exact invocation) has a valid exclusive lower bound.
-    spawnSync('git', ['commit', '--allow-empty', '-m', 'Base commit\n'], { cwd: dir });
-    spawnSync('git', ['commit', '--allow-empty', '-m', compliantMessage], { cwd: dir });
-    spawnSync('git', ['commit', '--allow-empty', '-m', violatingMessage], { cwd: dir });
-    const shortResult = spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: dir, encoding: 'utf8' });
+    spawnSync('git', ['commit', '--allow-empty', '-m', 'Base commit\n'], { cwd: dir, env: ISOLATED_GIT_ENV });
+    spawnSync('git', ['commit', '--allow-empty', '-m', compliantMessage], { cwd: dir, env: ISOLATED_GIT_ENV });
+    spawnSync('git', ['commit', '--allow-empty', '-m', violatingMessage], { cwd: dir, env: ISOLATED_GIT_ENV });
+    const shortResult = spawnSync('git', ['rev-parse', '--short', 'HEAD'], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: ISOLATED_GIT_ENV,
+    });
     return { dir, violatingShort: shortResult.stdout.trim() };
   }
 
@@ -339,7 +352,11 @@ describe('runRange', () => {
     // the way a corrupted/missing object would (non-zero exit, `fatal:`
     // stderr). rev-list, rev-parse --short, and the other commit's `log`
     // call all still run through real git.
-    const fullShaResult = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' });
+    const fullShaResult = spawnSync('git', ['rev-parse', 'HEAD'], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: ISOLATED_GIT_ENV,
+    });
     const violatingFullSha = fullShaResult.stdout.trim();
 
     setFailOnLogSha(violatingFullSha);
