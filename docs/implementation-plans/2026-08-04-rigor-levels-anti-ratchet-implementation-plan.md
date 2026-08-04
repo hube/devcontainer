@@ -1138,7 +1138,7 @@ run_hook
 [[ $rc -eq 0 ]] && pass "absent: exits 0" || fail "absent: exits 0" "got $rc"
 [[ "$out" == *"claude: $HOME/.agents/instructions is absent, so the shared agent instructions are not mounted."* ]] && pass "absent: states problem" || fail "absent: states problem" "$out"
 [[ "$out" == *"Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable."* ]] && pass "absent: states consequence" || fail "absent: states consequence" "$out"
-[[ "$out" == *"Add the consumer mount documented in .devcontainer/local-features/claude/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container."* ]] && pass "absent: states remedy" || fail "absent: states remedy" "$out"
+[[ "$out" == *"Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container."* ]] && pass "absent: states remedy" || fail "absent: states remedy" "$out"
 teardown_world
 
 # A non-directory at the target needs a different remedy than an absent one.
@@ -1148,7 +1148,7 @@ mkdir -p "$HOME/.agents"
 run_hook
 [[ $rc -eq 0 ]] && pass "not a directory: exits 0" || fail "not a directory: exits 0" "got $rc"
 [[ "$out" == *"claude: $HOME/.agents/instructions exists but is not a directory, so the shared agent instructions cannot be read."* ]] && pass "not a directory: states problem" || fail "not a directory: states problem" "$out"
-[[ "$out" == *"Remove it, declare the consumer mount documented in .devcontainer/local-features/claude/NOTES.md, then restart the container."* ]] && pass "not a directory: states remedy" || fail "not a directory: states remedy" "$out"
+[[ "$out" == *"Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source."* ]] && pass "not a directory: states remedy" || fail "not a directory: states remedy" "$out"
 [[ "$out" != *"is absent"* ]] && pass "not a directory: does not report absence" || fail "not a directory: does not report absence" "$out"
 teardown_world
 
@@ -1198,12 +1198,12 @@ fi
 # it must be removed before a bind mount can land there.
 if [[ -e "$instructions" || -L "$instructions" ]]; then
   printf '%s\n' \
-    "claude: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in .devcontainer/local-features/claude/NOTES.md, then restart the container." >&2
+    "claude: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source." >&2
   exit 0
 fi
 
 printf '%s\n' \
-  "claude: $instructions is absent, so the shared agent instructions are not mounted. Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in .devcontainer/local-features/claude/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
+  "claude: $instructions is absent, so the shared agent instructions are not mounted. Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
 
 exit 0
 ```
@@ -1388,12 +1388,12 @@ fi
 # it must be removed before a bind mount can land there.
 if [[ -e "$instructions" || -L "$instructions" ]]; then
   printf '%s\n' \
-    "codex: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in .devcontainer/local-features/codex/NOTES.md, then restart the container." >&2
+    "codex: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/codex/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source." >&2
   exit 0
 fi
 
 printf '%s\n' \
-  "codex: $instructions is absent, so the shared agent instructions are not mounted. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in .devcontainer/local-features/codex/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
+  "codex: $instructions is absent, so the shared agent instructions are not mounted. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/codex/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
 
 exit 0
 ```
