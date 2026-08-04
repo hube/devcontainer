@@ -10,8 +10,9 @@ user-level agent guidance.
 
 `hube/fin#5` encoded an **anti-ratchet kit** for agent-driven design/review
 loops. It was born from `hube/fin#1`, where review rounds r14–r26 accreted
-crash-safety machinery serving a rigor standard nobody had chosen: with requirements unstated, each round read the draft's invariants at
-their strictest defensible interpretation, demanded more mechanism, and the next
+crash-safety machinery serving a rigor standard nobody had chosen: with
+requirements unstated, each round read the draft's invariants at their
+strictest defensible interpretation, demanded more mechanism, and the next
 round found fault with the mechanism just added. A contest-based tripwire never
 fired because no round *disagreed* with the last — each agreed and added.
 
@@ -469,7 +470,7 @@ To add harness *N*:
    postStart absent-mount warning. (The existing Claude and Codex file mounts
    are Feature-declared — the Codex Feature hardcodes the `~/.claude/CLAUDE.md`
    source today — and remain grandfathered pre-existing plumbing, unchanged
-   like their writable `bind` mode; new Features do not repeat the leak.); and
+   like their writable `bind` mode; new Features do not repeat the leak); and
 2. **no new instructions mount is needed** — the single consumer-declared
    `~/.agents/instructions` mount already serves every harness in the container.
    *N*'s Feature owns only the target-path reference and the postStart
@@ -687,3 +688,6 @@ change.
   non-load-bearing "roughly half" fraction and the "patch-stable"
   future-version characterization from live text (changelog history
   retained).
+- 2026-08-04: Review round 8 (devcontainer#55). Two formatting corrections in
+  place: re-wrapped the fin#1 context paragraph; fixed the grandfathering
+  parenthetical's punctuation.
