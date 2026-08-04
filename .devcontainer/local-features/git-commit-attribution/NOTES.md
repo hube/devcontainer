@@ -100,9 +100,7 @@ always exits 0, whether the spec is missing, misplaced, or a repository's
 effective `core.hooksPath` shadows the gate. A missing spec warns at postStart
 and rejects at commit time; a malformed spec passes the postStart
 file-existence check silently and is caught only at commit time — the
-fail-closed behavior described under *Behavior* above. Under an active
-container-wide `core.hooksPath`, a
-plain `git init` is expected to emit benign `fatal: not a git repository`
-stderr noise twice (the `reference-transaction` hook fires before the
-repository is fully initialized); the exit status is 0 and the repository is
-intact, so this is cosmetic only.
+fail-closed behavior described under *Behavior* above. When hook resolution
+runs outside a repository (e.g. `reference-transaction` firing mid-`git
+init`, before the repository is recognized), the dispatcher exits quietly
+rather than leaking the transient failure to the user.

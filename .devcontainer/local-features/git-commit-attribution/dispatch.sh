@@ -14,8 +14,16 @@ hook_name=$(basename "$0")
 
 # --git-common-dir ignores core.hooksPath (the recursion guard) and, from a
 # linked worktree where .git is a file, resolves the main repository's .git,
-# where hooks actually live.
-repo_hook="$(git rev-parse --git-common-dir)/hooks/$hook_name"
+# where hooks actually live. Outside a repository (e.g. reference-transaction
+# fires mid-`git init`, before the repository is recognized) rev-parse fails;
+# there is no repo hook to chain in that case, so the failure is swallowed
+# here rather than left to leak to the user's stderr, and repo_hook is set
+# empty (both -x and -f test false on "", even under set -u).
+if common_dir="$(git rev-parse --git-common-dir 2>/dev/null)"; then
+  repo_hook="$common_dir/hooks/$hook_name"
+else
+  repo_hook=""
+fi
 
 if [ "$hook_name" = "commit-msg" ]; then
   # The repo's own commit-msg hook runs FIRST, before validation: git permits

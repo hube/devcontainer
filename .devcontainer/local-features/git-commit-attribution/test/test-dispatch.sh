@@ -306,5 +306,15 @@ out="$(git_c "$repo" commit --quiet --allow-empty -m first 2>&1)"; rc=$?
 git -C "$repo" rev-parse HEAD >/dev/null 2>&1 && fail "repo-hook-rewrite: no commit created" "HEAD exists" || pass "repo-hook-rewrite: no commit created"
 teardown_world
 
+# ============================================================ 15: `git init` under the gate farm -- reference-transaction fires before the repository is recognized; resolving the repo hook must not leak that transient failure to the user
+# Asserts emptiness, not the absence of any one particular string: any stderr
+# at all here means hook-resolution noise leaked during init, regardless of
+# its wording.
+setup_world
+repo="$WORLD/repo15"
+init_err="$(git init --quiet -b main "$repo" 2>&1 >/dev/null)"
+[ -z "$init_err" ] && pass "git init: stderr empty (no leaked hook-resolution noise)" || fail "git init: stderr empty (no leaked hook-resolution noise)" "$init_err"
+teardown_world
+
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [ "$failed" -eq 0 ]
