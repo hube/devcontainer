@@ -71,5 +71,6 @@
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-3/CLAUDE.md"
     }
-  ]
+  ],
+  "postStartCommand": "~/bin/devcontainer-feature/claude/postStartScript.sh"
 }

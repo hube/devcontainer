@@ -13,6 +13,13 @@ then
       --chmod=D755,F644 \
       "home/." "/home/${_CONTAINER_USER}"
 
+  # Separate rsync: hooks need the execute bit, which the config copy's F644
+  # would strip.
+  rsync -rp \
+      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
+      --chmod=D755,F755 \
+      "bin/." "/home/${_CONTAINER_USER}/bin"
+
   # Create additional Claude Code configuration dirs owned by the container
   # user, to support multiple accounts
   for i in {1..3}
