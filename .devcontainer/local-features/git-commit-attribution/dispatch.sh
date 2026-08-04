@@ -1,0 +1,62 @@
+#!/bin/sh
+# Dispatcher for the git-commit-attribution gate. A container-wide
+# core.hooksPath replaces the hook directory for EVERY hook git knows, so
+# this script is symlinked under every githooks(5) name and chains to the
+# repository's own hook. See NOTES.md for the classification rule new hook
+# names must pass before joining the symlink farm.
+set -u
+
+# Test seams only; both default to the installed locations.
+GCA_ROOT="${GCA_ROOT:-/usr/local/share/git-commit-attribution}"
+GCA_NODE="${GCA_NODE:-/usr/local/bin/node}"
+
+hook_name=$(basename "$0")
+
+if [ "$hook_name" = "commit-msg" ]; then
+  validator="$GCA_ROOT/validate"
+  if [ -x "$validator" ] && [ -x "$GCA_NODE" ]; then
+    "$validator" commit-msg "$1" || exit $?
+  else
+    echo "git-commit-attribution: cannot execute the validator at $validator (interpreter: $GCA_NODE)." >&2
+    echo "The commit was not created: the gate fails closed when it cannot run." >&2
+    echo "Remedy: rebuild the container; to bypass once, use git commit --no-verify." >&2
+    exit 1
+  fi
+fi
+
+# --git-common-dir ignores core.hooksPath (the recursion guard) and, from a
+# linked worktree where .git is a file, resolves the main repository's .git,
+# where hooks actually live.
+repo_hook="$(git rev-parse --git-common-dir)/hooks/$hook_name"
+
+if [ -x "$repo_hook" ]; then
+  exec "$repo_hook" "$@"
+fi
+
+if [ -f "$repo_hook" ]; then
+  echo "git-commit-attribution: hook '$repo_hook' exists but is not executable; ignoring it." >&2
+fi
+
+case "$hook_name" in
+  push-to-checkout)
+    # Presence-sensitive: exit 0 would tell git the worktree update was
+    # handled. Emulate git's built-in updateInstead default instead: refuse
+    # when worktree or index differ from HEAD, otherwise update both. The
+    # cwd here is $GIT_DIR, which contains a file named HEAD, so the -- on
+    # diff-index disambiguates the revision from that file.
+    git update-index -q --ignore-submodules --refresh &&
+    git diff-files --quiet --ignore-submodules -- &&
+    git diff-index --quiet --cached --ignore-submodules HEAD -- &&
+    git read-tree -u -m HEAD "$1"
+    exit $?
+    ;;
+  proc-receive)
+    # Presence-sensitive: speaks a pkt-line protocol no generic script can
+    # emulate. Failing rejects the matched ref exactly as an absent hook
+    # does; exit 0 would claim refs were handled when nothing handled them.
+    exit 1
+    ;;
+  *)
+    exit 0
+    ;;
+esac
