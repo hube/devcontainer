@@ -166,10 +166,13 @@ for option in entry.get("securityOpt", []):
 IMAGE_USER="$(python3 - "$REPO_ROOT/.devcontainer/devcontainer.json" <<'PY'
 import json
 import os
+import pathlib
 import re
 import sys
 
-config = json.load(open(sys.argv[1], encoding="utf-8"))
+config = json.loads(
+    re.sub(r"(?m)^\s*//.*$", "", pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+)
 configured_user = config.get("containerUser")
 if not isinstance(configured_user, str) or not configured_user:
     raise SystemExit(f"containerUser must be a non-empty string, got {configured_user!r}")
