@@ -87,5 +87,34 @@ out="$("$SCRIPT" 2>&1)"; rc=$?
 [ "$rc" -eq 0 ] && pass "absent scan root: exits 0" || fail "absent scan root: exits 0" "got $rc"
 teardown_world
 
+# ============================================================ 7: repo at depth 2 (parent dir is not itself a repo) with local core.hooksPath -> named
+# Mirrors this container's real layout: /workspaces/agent-devcontainer/<repo>,
+# where the depth-1 parent holds no .git of its own.
+setup_world
+: > "$GCA_SPEC_PATH"
+parent="$GCA_SCAN_ROOT/agent-devcontainer"
+repo="$parent/devcontainer"
+mkdir -p "$parent"
+git init --quiet -b main "$repo" >/dev/null
+git_c "$repo" config --local core.hooksPath "/some/depth2/hooks" >/dev/null
+out="$("$SCRIPT" 2>&1)"; rc=$?
+[ "$rc" -eq 0 ] && pass "depth-2 shadowing repo: exits 0" || fail "depth-2 shadowing repo: exits 0" "got $rc"
+[[ "$out" == *"$repo"* ]] && pass "depth-2 shadowing repo: names the repository" || fail "depth-2 shadowing repo: names the repository" "$out"
+[[ "$out" == *"/some/depth2/hooks"* ]] && pass "depth-2 shadowing repo: names the hooksPath value" || fail "depth-2 shadowing repo: names the hooksPath value" "$out"
+teardown_world
+
+# ============================================================ 8: a depth-1 repo's own subdirectories are not re-scanned as separate candidates
+setup_world
+: > "$GCA_SPEC_PATH"
+repo="$GCA_SCAN_ROOT/repo8"
+git init --quiet -b main "$repo" >/dev/null
+mkdir -p "$repo/subdir"
+git_c "$repo" config --local core.hooksPath "/some/depth1/hooks" >/dev/null
+out="$("$SCRIPT" 2>&1)"; rc=$?
+[ "$rc" -eq 0 ] && pass "depth-1 repo with subdir: exits 0" || fail "depth-1 repo with subdir: exits 0" "got $rc"
+line_count="$(printf '%s\n' "$out" | grep -c "core.hooksPath")"
+[ "$line_count" -eq 1 ] && pass "depth-1 repo with subdir: reported exactly once, not descended into" || fail "depth-1 repo with subdir: reported exactly once, not descended into" "$out"
+teardown_world
+
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
 [ "$failed" -eq 0 ]

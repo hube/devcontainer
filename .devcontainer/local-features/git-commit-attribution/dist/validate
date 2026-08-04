@@ -277,19 +277,28 @@ function loadSpec(specPath) {
   if (!stat.isFile()) {
     return { ok: false, outcome: rejectSpecPath(specPath, `spec at ${specPath} is not a file`) };
   }
-  const text = (0, import_node_fs.readFileSync)(specPath, "utf8");
+  let text;
+  try {
+    text = (0, import_node_fs.readFileSync)(specPath, "utf8");
+  } catch (err) {
+    return {
+      ok: false,
+      outcome: rejectSpecPath(specPath, `cannot read spec at ${specPath}: ${err.message}`)
+    };
+  }
   const parsed = parseSpec(text);
   if (!parsed.ok) {
     return { ok: false, outcome: rejectSpecProblem(specPath, parsed.problem) };
   }
   return { ok: true, spec: parsed.spec };
 }
-function violationOutcome(problems, specPath) {
+function violationOutcome(problems, specPath, context) {
+  const consequence = context === "range" ? "This commit violates the trailer contract." : "The commit was not created.";
   return {
     exitCode: 1,
     stderr: [
       ...problems.map((p) => `git-commit-attribution: commit message is ${p}.`),
-      "The commit was not created.",
+      consequence,
       ...CONTRACT_LINES,
       `Spec: ${specPath}`
     ]
@@ -306,7 +315,7 @@ function warningOutcome(problems, specPath) {
     ]
   };
 }
-function checkMessage(raw, spec, specPath) {
+function checkMessage(raw, spec, specPath, context = "hook") {
   if (!triggers(raw, spec)) {
     return { exitCode: 0, stderr: [] };
   }
@@ -314,11 +323,12 @@ function checkMessage(raw, spec, specPath) {
   try {
     trailerList = parseTrailers(raw);
   } catch (err) {
+    const consequence = context === "range" ? "This commit could not be checked." : "The commit was not created.";
     return {
       exitCode: 1,
       stderr: [
         `git-commit-attribution: could not validate commit-message trailers: ${err.message}.`,
-        "The commit was not created.",
+        consequence,
         "This validator could not run \u2014 check that git is installed and on PATH, or bypass once with git commit --no-verify.",
         "",
         `Spec: ${specPath}`
@@ -329,7 +339,7 @@ function checkMessage(raw, spec, specPath) {
   if (problems.length === 0) {
     return { exitCode: 0, stderr: [] };
   }
-  return spec.mode === "enforce" ? violationOutcome(problems, specPath) : warningOutcome(problems, specPath);
+  return spec.mode === "enforce" ? violationOutcome(problems, specPath, context) : warningOutcome(problems, specPath);
 }
 function runCommitMsg(msgfile, specPath) {
   const loaded = loadSpec(specPath);
@@ -347,7 +357,7 @@ function runRange(range, specPath) {
       exitCode: 1,
       stderr: [
         `git-commit-attribution: could not list commits for range '${range}': ${detail}.`,
-        "The commit was not created.",
+        "The range check did not run.",
         "",
         `Spec: ${specPath}`
       ]
@@ -364,11 +374,11 @@ function runRange(range, specPath) {
       exitCode: 1,
       stderr: [
         `git-commit-attribution: could not read the commit message for ${sha}: ${logResult.error ? logResult.error.message : logResult.stderr.trim()}.`,
-        "The commit was not created.",
+        "This commit could not be checked.",
         "",
         `Spec: ${specPath}`
       ]
-    } : checkMessage(logResult.stdout, loaded.spec, specPath);
+    } : checkMessage(logResult.stdout, loaded.spec, specPath, "range");
     if (outcome.stderr.length > 0) {
       for (const line of outcome.stderr) {
         stderr.push(line === "" ? "" : `${short}: ${line}`);

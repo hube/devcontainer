@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SpawnSyncReturns } from 'node:child_process';
@@ -135,6 +135,26 @@ describe('loadSpec', () => {
     const text = result.outcome.stderr.join('\n');
     expect(text).toContain('rebuild the container');
     expect(text).toContain('pin the spec');
+  });
+
+  it('rejects an unreadable spec file, naming the path and giving a remedy instead of throwing', () => {
+    // root ignores the mode bits chmod sets below, so the EACCES this test
+    // targets never fires under root — skip rather than assert a false
+    // negative.
+    if (process.getuid?.() === 0) return;
+    const dir = makeTmpDir();
+    const specPath = join(dir, 'trailer-contract');
+    writeFileSync(specPath, LIVE_SPEC);
+    chmodSync(specPath, 0o000);
+    expect(() => loadSpec(specPath)).not.toThrow();
+    const result = loadSpec(specPath);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.outcome.exitCode).toBe(1);
+    const text = result.outcome.stderr.join('\n');
+    expect(text).toContain(specPath);
+    expect(text).toContain('cannot read spec at');
+    expect(text).toContain('The commit was not created.');
   });
 
   it('loads a well-formed spec', () => {
@@ -323,6 +343,10 @@ describe('runRange', () => {
     const text = outcome.stderr.join('\n');
     expect(text).toContain(violatingShort);
     expect(text).toContain("missing the required trailer 'Skills'");
+    // `rev-list` just listed this sha, so it demonstrably exists — the
+    // hook-context "not created" claim would be false here.
+    expect(text).not.toContain('The commit was not created.');
+    expect(text).toContain('This commit violates the trailer contract.');
   });
 
   it('reports the same diagnosis but exits 0 under mode warn', () => {
@@ -366,8 +390,29 @@ describe('runRange', () => {
       const text = outcome.stderr.join('\n');
       expect(text).toContain(violatingShort);
       expect(text).toContain('bad object');
+      // The commit exists (rev-list listed it); only its message couldn't be
+      // read, so "not created" would be false.
+      expect(text).not.toContain('The commit was not created.');
+      expect(text).toContain('This commit could not be checked.');
     } finally {
       setFailOnLogSha(null);
     }
+  });
+
+  it('fails closed, exit 1, with a truthful consequence when the range itself cannot be listed', () => {
+    const dir = makeTmpDir();
+    initRepo(dir);
+    spawnSync('git', ['commit', '--allow-empty', '-m', 'Base commit\n'], { cwd: dir, env: ISOLATED_GIT_ENV });
+    const specPath = join(dir, 'trailer-contract');
+    writeFileSync(specPath, LIVE_SPEC);
+
+    const outcome = runInRepo(dir, () => runRange('not-a-real-range..HEAD', specPath));
+    expect(outcome.exitCode).toBe(1);
+    const text = outcome.stderr.join('\n');
+    expect(text).toContain("could not list commits for range 'not-a-real-range..HEAD'");
+    // Nothing was being created here at all — the rev-list call itself
+    // failed before any commit was examined.
+    expect(text).not.toContain('The commit was not created.');
+    expect(text).toContain('The range check did not run.');
   });
 });

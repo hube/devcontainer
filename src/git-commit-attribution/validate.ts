@@ -74,7 +74,16 @@ export function loadSpec(specPath: string): LoadSpecResult {
     return { ok: false, outcome: rejectSpecPath(specPath, `spec at ${specPath} is not a file`) };
   }
 
-  const text = readFileSync(specPath, 'utf8');
+  let text: string;
+  try {
+    text = readFileSync(specPath, 'utf8');
+  } catch (err) {
+    return {
+      ok: false,
+      outcome: rejectSpecPath(specPath, `cannot read spec at ${specPath}: ${(err as Error).message}`),
+    };
+  }
+
   const parsed = parseSpec(text);
   if (!parsed.ok) {
     return { ok: false, outcome: rejectSpecProblem(specPath, parsed.problem) };
@@ -83,12 +92,22 @@ export function loadSpec(specPath: string): LoadSpecResult {
   return { ok: true, spec: parsed.spec };
 }
 
-function violationOutcome(problems: string[], specPath: string): Outcome {
+/**
+ * `'hook'` is the `commit-msg` hook validating a message before the commit
+ * object exists — "The commit was not created" is true there. `'range'` is
+ * `runRange` re-checking commits `git rev-list` already listed, so the same
+ * line would be false: the commit demonstrably exists. Each consequence line
+ * below is chosen per context instead of reused across both.
+ */
+type Context = 'hook' | 'range';
+
+function violationOutcome(problems: string[], specPath: string, context: Context): Outcome {
+  const consequence = context === 'range' ? 'This commit violates the trailer contract.' : 'The commit was not created.';
   return {
     exitCode: 1,
     stderr: [
       ...problems.map((p) => `git-commit-attribution: commit message is ${p}.`),
-      'The commit was not created.',
+      consequence,
       ...CONTRACT_LINES,
       `Spec: ${specPath}`,
     ],
@@ -114,7 +133,7 @@ function warningOutcome(problems: string[], specPath: string): Outcome {
  * mode from a content violation — the validator itself could not run — so it
  * always fails closed (exit 1) regardless of `mode`.
  */
-export function checkMessage(raw: string, spec: Spec, specPath: string): Outcome {
+export function checkMessage(raw: string, spec: Spec, specPath: string, context: Context = 'hook'): Outcome {
   if (!triggers(raw, spec)) {
     return { exitCode: 0, stderr: [] };
   }
@@ -123,11 +142,12 @@ export function checkMessage(raw: string, spec: Spec, specPath: string): Outcome
   try {
     trailerList = parseTrailers(raw);
   } catch (err) {
+    const consequence = context === 'range' ? 'This commit could not be checked.' : 'The commit was not created.';
     return {
       exitCode: 1,
       stderr: [
         `git-commit-attribution: could not validate commit-message trailers: ${(err as Error).message}.`,
-        'The commit was not created.',
+        consequence,
         'This validator could not run — check that git is installed and on PATH, or bypass once with git commit --no-verify.',
         '',
         `Spec: ${specPath}`,
@@ -140,7 +160,7 @@ export function checkMessage(raw: string, spec: Spec, specPath: string): Outcome
     return { exitCode: 0, stderr: [] };
   }
 
-  return spec.mode === 'enforce' ? violationOutcome(problems, specPath) : warningOutcome(problems, specPath);
+  return spec.mode === 'enforce' ? violationOutcome(problems, specPath, context) : warningOutcome(problems, specPath);
 }
 
 /** Entry point for the `commit-msg` hook. */
@@ -171,7 +191,7 @@ export function runRange(range: string, specPath: string): Outcome {
       exitCode: 1,
       stderr: [
         `git-commit-attribution: could not list commits for range '${range}': ${detail}.`,
-        'The commit was not created.',
+        'The range check did not run.',
         '',
         `Spec: ${specPath}`,
       ],
@@ -204,12 +224,12 @@ export function runRange(range: string, specPath: string): Outcome {
             stderr: [
               `git-commit-attribution: could not read the commit message for ${sha}: ` +
                 `${logResult.error ? logResult.error.message : logResult.stderr.trim()}.`,
-              'The commit was not created.',
+              'This commit could not be checked.',
               '',
               `Spec: ${specPath}`,
             ],
           }
-        : checkMessage(logResult.stdout, loaded.spec, specPath);
+        : checkMessage(logResult.stdout, loaded.spec, specPath, 'range');
 
     if (outcome.stderr.length > 0) {
       for (const line of outcome.stderr) {
