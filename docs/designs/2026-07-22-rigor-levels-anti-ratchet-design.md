@@ -9,9 +9,8 @@ user-level agent guidance.
 ## Context
 
 `hube/fin#5` encoded an **anti-ratchet kit** for agent-driven design/review
-loops. It was born from `hube/fin#1`, where roughly half the review rounds
-(r14–r26) accreted crash-safety machinery serving a rigor standard nobody had
-chosen: with requirements unstated, each round read the draft's invariants at
+loops. It was born from `hube/fin#1`, where review rounds r14–r26 accreted
+crash-safety machinery serving a rigor standard nobody had chosen: with requirements unstated, each round read the draft's invariants at
 their strictest defensible interpretation, demanded more mechanism, and the next
 round found fault with the mechanism just added. A contest-based tripwire never
 fired because no round *disagreed* with the last — each agreed and added.
@@ -258,9 +257,11 @@ mechanism.
 
 Anything whose truth is established by **running code** — I/O ordering,
 concurrency windows, exact library or platform semantics — is resolved against
-real code with a required fixture, not in prose. "Defer to implementation with a
-required fixture" is a legitimate disposition for such a finding, unless the
-stated guarantee is itself unmeetable.
+real code with a required fixture, not in prose. A design specifies **what it
+guarantees**; it specifies mechanism only where the guarantee itself demands
+one. "Defer to implementation with a required fixture" is a legitimate
+disposition for such a finding, unless the stated guarantee is itself
+unmeetable.
 
 ### Review exchanges: proportionality
 
@@ -389,8 +390,7 @@ consequences:
    Codex reads `AGENTS.md` **wholesale** and does not. An `@import` pointer would
    silently no-op in Codex. (Established in the git-commit-attribution design:
    Codex's `agents_md` loader reads `AGENTS.md` wholesale with no `@path`
-   expansion — a patch-stable property of the loader, not a version-specific
-   one.)
+   expansion.)
 
 So fin's three-file split cannot simply be replicated on the host `~/.claude`
 tree — fin transports because a project repo is checked out whole in the
@@ -461,9 +461,15 @@ transports unchanged.
 
 To add harness *N*:
 
-1. its devcontainer Feature mounts the shared canonical file under *N*'s
-   instruction filename (e.g. `GEMINI.md`) — the existing per-Feature pattern,
-   each harness's file mount having its own distinct target; and
+1. the shared canonical file reaches *N* under its instruction filename (e.g.
+   `GEMINI.md`) via a **consumer-declared** mount — the host source
+   `~/.claude/CLAUDE.md` is Claude-layout-specific, so per the same
+   mount-ownership convention as the instructions mount, *N*'s Feature must not
+   declare it. The Feature owns only its stable container target and a
+   postStart absent-mount warning. (The existing Claude and Codex file mounts
+   are Feature-declared — the Codex Feature hardcodes the `~/.claude/CLAUDE.md`
+   source today — and remain grandfathered pre-existing plumbing, unchanged
+   like their writable `bind` mode; new Features do not repeat the leak.); and
 2. **no new instructions mount is needed** — the single consumer-declared
    `~/.agents/instructions` mount already serves every harness in the container.
    *N*'s Feature owns only the target-path reference and the postStart
@@ -491,7 +497,15 @@ mechanics differ.
   prompts.
 - **`instructions/review-dispatch-scope.md`** (new) — the canonical reviewer
   scope block, ported from fin's current `design-review-dispatch.md` with
-  assurance→rigor renaming: its numbered scope rules (meets-not-exceeds with
+  **two adaptations**: assurance→rigor renaming, and retargeting the block's
+  fin-repo-local cross-references — the preamble's `docs/designs/CONVENTIONS.md`
+  and `docs/prompts/reader-proxy-review-dispatch.md` citations become the
+  neighboring `~/.agents/instructions/rigor-levels.md` and
+  `~/.agents/instructions/reader-proxy-review-dispatch.md`, and rule 9's
+  pointer to "this repository's `AGENTS.md`" proportionality section becomes
+  the shared always-on `CLAUDE.md`/`AGENTS.md` (an arbitrary project's own
+  `AGENTS.md` does not carry that section). The port keeps
+  its numbered scope rules (meets-not-exceeds with
   the no-severity rationale, over-engineering with equal credit for removable
   machinery, don't-infer-or-reverse, provisional-levels-are-questions,
   defer-to-fixture, churn disclosure, proportioned findings,
@@ -523,6 +537,20 @@ mechanics differ.
 - Feature `NOTES.md` documents the consumer mount users must add, per the repo's
   docs conventions.
 
+### Rollout ordering
+
+The two repos must land in order: **claude-home first** (the `instructions/`
+directory and its gitignore allow-list), **then hube/devcontainer** (the
+consumer mount and the Feature postStart warnings). Docker rejects a bind
+mount whose host source does not exist (`invalid mount config for type
+"bind": bind source path does not exist` — verified against the local Docker
+daemon), so declaring the consumer mount before the host directory exists
+breaks container startup outright, before any postStart warning could run —
+the warning only covers the opposite gap, Features present but no consumer
+mount declared. The reverse order is safe: an unmounted `instructions/`
+directory on the host is inert. Feature `NOTES.md` documents that the host
+directory must exist before the consumer mount is declared.
+
 ## Rejected alternatives
 
 ### Keep "assurance levels" concrete (durability-only)
@@ -533,16 +561,16 @@ security, compatibility) bolt on awkwardly. Generalizing to "rigor levels" with
 named per-dimension ladders keeps fin's ladder intact as one instantiation while
 covering the rest.
 
-### Encode the reviewer scope block as a skill
+### Encode the dispatch blocks as skills
 
-Rejected. The block's defining use is **verbatim transclusion into a
+Rejected. The blocks' defining use is **verbatim transclusion into a
 *subagent's* prompt**; the consuming reviewer inherits nothing and (per the
-superpowers `SUBAGENT-STOP` rule) ignores skill bootstrapping, so the block must
+superpowers `SUBAGENT-STOP` rule) ignores skill bootstrapping, so each block must
 exist as retrievable literal text regardless. A skill wrapper adds a layer
 without adding capability and muddies the verbatim boundary with frontmatter and
 meta-instructions. A file whose entire content is the block transcludes cleanly.
 Discoverability is served instead by the always-on `CLAUDE.md` pointing at the
-file as the canonical source.
+files as the canonical source.
 
 ### Mirror fin's split on the host tree with no plumbing change
 
@@ -584,8 +612,7 @@ change.
   `~/.claude/CLAUDE.md` must match claude-home's tracked copy before the new
   inline discipline and pointer ship. They are byte-identical in the current
   environment; because the deployed file is a mount of the host checkout, the
-  implementation should re-confirm parity rather than assume it. Also confirm the
-  `instructions/` mount lands in every harness container.
+  implementation should re-confirm parity rather than assume it.
 
 ## Related
 
@@ -644,3 +671,19 @@ change.
   remediated-error-closed in the scope block, equal credit for removable
   machinery, ratification-may-take-longer, the change-sequencing guardrails,
   and the reader-proxy dispatch as a second verbatim instructions file.
+- 2026-08-03: Review round 7 (devcontainer#55, Claude + Codex reviewers). The
+  scope-block port now names its **second adaptation**: fin-repo-local
+  cross-references retarget to the `~/.agents/instructions/` files and the
+  shared always-on file (renaming alone leaves them dangling). Added the
+  rollout-ordering section (claude-home lands `instructions/` before the
+  consumer mount — Docker rejects a bind whose host source is missing,
+  verified against the local daemon). Deleted the open question's runtime
+  mount-landing check (contradicted the owner's configuration-only
+  verification boundary). Future-harness guidance-file mounts are
+  consumer-declared (the Claude-layout source must not leak into new
+  Features; existing Claude/Codex mounts grandfathered). Restored fin's
+  "a design specifies what it guarantees" sentence to the defer rule;
+  pluralized the dispatch-block rejected alternative; dropped the
+  non-load-bearing "roughly half" fraction and the "patch-stable"
+  future-version characterization from live text (changelog history
+  retained).
