@@ -55,6 +55,25 @@ Consumer-supplied seccomp or AppArmor values in additional `securityOpt`
 entries conflict with the image's settings and are unsupported; remove those
 additional entries rather than attempting to override the embedded contract.
 
+## Shared agent instructions
+
+Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
+mounts from the host's shared agent instruction file. Bulk references that file
+points at — the rigor-levels reference and the verbatim reviewer dispatch blocks
+— are read from `~/.agents/instructions`. The pointer is plain text, not an
+`@path` import: Codex reads `AGENTS.md` wholesale and does not expand imports,
+so an import would silently do nothing.
+
+This Feature owns only the container **target** path. The mount is
+**consumer-declared** — its host source is specific to the Claude configuration
+layout — and is declared **once** for the whole container, serving every harness
+in it. The declaration and its host prerequisite are documented in the
+[Claude feature notes](../claude/NOTES.md).
+
+If the mount is absent the container still starts. The Feature's startup hook
+warns on stderr, Codex loads `AGENTS.md` normally, and only the referenced bulk
+detail is unavailable.
+
 ## Creation and health failures
 
 If container creation fails before the post-create hook runs, Docker Desktop

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Warns when the shared agent instructions mount is absent. Never fails
+# container start: missing shared instructions degrade guidance, they do not
+# make the container unusable.
+set -uo pipefail
+
+instructions="$HOME/.agents/instructions"
+
+if [[ -d "$instructions" ]]; then
+  exit 0
+fi
+
+# A file or symlink at the target is a different failure from nothing at all:
+# it must be removed before a bind mount can land there.
+if [[ -e "$instructions" || -L "$instructions" ]]; then
+  printf '%s\n' \
+    "codex: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in .devcontainer/local-features/codex/NOTES.md, then restart the container." >&2
+  exit 0
+fi
+
+printf '%s\n' \
+  "codex: $instructions is absent, so the shared agent instructions are not mounted. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in .devcontainer/local-features/codex/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
+
+exit 0
