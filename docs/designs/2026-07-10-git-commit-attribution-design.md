@@ -234,12 +234,6 @@ The foundation this lays: once `--trailer` exists and the contract lives in the
 spec, a future `Subagents:` trailer (see *Capturing subagent detail*) is a
 caller-side composition change with no producer code at all.
 
-The fallback-safety refactor has since merged (`hube/agent-skills#54`) and
-`#9` itself is now closed, so the producer chain above is fully resolved. The
-`enforce` flip no longer waits on `agent-skills` work; it now gates on the
-rollout state tracked in `hube/devcontainer#51` — the warn-mode observation
-period plus the Codex-sandbox probe (see *Rollout* and *Open Questions*).
-
 ## Container Filesystem
 
 | Path | Provenance | Owner / mode |
@@ -403,19 +397,29 @@ So the installed hooks directory is a dispatcher, not a single hook.
 one POSIX `sh` script, which:
 
 - resolves the repository's default hook as
-  `"$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"`,
+  `"$(git rev-parse --git-common-dir 2>/dev/null)/hooks/$(basename "$0")"`, with
+  the `2>/dev/null` guarded: outside a repository (e.g. `reference-transaction`
+  firing mid-`git init`, before the repository is recognized) the command
+  fails, the failure is swallowed rather than leaked to the user's stderr, and
+  the resolved hook path is left empty, so both the `-x` and `-f` tests below
+  see it as absent,
 - `exec`s it when executable, preserving arguments, stdin, and exit status, and
 - warns — the equivalent of git's own `advice.ignoredHook` hint — when the
   repository hook exists but is not executable, then continues as if it were
   absent, so installing the gate does not hide a repository misconfiguration
   git would have surfaced.
 
-For `commit-msg` — and only `commit-msg` — the dispatcher first runs the
-validator bundle. A rejection stops the commit and nothing chains. **Every
-other outcome chains**: trigger not fired, validation passed, and warn-mode
-violations all fall through to the repository's own `commit-msg`. Chaining
-only after validation would eat repo `commit-msg` hooks on exactly the commits
-that fire no trigger — the human-authored ones.
+For `commit-msg` — and only `commit-msg` — the dispatcher runs the
+repository's own `commit-msg` hook **first**, then the validator bundle judges
+whatever message file that hook leaves behind. Git permits a `commit-msg` hook
+to rewrite the message file in place, so validating first would let a repo
+hook silently strip or reorder the required trailers after the only
+validation pass; running the repo hook first means the validator always
+judges the message git will actually use. The repo hook's own non-zero exit
+stops the commit before the validator ever runs. Control returns to the
+dispatcher after the repo hook (rather than `exec`ing it) because validation
+still has to run afterward; every other hook name keeps the plain `exec`
+chain described above.
 
 ### Presence-Sensitive Hooks
 
@@ -564,7 +568,13 @@ bootstrap-or-hot-path reason — is generalized for future Feature authors in
 ## Validation Flow
 
 ```
-validate commit-msg <msgfile>          (dispatcher passes no --spec)
+dispatch.sh commit-msg <msgfile>
+  │
+  ├─ repository's own commit-msg hook, if executable, runs FIRST
+  │    non-zero exit → stop; the validator never runs, commit is not created
+  │    (may rewrite <msgfile> in place; the validator judges what it leaves)
+  │
+  validate commit-msg <msgfile>          (dispatcher passes no --spec)
   │
   ├─ read spec  ← the compiled-in default path, or --spec if CI overrides it
   │             (see Spec Resolution)
@@ -583,8 +593,8 @@ validate commit-msg <msgfile>          (dispatcher passes no --spec)
   │                                an error, PASS
   │      no violation            → PASS
   │
-  └─ PASS → dispatcher chains to the repository's own commit-msg
-     REJECT → non-zero exit; nothing chains, the commit is not created
+  └─ PASS → the commit proceeds (the repository's own commit-msg already ran, above)
+     REJECT → non-zero exit; the commit is not created
 ```
 
 Two reads of the message, for two different questions.
@@ -610,8 +620,10 @@ makes git return only the trailers after it, and a stray line makes git return
 nothing. Both surface as missing required trailers.
 
 Commits that trip no trigger pass silently: human-authored commits, GitHub merge
-commits, and human-to-human `Co-Authored-By` among them. On every PASS path the
-dispatcher chains to the repository's own `commit-msg` (see *Hook Dispatch*).
+commits, and human-to-human `Co-Authored-By` among them. The repository's own
+`commit-msg` hook already ran before any of this, unconditionally (see *Hook
+Dispatch*); a PASS here means the commit git already handed to that hook is
+also allowed to proceed.
 
 ### Sequence Semantics
 
@@ -922,12 +934,13 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
   `/etc/gitconfig`, `/usr/local/share/git-commit-attribution/hooks`, and the
   read-only spec mount. Codex's default sandbox exposes the root filesystem
   read-only with a writable workspace, which would keep all three visible and
-  the gate active — but this was not exercised (the gate does not exist yet to
-  test against). The integration suite must add a Codex-sandboxed commit case;
-  until then this is the one unverified link in the "every commit passes through
-  the gate" claim. This is resolved by running `test/test-codex-sandbox.sh`
-  inside the first rebuilt container, before the `enforce` flip (tracked in
-  `hube/devcontainer#51`).
+  the gate active — but this has not been exercised inside an actual rebuilt,
+  Codex-enabled container, which is the one unverified link in the "every
+  commit passes through the gate" claim. `test/test-codex-sandbox.sh` is the
+  committed probe that answers it: it runs a violating fixture through
+  `codex sandbox -P :workspace -C <dir> git commit` and checks for the exact
+  warn-mode diagnosis on stderr plus a created commit. This is resolved by
+  running that script inside the first rebuilt container.
 
 ## Related
 
