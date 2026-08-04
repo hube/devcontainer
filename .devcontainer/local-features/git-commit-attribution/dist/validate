@@ -344,7 +344,21 @@ function checkMessage(raw, spec, specPath, context = "hook") {
 function runCommitMsg(msgfile, specPath) {
   const loaded = loadSpec(specPath);
   if (!loaded.ok) return loaded.outcome;
-  const raw = (0, import_node_fs.readFileSync)(msgfile, "utf8");
+  let raw;
+  try {
+    raw = (0, import_node_fs.readFileSync)(msgfile, "utf8");
+  } catch (err) {
+    return {
+      exitCode: 1,
+      stderr: [
+        `git-commit-attribution: cannot read the commit message file at ${msgfile}: ${err.message}.`,
+        "The commit was not created.",
+        "This validator could not run \u2014 check that the commit message file is readable, or bypass once with git commit --no-verify.",
+        "",
+        `Spec: ${specPath}`
+      ]
+    };
+  }
   return checkMessage(raw, loaded.spec, specPath);
 }
 function runRange(range, specPath) {

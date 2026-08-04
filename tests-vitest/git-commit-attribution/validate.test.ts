@@ -274,6 +274,46 @@ describe('runCommitMsg', () => {
     const outcome = runCommitMsg(msgfile, specPath);
     expect(outcome.exitCode).toBe(1);
   });
+
+  // The dispatcher reorder (round 2, dispatch.sh) makes the repo's commit-msg
+  // hook the last writer of the message file before this function reads it,
+  // so a hook that deletes or otherwise breaks the file is now a reachable
+  // case, not a theoretical one. It must fail closed with a proper message,
+  // the same as loadSpec's own unreadable-file case, rather than let
+  // readFileSync's exception propagate as an uncaught Node stack trace.
+  it('fails closed with a proper message when the message file does not exist, instead of throwing', () => {
+    const dir = makeTmpDir();
+    const specPath = join(dir, 'trailer-contract');
+    writeFileSync(specPath, LIVE_SPEC);
+    const msgfile = join(dir, 'does-not-exist');
+    expect(() => runCommitMsg(msgfile, specPath)).not.toThrow();
+    const outcome = runCommitMsg(msgfile, specPath);
+    expect(outcome.exitCode).toBe(1);
+    const text = outcome.stderr.join('\n');
+    expect(text).toContain(msgfile);
+    expect(text).toContain('cannot read the commit message file at');
+    expect(text).toContain('The commit was not created.');
+  });
+
+  it('fails closed with a proper message when the message file is unreadable, instead of throwing', () => {
+    // root ignores the mode bits chmod sets below, so the EACCES this test
+    // targets never fires under root — skip rather than assert a false
+    // negative (mirrors loadSpec's own unreadable-file test above).
+    if (process.getuid?.() === 0) return;
+    const dir = makeTmpDir();
+    const specPath = join(dir, 'trailer-contract');
+    writeFileSync(specPath, LIVE_SPEC);
+    const msgfile = join(dir, 'COMMIT_EDITMSG');
+    writeFileSync(msgfile, 'subject\n\nJust a body.\n');
+    chmodSync(msgfile, 0o000);
+    expect(() => runCommitMsg(msgfile, specPath)).not.toThrow();
+    const outcome = runCommitMsg(msgfile, specPath);
+    expect(outcome.exitCode).toBe(1);
+    const text = outcome.stderr.join('\n');
+    expect(text).toContain(msgfile);
+    expect(text).toContain('cannot read the commit message file at');
+    expect(text).toContain('The commit was not created.');
+  });
 });
 
 describe('runRange', () => {

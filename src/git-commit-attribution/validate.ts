@@ -163,12 +163,34 @@ export function checkMessage(raw: string, spec: Spec, specPath: string, context:
   return spec.mode === 'enforce' ? violationOutcome(problems, specPath, context) : warningOutcome(problems, specPath);
 }
 
-/** Entry point for the `commit-msg` hook. */
+/**
+ * Entry point for the `commit-msg` hook. The dispatcher now runs the repo's
+ * own commit-msg hook before this validator (dispatch.sh), which makes that
+ * hook the last writer of `msgfile` before this read — a hook that deletes
+ * or otherwise breaks the file is a reachable case, not theoretical. Mirrors
+ * loadSpec's own read try/catch so this fails closed with a problem →
+ * consequence → remedy message instead of an uncaught exception.
+ */
 export function runCommitMsg(msgfile: string, specPath: string): Outcome {
   const loaded = loadSpec(specPath);
   if (!loaded.ok) return loaded.outcome;
 
-  const raw = readFileSync(msgfile, 'utf8');
+  let raw: string;
+  try {
+    raw = readFileSync(msgfile, 'utf8');
+  } catch (err) {
+    return {
+      exitCode: 1,
+      stderr: [
+        `git-commit-attribution: cannot read the commit message file at ${msgfile}: ${(err as Error).message}.`,
+        'The commit was not created.',
+        'This validator could not run — check that the commit message file is readable, or bypass once with git commit --no-verify.',
+        '',
+        `Spec: ${specPath}`,
+      ],
+    };
+  }
+
   return checkMessage(raw, loaded.spec, specPath);
 }
 
