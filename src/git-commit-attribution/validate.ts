@@ -191,9 +191,26 @@ export function runRange(range: string, specPath: string): Outcome {
     const short = shortResult.status === 0 ? shortResult.stdout.trim() : sha.slice(0, 7);
 
     const logResult = spawnSync('git', ['log', '-1', '--format=%B', sha], { encoding: 'utf8' });
-    const raw = logResult.status === 0 ? logResult.stdout : '';
+    // A commit git just listed via rev-list but then can't read the message
+    // for is an environment failure (corrupted/missing object, git crash),
+    // not "no message" — defaulting to '' would make `triggers` see nothing
+    // and pass the commit silently. Fail closed unconditionally (exit 1,
+    // regardless of `mode`), mirroring the rev-list-failure shape above,
+    // rather than routing through `checkMessage`'s mode-dependent handling.
+    const outcome =
+      logResult.error || logResult.status !== 0
+        ? {
+            exitCode: 1 as const,
+            stderr: [
+              `git-commit-attribution: could not read the commit message for ${sha}: ` +
+                `${logResult.error ? logResult.error.message : logResult.stderr.trim()}.`,
+              'The commit was not created.',
+              '',
+              `Spec: ${specPath}`,
+            ],
+          }
+        : checkMessage(logResult.stdout, loaded.spec, specPath);
 
-    const outcome = checkMessage(raw, loaded.spec, specPath);
     if (outcome.stderr.length > 0) {
       for (const line of outcome.stderr) {
         stderr.push(line === '' ? '' : `${short}: ${line}`);

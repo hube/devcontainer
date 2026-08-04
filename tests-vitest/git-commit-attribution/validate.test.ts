@@ -1,10 +1,53 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { SpawnSyncReturns } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { parseSpec, type Spec } from '../../src/git-commit-attribution/spec';
 import { checkMessage, loadSpec, runCommitMsg, runRange } from '../../src/git-commit-attribution/validate';
+
+// `vi.mock` on a Node built-in must be a passthrough by default — ESM module
+// namespaces are not configurable, so `vi.spyOn` on 'node:child_process'
+// throws ("Cannot redefine property"); this indirection is the standard
+// vitest workaround. `failOnLogSha` (set only by the one test that needs it)
+// lets a single, targeted `git log` invocation report a git failure while
+// every other spawnSync call — in this file and in the modules under test —
+// still runs real git. `vi.hoisted` is required because `vi.mock` factories
+// run before any module-scope `let` below them would otherwise be assigned.
+const { getFailOnLogSha, setFailOnLogSha } = vi.hoisted(() => {
+  let target: string | null = null;
+  return {
+    getFailOnLogSha: () => target,
+    setFailOnLogSha: (sha: string | null) => {
+      target = sha;
+    },
+  };
+});
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawnSync: (cmd: string, args?: readonly string[], opts?: unknown) => {
+      const argv = args ? [...args] : [];
+      const target = getFailOnLogSha();
+      if (cmd === 'git' && argv[0] === 'log' && target !== null && argv.includes(target)) {
+        return {
+          status: 128,
+          signal: null,
+          error: undefined,
+          pid: 0,
+          output: [null, '', `fatal: bad object ${target}`],
+          stdout: '',
+          stderr: `fatal: bad object ${target}`,
+        } as SpawnSyncReturns<string>;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return actual.spawnSync(cmd as any, argv as any, opts as any);
+    },
+  };
+});
 
 // Byte-identical to spec.test.ts's LIVE_SPEC (and the design doc's *The spec*
 // section). Duplicated here per the task-2 brief's resolution, extended to
@@ -279,5 +322,35 @@ describe('runRange', () => {
     const text = outcome.stderr.join('\n');
     expect(text).toContain(violatingShort);
     expect(text).toContain('WARNING');
+  });
+
+  it('fails closed, exit 1, when git log cannot read a listed commit message, even under mode warn', () => {
+    const { dir, violatingShort } = buildScratchRepo();
+    const specPath = join(dir, 'trailer-contract');
+    writeFileSync(specPath, LIVE_SPEC); // mode warn — this must still reject, not silently pass
+
+    // A real git repo can't be corrupted so that `rev-list` lists a sha but
+    // `git log --format=%B` then fails to read that same sha — both read the
+    // identical object (a commit object stores its parent pointers and its
+    // message together), so whatever makes one unreadable makes both fail.
+    // The failure is instead injected via the module-level spawnSync mock
+    // (see the top of this file): `setFailOnLogSha` targets only the `log`
+    // invocation for the violating commit's full sha, which is made to fail
+    // the way a corrupted/missing object would (non-zero exit, `fatal:`
+    // stderr). rev-list, rev-parse --short, and the other commit's `log`
+    // call all still run through real git.
+    const fullShaResult = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' });
+    const violatingFullSha = fullShaResult.stdout.trim();
+
+    setFailOnLogSha(violatingFullSha);
+    try {
+      const outcome = runInRepo(dir, () => runRange('HEAD~2..HEAD', specPath));
+      expect(outcome.exitCode).toBe(1);
+      const text = outcome.stderr.join('\n');
+      expect(text).toContain(violatingShort);
+      expect(text).toContain('bad object');
+    } finally {
+      setFailOnLogSha(null);
+    }
   });
 });
