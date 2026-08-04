@@ -77,6 +77,22 @@ describe('parseTrailers', () => {
   it('returns an empty array for a message with no trailers at all', () => {
     expect(parseTrailers('subject\n\nJust a plain body, no trailers here.\n')).toEqual([]);
   });
+
+  it('reports a distinct message when git itself cannot be launched', () => {
+    // spawnSync's ENOENT path (git missing from PATH) sets result.error and
+    // leaves result.status null / result.stdout+stderr null — a materially
+    // different failure than a genuine non-zero exit, which must not be
+    // described as if the process "exited".
+    const savedPath = process.env.PATH;
+    try {
+      process.env.PATH = '';
+      expect(() => parseTrailers('subject\n\nHarness: Claude Code\n')).toThrowError(
+        /could not launch .*git.*: .*ENOENT/i,
+      );
+    } finally {
+      process.env.PATH = savedPath;
+    }
+  });
 });
 
 describe('compareSequence', () => {

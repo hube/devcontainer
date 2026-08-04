@@ -49,13 +49,22 @@ export interface Trailer {
  * behavior verified directly against git, not reimplemented here.
  *
  * A non-zero git exit throws; the caller (Task 4) converts that into a
- * fail-closed rejection.
+ * fail-closed rejection. Failure to launch `git` at all (e.g. missing from
+ * `PATH`) is a distinct failure mode from a genuine non-zero exit — the
+ * process never ran, so `result.status` is `null` and `result.stdout`/
+ * `result.stderr` carry nothing useful, while `result.error` holds the one
+ * diagnostic (e.g. `spawn git ENOENT`) that explains why. That case is
+ * checked first so its message is never conflated with "exited with status
+ * null".
  */
 export function parseTrailers(rawMessage: string): Trailer[] {
   const result = spawnSync('git', ['interpret-trailers', '--parse'], {
     input: rawMessage,
     encoding: 'utf8',
   });
+  if (result.error) {
+    throw new Error(`could not launch git interpret-trailers --parse: ${result.error.message}`);
+  }
   if (result.status !== 0) {
     throw new Error(
       `git interpret-trailers --parse exited with status ${result.status}: ${result.stderr}`,
