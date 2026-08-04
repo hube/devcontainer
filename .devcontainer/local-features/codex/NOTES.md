@@ -58,11 +58,12 @@ additional entries rather than attempting to override the embedded contract.
 ## Shared agent instructions
 
 Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
-mounts from the host's shared agent instruction file. Bulk references that file
-points at — the rigor-levels reference and the verbatim reviewer dispatch blocks
-— are read from `~/.agents/instructions`. The pointer is plain text, not an
-`@path` import: Codex reads `AGENTS.md` wholesale and does not expand imports,
-so an import would silently do nothing.
+mounts from the host's `~/.claude/CLAUDE.md` — a single shared file under two
+names, separate from the `~/.agents/instructions` directory mount below. Bulk
+references that file points at — the rigor-levels reference and the verbatim
+reviewer dispatch blocks — are read from `~/.agents/instructions`. The pointer
+is plain text, not an `@path` import: Codex reads `AGENTS.md` wholesale and does
+not expand imports, so an import would silently do nothing.
 
 This Feature owns only the container **target** path. The mount is
 **consumer-declared** — its host source is specific to the Claude configuration
@@ -71,8 +72,10 @@ in it. The declaration and its host prerequisite are documented in the
 [Claude feature notes](../claude/NOTES.md).
 
 If the mount is absent the container still starts. The Feature's startup hook
-warns on stderr, Codex loads `AGENTS.md` normally, and only the referenced bulk
-detail is unavailable.
+warns on stderr during container start, so the message appears wherever your
+Dev Containers tooling surfaces startup output — for the CLI, the
+`devcontainer up` output. Codex loads `AGENTS.md` normally, and only the
+referenced bulk detail is unavailable.
 
 ## Creation and health failures
 
