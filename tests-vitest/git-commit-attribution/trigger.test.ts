@@ -65,6 +65,13 @@ describe('triggers', () => {
     expect(triggers(message, spec)).toBe(true);
   });
 
+  it('fires on an agent-author address that differs in case from the spec', () => {
+    // The design requires case-insensitive matching; spec.agentAuthors is
+    // lowercased by parseSpec, but the commit-message address need not be.
+    const message = 'subject\n\nCo-Authored-By: Claude Sonnet 5 <NOREPLY@ANTHROPIC.COM>';
+    expect(triggers(message, spec)).toBe(true);
+  });
+
   it('does not fire on human-to-human Co-Authored-By', () => {
     const message = 'subject\n\nCo-Authored-By: Alex Doe <alex@example.com>';
     expect(triggers(message, spec)).toBe(false);
