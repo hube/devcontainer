@@ -1350,7 +1350,7 @@ structure as Task B1's test, with these substitutions: `HOOK` resolves to
 begins `codex:` instead of `claude:`; the consequence sentence is
 `Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable.`;
 the remedy sentences name
-`.devcontainer/local-features/codex/NOTES.md`; and the final `install.sh`
+`hube/devcontainer`'s `.devcontainer/local-features/codex/NOTES.md`; and the final `install.sh`
 assertion is dropped (Codex's installer already copies `bin/`). Keep the
 manifest assertion, changed to expect
 `~/bin/devcontainer-feature/codex/postStartScript.sh`.
@@ -1631,16 +1631,14 @@ for t in .devcontainer/local-features/*/test/*.py; do
 done
 ```
 
-Expected: no `FAILED:` lines. The loop invokes each shell test with `bash`
-rather than executing it directly, because six of them
-(`codex/test/test-documentation.sh`, `codex/test/test-image-consumer.sh`,
-`codex/test/test-image-consumer-cleanup.sh`, `codex/test/test-postcreate.sh`,
-`codex/test/test-runtime-cleanup.sh`, `github-cli-config/test/test-poststart.sh`)
-are mode `100644` in the git index and are not executable — pre-existing and
-outside this branch's scope. Some Codex tests require a running Docker daemon
-or a built image; if one skips or fails for a reason that predates this branch,
-verify that by running the same test on `origin/main` in a scratch checkout and
-report the comparison — do not assert it is pre-existing without checking.
+Expected: one `FAILED:` line, for `codex/test/test-image-consumer.sh`, which
+requires an image argument and a running Docker daemon; it exits 2 identically
+on `origin/main`, so it is pre-existing and not this branch's doing. Every
+other test passes. The loop invokes each shell test through `bash` so the sweep
+measures test outcomes rather than file modes. If any other test fails, verify
+whether it predates this branch by running it against an `origin/main` checkout
+of the same tree and report the comparison — do not assert it is pre-existing
+without checking.
 
 - [ ] **Step 2: Verify both manifests still parse**
 
@@ -1664,10 +1662,9 @@ if bad_touched:
 "
 ```
 
-Expected: every manifest this branch touches (`claude`, `codex`) parses with
-an `ok` line; `ccstatusline` prints `FAILED` on a pre-existing trailing comma
-that is out of this branch's scope, and the script still exits 0 because the
-check only raises when a manifest this branch touches fails to parse.
+Expected: an `ok` line for all eight manifests, and exit 0. The script raises
+only when a manifest this branch touches (`claude`, `codex`) fails to parse, so
+it stays a meaningful gate even if an untouched manifest regresses.
 
 - [ ] **Step 3: Dispatch the reader-proxy review**
 
