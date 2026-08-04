@@ -211,6 +211,16 @@ git -c user.email=t@t -c user.name=t commit --allow-empty -m "'"$FABRICATED_MSG"
 ')"; rc9=$?
 [ "$rc9" -ne 0 ] && pass "9 root: rejected" || fail "9 root: rejected" "got rc=$rc9: $out9"
 [[ "$out9" == *"Spec: $TARGET"* ]] && pass "9 root: rejection names the same /etc path" || fail "9 root: rejection names the same /etc path" "$out9"
+# Same content check as case 2 (both use FABRICATED_MSG): rc!=0 plus "Spec:
+# $TARGET" alone is satisfied by every rejection path (missing spec, spec is
+# a directory, unreadable validator, ...), not specifically by re-validating
+# this message's trailers as root. Matching the exact missing-'Skills'
+# diagnosis proves the gate actually re-ran content validation under root,
+# rather than merely failing closed for an unrelated root-specific reason
+# (e.g. a permission/read quirk).
+[[ "$out9" == *"git-commit-attribution: commit message is missing the required trailer 'Skills'"* ]] \
+  && pass "9 root: rejection re-validates content (names missing 'Skills', not just a generic failure)" \
+  || fail "9 root: rejection re-validates content (names missing 'Skills', not just a generic failure)" "$out9"
 
 # ============================================================ 10: commit from a linked worktree -> gate applies; main .git hooks still chain
 out10="$(run_gca "-u devcontainer -v $ENFORCE_SRC:$TARGET:ro" '

@@ -2,3 +2,7 @@
 .superpowers/
 .worktrees/
 node_modules/
+# test-integration.sh's temp spec-fixture directory (see the Feature's
+# test/test-integration.sh): normally removed by its own EXIT trap; this is
+# defense-in-depth against a leftover surviving an unclean interruption.
+.gca-integration-tmp.*
