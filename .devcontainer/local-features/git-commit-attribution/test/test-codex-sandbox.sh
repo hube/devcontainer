@@ -66,11 +66,31 @@ out="$(timeout 30s codex sandbox -P :workspace -C "$workdir" \
 rc=$?
 err="$(cat "$err_file" 2>/dev/null || true)"
 
-if [[ "$err" == *"git-commit-attribution:"* ]]; then
-  echo "PASS: gate visible inside Codex sandbox"
-  exit 0
+# Verbatim from validate.ts's warn path (warningOutcome) for MSG's exact
+# violation (missing the required 'Skills' trailer): the one diagnosis a true
+# warn-mode pass can produce for this fixture. A missing/misplaced spec mount
+# inside the sandbox instead emits a distinct rejection (e.g. "no spec at
+# ...") with the same "git-commit-attribution:" prefix and a non-zero exit —
+# matching only the prefix would call that a PASS too.
+EXPECTED_DIAGNOSIS="git-commit-attribution: WARNING: commit message is missing the required trailer 'Skills'."
+
+dump_and_fail() {
+  echo "FAIL: $1" >&2
+  printf 'exit=%s\nstdout=%s\nstderr=%s\n' "$rc" "$out" "$err" >&2
+  exit 1
+}
+
+if [[ "$rc" -ne 0 ]]; then
+  dump_and_fail "commit inside Codex sandbox exited non-zero (mode warn should have let it through)"
 fi
 
-echo "FAIL: gate did not fire inside Codex sandbox"
-printf 'exit=%s\nstdout=%s\nstderr=%s\n' "$rc" "$out" "$err" >&2
-exit 1
+if [[ "$err" != *"$EXPECTED_DIAGNOSIS"* ]]; then
+  dump_and_fail "stderr did not contain the expected warn-mode diagnosis for the missing 'Skills' trailer (wrong or missing diagnosis)"
+fi
+
+if ! git -C "$workdir" rev-parse --verify HEAD >/dev/null 2>&1; then
+  dump_and_fail "commit-msg hook exited 0 but no commit exists in $workdir"
+fi
+
+echo "PASS: gate visible inside Codex sandbox (warn-mode diagnosis printed; commit created)"
+exit 0
