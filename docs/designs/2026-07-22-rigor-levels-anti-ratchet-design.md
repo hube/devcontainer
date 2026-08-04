@@ -555,10 +555,12 @@ devcontainer change (consumer mount and Feature postStart warnings).
 The gate is load-bearing because Docker rejects a bind mount whose host
 source does not exist, breaking container startup outright before any
 postStart warning could run — the warning only covers the opposite gap,
-Features present but no consumer mount declared. (Method: `docker run --rm
---mount type=bind,source=<missing>,target=/probe alpine true` against the
-local daemon fails with `invalid mount config for type "bind": bind source
-path does not exist`. That is `--mount` semantics — the older `-v` syntax
+Features present but no consumer mount declared. (Method: with
+`/nonexistent-path-129fd48b` first confirmed absent via `test ! -e`,
+`docker run --rm --mount
+type=bind,source=/nonexistent-path-129fd48b,target=/probe alpine:latest true`
+against the local daemon fails with `invalid mount config for type "bind":
+bind source path does not exist`. That is `--mount` semantics — the older `-v` syntax
 would instead auto-create a missing host path, a difference Docker's
 bind-mount documentation records — and it is the applicable semantics here
 because `devcontainer.json` `mounts` values take "the same values as the
@@ -713,3 +715,7 @@ change.
   parity step. The Docker probe records its method inline (exact `--mount`
   command and error, the `-v` auto-create distinction ruled out, and the Dev
   Containers JSON reference tying `mounts` to `--mount` semantics).
+- 2026-08-04: Review round 10 (devcontainer#55, Codex reviewer). The probe
+  method's `<missing>` placeholder is replaced with the actual absent path
+  used, its absence pre-checked via `test ! -e`, making the recorded command
+  executable as written (probe re-run to confirm).
