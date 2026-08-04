@@ -540,17 +540,32 @@ mechanics differ.
 
 ### Rollout ordering
 
-The two repos must land in order: **claude-home first** (the `instructions/`
-directory and its gitignore allow-list), **then hube/devcontainer** (the
-consumer mount and the Feature postStart warnings). Docker rejects a bind
-mount whose host source does not exist (`invalid mount config for type
-"bind": bind source path does not exist` — verified against the local Docker
-daemon), so declaring the consumer mount before the host directory exists
-breaks container startup outright, before any postStart warning could run —
-the warning only covers the opposite gap, Features present but no consumer
-mount declared. The reverse order is safe: an unmounted `instructions/`
-directory on the host is inert. Feature `NOTES.md` documents that the host
-directory must exist before the consumer mount is declared.
+The ordering gate is **host state, not repository merge order**: Docker
+resolves the mount source `${localEnv:HOME}/.claude/instructions` from the
+deployed host config, so merging claude-home's `instructions/` to `main`
+creates nothing on a host until that change is deployed into the checkout
+backing `~/.claude`. The gate before a devcontainer rebuild consumes the new
+consumer mount is therefore that **`~/.claude/instructions` exists on the
+host**. Sequence: land claude-home (the `instructions/` directory and its
+gitignore allow-list); deploy it to the host and verify the host directory
+exists — folded into the same implementation-time step that re-confirms
+deployed-`CLAUDE.md` parity (Open questions); only then land the
+devcontainer change (consumer mount and Feature postStart warnings).
+
+The gate is load-bearing because Docker rejects a bind mount whose host
+source does not exist, breaking container startup outright before any
+postStart warning could run — the warning only covers the opposite gap,
+Features present but no consumer mount declared. (Method: `docker run --rm
+--mount type=bind,source=<missing>,target=/probe alpine true` against the
+local daemon fails with `invalid mount config for type "bind": bind source
+path does not exist`. That is `--mount` semantics — the older `-v` syntax
+would instead auto-create a missing host path, a difference Docker's
+bind-mount documentation records — and it is the applicable semantics here
+because `devcontainer.json` `mounts` values take "the same values as the
+Docker CLI `--mount` flag" per the Dev Containers JSON reference.) The
+reverse order is safe: a present-but-unmounted `instructions/` directory on
+the host is inert. Feature `NOTES.md` documents that the host directory must
+exist before the consumer mount is declared.
 
 ## Rejected alternatives
 
@@ -691,3 +706,10 @@ change.
 - 2026-08-04: Review round 8 (devcontainer#55). Two formatting corrections in
   place: re-wrapped the fin#1 context paragraph; fixed the grandfathering
   parenthetical's punctuation.
+- 2026-08-04: Review round 9 (devcontainer#55, Codex reviewer). Rollout
+  ordering now gates on **host state** (deploy claude-home's `instructions/`
+  to the host and verify it exists before the devcontainer change lands),
+  not repository merge order, folded into the existing implementation-time
+  parity step. The Docker probe records its method inline (exact `--mount`
+  command and error, the `-v` auto-create distinction ruled out, and the Dev
+  Containers JSON reference tying `mounts` to `--mount` semantics).
