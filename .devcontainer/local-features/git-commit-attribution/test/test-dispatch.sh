@@ -109,13 +109,18 @@ out="$(git_c "$repo" commit --quiet --allow-empty -m first 2>&1)"; rc=$?
 git -C "$repo" rev-parse HEAD >/dev/null 2>&1 && fail "pre-commit: no commit created" "HEAD exists" || pass "pre-commit: no commit created"
 teardown_world
 
-# ============================================================ 2: commit-msg repo hook runs after validator PASS; non-zero blocks
+# ============================================================ 2: commit-msg repo hook runs BEFORE the validator; hook's non-zero status blocks and the validator is never reached
+# Inverted from the pre-fix ordering (validator then repo hook): the repo hook
+# must run first so a hook that rewrites the message is validated on its
+# final content (case 14), and a hook that outright fails must block the
+# commit without the validator ever running on a message the repo hook never
+# approved.
 setup_world
 repo="$WORLD/repo2"; git init --quiet -b main "$repo"
 write_hook "$repo/.git" commit-msg "touch '$WORLD/commitmsg-marker'; exit 1"
 out="$(git_c "$repo" commit --quiet --allow-empty -m first 2>&1)"; rc=$?
-[ "$(validator_call_count)" = "1" ] && pass "commit-msg chain: validator ran once (PASS)" || fail "commit-msg chain: validator ran once (PASS)" "log: $(cat "$VALIDATOR_LOG")"
-[ -f "$WORLD/commitmsg-marker" ] && pass "commit-msg chain: repo commit-msg hook runs after PASS" || fail "commit-msg chain: repo commit-msg hook runs after PASS" "$out"
+[ -f "$WORLD/commitmsg-marker" ] && pass "commit-msg chain: repo commit-msg hook runs first" || fail "commit-msg chain: repo commit-msg hook runs first" "$out"
+[ "$(validator_call_count)" = "0" ] && pass "commit-msg chain: validator never invoked (repo hook already failed)" || fail "commit-msg chain: validator never invoked (repo hook already failed)" "log: $(cat "$VALIDATOR_LOG")"
 [ "$rc" -ne 0 ] && pass "commit-msg chain: repo hook's non-zero status blocks" || fail "commit-msg chain: repo hook's non-zero status blocks" "exit $rc: $out"
 git -C "$repo" rev-parse HEAD >/dev/null 2>&1 && fail "commit-msg chain: no commit created" "HEAD exists" || pass "commit-msg chain: no commit created"
 teardown_world
@@ -271,6 +276,34 @@ pusher="$WORLD/pusher13"; git clone --quiet "$target" "$pusher" >/dev/null 2>&1
 out="$(git -C "$pusher" push --quiet origin "HEAD:refs/heads/special/foo" 2>&1)"; rc=$?
 [ "$rc" -ne 0 ] && pass "proc-receive absent: push rejected" || fail "proc-receive absent: push rejected" "exit $rc: $out"
 git -C "$target" rev-parse refs/heads/special/foo >/dev/null 2>&1 && fail "proc-receive absent: matched ref not created" "ref exists" || pass "proc-receive absent: matched ref not created"
+teardown_world
+
+# ============================================================ 14: commit-msg repo hook rewrites the message in place -> validator must see the FINAL content, not the pre-rewrite content
+# Regression for the ordering bug where dispatch.sh validated before chaining
+# to the repo's own commit-msg hook: a hook that edits $1 after validation ran
+# could strip/reorder the required trailers and no later pass would catch it.
+# The stub validator here rejects iff the repo hook's marker string is present
+# in the msgfile, so a block here proves the validator observed the rewrite.
+setup_world
+repo="$WORLD/repo14"; git init --quiet -b main "$repo"
+MARKER="INJECTED-BY-REPO-HOOK-14"
+write_hook "$repo/.git" commit-msg "printf '%s\n' '$MARKER' >> \"\$1\"; touch '$WORLD/repohook14-ran'"
+cat > "$GCA_ROOT/validate" <<STUB
+#!/bin/sh
+printf '%s\n' "\$*" >> "$VALIDATOR_LOG"
+msgfile="\$2"
+if grep -q "$MARKER" "\$msgfile"; then
+  echo "validator saw the rewritten message" >&2
+  exit 1
+fi
+exit 0
+STUB
+chmod +x "$GCA_ROOT/validate"
+out="$(git_c "$repo" commit --quiet --allow-empty -m first 2>&1)"; rc=$?
+[ -f "$WORLD/repohook14-ran" ] && pass "repo-hook-rewrite: repo commit-msg hook genuinely ran (marker file)" || fail "repo-hook-rewrite: repo commit-msg hook genuinely ran (marker file)" "$out"
+[ "$rc" -ne 0 ] && pass "repo-hook-rewrite: commit blocked (validator saw post-rewrite content)" || fail "repo-hook-rewrite: commit blocked (validator saw post-rewrite content)" "exit $rc: $out"
+[[ "$out" == *"validator saw the rewritten message"* ]] && pass "repo-hook-rewrite: validator's rejection reached the user" || fail "repo-hook-rewrite: validator's rejection reached the user" "$out"
+git -C "$repo" rev-parse HEAD >/dev/null 2>&1 && fail "repo-hook-rewrite: no commit created" "HEAD exists" || pass "repo-hook-rewrite: no commit created"
 teardown_world
 
 printf '\n%d passed, %d failed\n' "$passed" "$failed"
