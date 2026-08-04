@@ -1623,7 +1623,7 @@ before a container using this config starts. Then the trailer block.
 cd /workspaces/agent-devcontainer/devcontainer/.claude/worktrees/calm-napping-turtle
 for t in .devcontainer/local-features/*/test/*.sh; do
   printf '\n=== %s ===\n' "$t"
-  "$t" || printf 'FAILED: %s\n' "$t"
+  bash "$t" || printf 'FAILED: %s\n' "$t"
 done
 for t in .devcontainer/local-features/*/test/*.py; do
   printf '\n=== %s ===\n' "$t"
@@ -1631,7 +1631,13 @@ for t in .devcontainer/local-features/*/test/*.py; do
 done
 ```
 
-Expected: no `FAILED:` lines. Some Codex tests require a running Docker daemon
+Expected: no `FAILED:` lines. The loop invokes each shell test with `bash`
+rather than executing it directly, because six of them
+(`codex/test/test-documentation.sh`, `codex/test/test-image-consumer.sh`,
+`codex/test/test-image-consumer-cleanup.sh`, `codex/test/test-postcreate.sh`,
+`codex/test/test-runtime-cleanup.sh`, `github-cli-config/test/test-poststart.sh`)
+are mode `100644` in the git index and are not executable — pre-existing and
+outside this branch's scope. Some Codex tests require a running Docker daemon
 or a built image; if one skips or fails for a reason that predates this branch,
 verify that by running the same test on `origin/main` in a scratch checkout and
 report the comparison — do not assert it is pre-existing without checking.
@@ -1642,13 +1648,26 @@ report the comparison — do not assert it is pre-existing without checking.
 python3 -c "
 import json, re
 from pathlib import Path
-for p in Path('.devcontainer/local-features').glob('*/devcontainer-feature.json'):
-    json.loads(re.sub(r'(?m)^\s*//.*\$', '', p.read_text()))
-    print('ok', p)
+failed = []
+for p in sorted(Path('.devcontainer/local-features').glob('*/devcontainer-feature.json')):
+    try:
+        json.loads(re.sub(r'(?m)^\s*//.*\$', '', p.read_text()))
+        print('ok', p)
+    except json.JSONDecodeError as e:
+        print('FAILED', p, '-', e)
+        failed.append(p)
+touched = {Path('.devcontainer/local-features/claude/devcontainer-feature.json'),
+           Path('.devcontainer/local-features/codex/devcontainer-feature.json')}
+bad_touched = [p for p in failed if p in touched]
+if bad_touched:
+    raise SystemExit(f'A manifest this branch touches failed to parse: {bad_touched}')
 "
 ```
 
-Expected: one `ok` line per Feature, no exception.
+Expected: every manifest this branch touches (`claude`, `codex`) parses with
+an `ok` line; `ccstatusline` prints `FAILED` on a pre-existing trailing comma
+that is out of this branch's scope, and the script still exits 0 because the
+check only raises when a manifest this branch touches fails to parse.
 
 - [ ] **Step 3: Dispatch the reader-proxy review**
 
