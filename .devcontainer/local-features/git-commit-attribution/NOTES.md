@@ -60,13 +60,9 @@ Four ways the gate does not apply, stated plainly:
 - **Commits made outside the container.** There is no gate at all outside
   this container's git config.
 - **`GIT_CONFIG_NOSYSTEM=1`.** Disables system-scope git config, which is
-  where `core.hooksPath` lives, so it disables the gate. This is not
-  hypothetical: it is live in this container's tooling today (the
-  security-guidance Claude Code plugin hook sets it, together with
-  `GIT_CONFIG_GLOBAL=/dev/null`, for a read-only, non-committing security-review
-  subprocess). That subprocess never commits, so it does not bypass the gate
-  today, but any future committing process that inherited the same
-  environment would.
+  where `core.hooksPath` lives, so it disables the gate. Any committing
+  process that sets or inherits this variable bypasses the gate, regardless
+  of why it was set.
 
 ## Hook-name policy
 

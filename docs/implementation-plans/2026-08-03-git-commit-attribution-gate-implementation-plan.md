@@ -528,7 +528,14 @@ Spec: <the specPath the validator was invoked with>
   --no-verify"); non-file → analogous; then `parseSpec`. `checkMessage`:
   trigger; if fired, `parseTrailers` + `compareSequence`; mode decides
   exit 1 (enforce) vs exit 0 with WARNING prefix (warn). `runCommitMsg`:
-  `readFileSync(msgfile)` → `checkMessage`. `runRange`: `git rev-list
+  guarded `readFileSync(msgfile)` — the dispatcher now runs the repository's
+  own commit-msg hook before this validator, making that hook the last
+  writer of `msgfile` before this read, so an unreadable or deleted file is
+  a reachable case; on failure, return a problem/consequence/remedy outcome
+  (exit 1, "cannot read the commit message file at <msgfile>", "The commit
+  was not created", remedy to check the file is readable or bypass once
+  with `--no-verify`) instead of throwing, mirroring `loadSpec`'s own
+  read try/catch — then `checkMessage`. `runRange`: `git rev-list
   --reverse <range>`, then per sha `git log -1 --format=%B <sha>` →
   `checkMessage`, prefixing each stderr line with the abbreviated sha.
 
@@ -632,7 +639,8 @@ if (require.main === module) {
 ```
 chains: repo .git/hooks/pre-commit runs (marker file) and its non-zero
   status blocks the commit
-repo commit-msg runs after a validator PASS; its non-zero status blocks
+commit-msg: repo commit-msg hook runs FIRST, before the validator; its
+  non-zero status blocks the commit and the validator is never invoked
 repo hook present but not executable → "exists but is not executable"
   warning; treated as absent; commit succeeds
 commit-msg, stub validator exits 1 → commit not created; validator stderr
@@ -652,6 +660,11 @@ same, dirty target worktree → push refused; ref unmoved; local edit intact
 same, repo push-to-checkout hook present → repo hook runs (marker)
 proc-receive: push to a ref matched by receive.procReceiveRefs with no repo
   hook → push rejected (remote rejects the ref), mirroring an absent hook
+commit-msg repo hook rewrites the message file in place → the validator
+  judges the FINAL content, not the pre-rewrite content
+`git init` under the gate farm → reference-transaction fires before the
+  repository is recognized; resolving the repo hook must not leak that
+  transient `rev-parse --git-common-dir` failure to the user's stderr
 ```
 
 - [ ] **Step 2: Run to red** (`bash test/test-dispatch.sh` — fails: no
@@ -674,10 +687,37 @@ GCA_NODE="${GCA_NODE:-/usr/local/bin/node}"
 
 hook_name=$(basename "$0")
 
+# --git-common-dir ignores core.hooksPath (the recursion guard) and, from a
+# linked worktree where .git is a file, resolves the main repository's .git,
+# where hooks actually live. Outside a repository (e.g. reference-transaction
+# fires mid-`git init`, before the repository is recognized) rev-parse fails;
+# there is no repo hook to chain in that case, so the failure is swallowed
+# here rather than left to leak to the user's stderr, and repo_hook is set
+# empty (both -x and -f test false on "", even under set -u).
+if common_dir="$(git rev-parse --git-common-dir 2>/dev/null)"; then
+  repo_hook="$common_dir/hooks/$hook_name"
+else
+  repo_hook=""
+fi
+
 if [ "$hook_name" = "commit-msg" ]; then
+  # The repo's own commit-msg hook runs FIRST, before validation: git permits
+  # such a hook to rewrite the message file in place, so validating first
+  # would let a repo hook silently strip or reorder the required trailers
+  # after the only validation pass. Running the repo hook first (and, on
+  # success, validating the file it leaves behind) means the validator always
+  # judges the message git will actually use. Control must return here rather
+  # than exec'ing, since validation still has to run afterward.
+  if [ -x "$repo_hook" ]; then
+    "$repo_hook" "$@" || exit $?
+  elif [ -f "$repo_hook" ]; then
+    echo "git-commit-attribution: hook '$repo_hook' exists but is not executable; ignoring it." >&2
+  fi
+
   validator="$GCA_ROOT/validate"
   if [ -x "$validator" ] && [ -x "$GCA_NODE" ]; then
     "$validator" commit-msg "$1" || exit $?
+    exit 0
   else
     echo "git-commit-attribution: cannot execute the validator at $validator (interpreter: $GCA_NODE)." >&2
     echo "The commit was not created: the gate fails closed when it cannot run." >&2
@@ -685,11 +725,6 @@ if [ "$hook_name" = "commit-msg" ]; then
     exit 1
   fi
 fi
-
-# --git-common-dir ignores core.hooksPath (the recursion guard) and, from a
-# linked worktree where .git is a file, resolves the main repository's .git,
-# where hooks actually live.
-repo_hook="$(git rev-parse --git-common-dir)/hooks/$hook_name"
 
 if [ -x "$repo_hook" ]; then
   exec "$repo_hook" "$@"
@@ -759,7 +794,17 @@ spec missing → warning names the container path AND the host-side remedy
   checkout of hube/claude-home, not a Docker-created directory); exit 0
 spec path is a directory → same warning shape ("not a file"); exit 0
 a repo under the scan root with a local core.hooksPath → named, with its
-  hooksPath value; exit 0
+  effective hooksPath value; exit 0
+a repo at depth 2 (parent dir is not itself a repo) with local
+  core.hooksPath → named; a depth-1 repo's own subdirectories are not
+  re-scanned as separate candidates once the repo itself is found
+worktree-scoped core.hooksPath override (extensions.worktreeConfig=true
+  plus `git config --worktree core.hooksPath ...`) → named; this is
+  invisible to `git config --local --get` but IS the effective value git
+  dispatches hooks with, which the EFFECTIVE read (no `--local`) catches
+effective core.hooksPath equals the installed gate path (GCA_HOOKS_PATH
+  seam) → silent; only a value that differs from the gate's own hooks path
+  is a shadow worth warning about
 non-repo directories under the scan root are skipped silently
 the script never exits non-zero (assert exit 0 in every case)
 ```
@@ -777,6 +822,10 @@ set -uo pipefail
 
 SPEC="${GCA_SPEC_PATH:-/etc/devcontainer/feature/git-commit-attribution/trailer-contract}"
 SCAN_ROOT="${GCA_SCAN_ROOT:-/workspaces}"
+# Test seam only; defaults to the installed gate's hooks directory (the value
+# every repo's EFFECTIVE core.hooksPath should resolve to via /etc/gitconfig
+# in a rebuilt container).
+GCA_HOOKS_PATH="${GCA_HOOKS_PATH:-/usr/local/share/git-commit-attribution/hooks}"
 
 if [[ ! -f "$SPEC" ]]; then
   echo "git-commit-attribution: no trailer contract at $SPEC." >&2
@@ -784,15 +833,42 @@ if [[ ! -f "$SPEC" ]]; then
   echo "Remedy: declare the bind mount in devcontainer.json — \${localEnv:HOME}/.claude/git-commit-attribution.conf -> $SPEC — and ensure the host file exists as part of a hube/claude-home checkout at ~/.claude. If Docker created a directory at the host path, remove it and pull claude-home." >&2
 fi
 
-if [[ -d "$SCAN_ROOT" ]]; then
-  for repo in "$SCAN_ROOT"/*/; do
-    [[ -d "$repo" ]] || continue
-    if git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-      local_path="$(git -C "$repo" config --local --get core.hooksPath 2>/dev/null || true)"
-      if [[ -n "$local_path" ]]; then
-        echo "git-commit-attribution: $repo sets core.hooksPath=$local_path locally; the gate is silently bypassed there." >&2
-      fi
+# Reports on $1 if it is a git repository; returns 0 (found — caller must not
+# descend into it further) or 1 (not a repository — caller may look one level
+# deeper). Bounded to two levels below SCAN_ROOT: this container's checkouts
+# sit at /workspaces/<parent>/<repo>, one level deeper than a plain
+# /workspaces/<repo> layout, and either shape is live simultaneously (see
+# NOTES.md). Descent stops the moment a repo is found so a repo's own
+# subdirectories are never re-scanned as separate candidates.
+scan_candidate() {
+  local candidate="$1"
+  if git -C "$candidate" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    local effective_path
+    # The EFFECTIVE value (no --local) is what git actually uses to dispatch
+    # hooks, so this catches every scope that can shadow the gate --
+    # worktree, local, and global -- not only --local. A worktree-scoped
+    # override (extensions.worktreeConfig=true plus `git config --worktree
+    # core.hooksPath ...`) is invisible to `--local --get` (rc=1) but IS the
+    # effective value, which is what missed it before.
+    effective_path="$(git -C "$candidate" config --get core.hooksPath 2>/dev/null || true)"
+    if [[ -n "$effective_path" && "$effective_path" != "$GCA_HOOKS_PATH" ]]; then
+      echo "git-commit-attribution: $candidate sets core.hooksPath=$effective_path (effective, from worktree/local/global config); the gate is silently bypassed there." >&2
     fi
+    return 0
+  fi
+  return 1
+}
+
+if [[ -d "$SCAN_ROOT" ]]; then
+  for entry in "$SCAN_ROOT"/*/; do
+    [[ -d "$entry" ]] || continue
+    entry="${entry%/}"
+    scan_candidate "$entry" && continue
+    for child in "$entry"/*/; do
+      [[ -d "$child" ]] || continue
+      child="${child%/}"
+      scan_candidate "$child" || true
+    done
   done
 fi
 
@@ -1117,21 +1193,31 @@ question open with a pointer to the probe as its resolution path.
     `/etc` path (the path is fixed and read-only, so no temp spec — the
     rebuilt container's spec is `mode warn`, so the commit succeeds and the
     gate's diagnosis is the observable).
-  - Assert: the sandboxed command's stderr contains
-    `git-commit-attribution:` (the WARNING diagnosis). That output being
-    visible from a sandbox-launched commit is exactly the design's open
-    question. Print `PASS: gate visible inside Codex sandbox` or
-    `FAIL: gate did not fire inside Codex sandbox`.
+  - Assert a PASS requires all three, each with a distinct FAIL diagnostic
+    when it does not hold — matching only the `git-commit-attribution:`
+    prefix would call a missing or misplaced spec mount's own rejection (a
+    distinct diagnosis, also prefixed and also non-zero-exit-free in
+    mode warn) a PASS too:
+    - the sandboxed `git commit` exits `0` (mode warn should let it
+      through) — otherwise FAIL "commit inside Codex sandbox exited
+      non-zero",
+    - stderr contains the exact warn-mode diagnosis for the fixture's one
+      violation (missing the required `Skills` trailer):
+      `git-commit-attribution: WARNING: commit message is missing the
+      required trailer 'Skills'.` — otherwise FAIL "stderr did not contain
+      the expected warn-mode diagnosis",
+    - the commit actually exists (`git rev-parse --verify HEAD` in the
+      scratch repo) — otherwise FAIL "commit-msg hook exited 0 but no
+      commit exists".
+    Print `PASS: gate visible inside Codex sandbox (warn-mode diagnosis
+    printed; commit created)` on success.
 
 - [ ] **Step 2: Update the design document:**
   - Status line →
     `Status: Accepted — merged via hube/devcontainer#38 (2026-07-18). Implementation: docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md and …-spec-implementation-plan.md.`
-  - *The producer* section: append one sentence — the fallback-safety
-    refactor merged (`hube/agent-skills#54`, 2026-07-31), so `#9` is
-    unblocked and only the `enforce` flip still waits on it.
   - *Open Questions*: keep the Codex-sandbox question open, add the pointer:
     resolved by running `test/test-codex-sandbox.sh` inside the first
-    rebuilt container, before the `enforce` flip (tracked in `#51`).
+    rebuilt container.
   - Changelog: one new entry dated with the implementation PR.
 
 - [ ] **Step 3: Run** `bash test/test-codex-sandbox.sh` in the current
