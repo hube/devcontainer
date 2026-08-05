@@ -657,12 +657,8 @@ change.
 
 ## Open questions
 
-- **Confirm deployed `CLAUDE.md` parity at implementation time.** The deployed
-  `~/.claude/CLAUDE.md` must match claude-home's tracked copy before the new
-  inline discipline and pointer ship. Because the deployed file is a mount of
-  the host checkout, merging claude-home does not change it; parity must be
-  confirmed on the host, not assumed. This is the same host-deployment step the
-  rollout gate above requires for `~/.claude/instructions`.
+None. The one open question — confirming deployed `CLAUDE.md` parity at
+implementation time — was closed on 2026-08-05; see the changelog.
 
 ## Related
 
@@ -808,3 +804,11 @@ change.
   section stays: it is the one section authorized to preserve revision history.
   This design declares no `Rigor levels` table of its own and rests on the
   default floor; revisit if the design is reopened.
+- 2026-08-05: Host deployment done, closing the last open question
+  (devcontainer#59, owner: https://github.com/hube/devcontainer/pull/59#issuecomment-5198627004).
+  The owner deployed claude-home's `instructions/` to the host and repaired the
+  truncated deployed `CLAUDE.md`. Parity was then confirmed from inside a
+  container by `diff -u ~/.claude/CLAUDE.md <tracked copy>`, which reported no
+  differences against claude-home `859cccd`. The host `instructions/` directory
+  is not checkable from inside a container — only `~/.claude/CLAUDE.md` and
+  `~/.claude/projects` are mounted — and rests on the owner's confirmation.
