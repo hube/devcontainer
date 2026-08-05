@@ -941,8 +941,7 @@ These were established by experiment in the container, not assumed.
   the gate does once it reaches that hook is **not** established here: the
   validator returns normally under `:workspace` for a message it need not
   judge, but does not return for an agent-authored one it must produce a
-  diagnosis for. That is tracked as a rollout hazard in `#51`. This resolves
-  the last open question, which asked about visibility.
+  diagnosis for. That is tracked as a rollout hazard in `#51`.
 - `local-features/agent-skills`' postStart script runs `git fetch` and never
   checks out, so its clone is a developer working tree and cannot carry
   distributed artifacts.
@@ -962,8 +961,8 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
   sandbox exposes `/etc/gitconfig`, the hooks directory, and the read-only spec
   mount to it. Codex's own `NOTES.md` records that interactive shells and
   lifecycle scripts do **not** get the inner sandbox, so a commit made from a
-  shell is unaffected. The sandboxed-command path has since been exercised in a
-  rebuilt container; see *Verified Behavior*.
+  shell is unaffected. What happens on the sandboxed-command path is recorded
+  under *Verified Behavior*.
 - **Nothing in `main` moved git config, hooks, or the `claude-home` mount**, so
   the git-config placement rule and the `core.hooksPath` mechanism are
   unaffected. The `NOTES.md`/`MAINTAINERS.md` split the Codex Feature now models
