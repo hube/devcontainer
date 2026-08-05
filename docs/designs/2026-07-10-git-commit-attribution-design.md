@@ -907,8 +907,7 @@ These were established by experiment in the container, not assumed.
   it, so the *Bypasses* entry is a real mechanism, not a hypothetical. This
   resolves a prior open question.
 - Codex's inner bwrap sandbox (`codex-cli 0.146.0`) shows a sandboxed command
-  the same gate the host sees. Under `codex sandbox -P :workspace` — the
-  profile the Codex Feature's `postCreateScript.sh` launches —
+  the same gate the host sees. Under `codex sandbox -P :workspace`,
   `core.hooksPath` still resolves from `file:/etc/gitconfig`, and the
   `commit-msg` hook, the validator and the trailer contract are all readable
   and hash byte-for-byte identical to the host's copies — the contract whole,
