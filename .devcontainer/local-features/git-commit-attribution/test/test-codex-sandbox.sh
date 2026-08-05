@@ -19,7 +19,7 @@
 # Visibility is all this probe asserts, and `-P :workspace` — the profile the
 # Codex Feature's own postCreateScript.sh launches — is the only profile it
 # uses. There is deliberately no end-to-end "commit and check the diagnosis"
-# arm, for two reasons that would otherwise invite someone to add one back:
+# arm, for two reasons that would otherwise invite someone to add one:
 #
 #   * A commit arm would fail before it ever reached the gate. `git init` below
 #     runs on the host, before `codex sandbox` starts, and the design's
