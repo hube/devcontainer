@@ -6,8 +6,12 @@
 # the host's own value, the three files by the sha256 of their whole contents,
 # so "the same gate" means the same bytes and not merely something present at
 # the same path. What this does NOT check is that the contract mount is still
-# read-only inside the sandbox: no claim in the design rests on that, and under
-# `:workspace` the entire root filesystem is mounted read-only in any case.
+# read-only inside the sandbox. The design does rest a claim on that mount
+# being unwritable — editing the contract you are about to be judged against is
+# the cheapest bypass there is — but read-onlyness is inherited from the
+# host-side `"type": "bind,readonly"` declaration rather than granted by the
+# sandbox, so it needs no assertion here; and `/etc`, where the contract lives,
+# is read-only under `:workspace` regardless.
 # This cannot be answered from CI (no bwrap user-namespace support on the
 # runner) or from a container where the gate has not been installed, so the
 # guards below make this script a safe no-op in both places; it is meant to be
@@ -116,12 +120,20 @@ if [[ ! -e "$host_commit_msg_path" ]]; then
   fail "the host cannot resolve $HOOKS_DIR/commit-msg to an existing file, so the sandbox has no hook to be compared against" \
     "readlink -f said: $host_commit_msg_path"
 fi
-for baseline in "$host_commit_msg_sha" "$host_validator_sha" "$host_spec_sha"; do
+for baseline in "$host_commit_msg_sha" "$host_validator_sha"; do
   if [[ ! "$baseline" =~ ^[0-9a-f]{64}\ \ .+$ ]]; then
     fail "the host cannot hash one of the gate's own files, so the sandbox has no bytes to be compared against" \
       "sha256sum said: $baseline"
   fi
 done
+# Kept out of the loop above: the contract is the consumer's mount, not the
+# Feature's, the same split the missing-contract guard makes. An unreadable one
+# is a problem with the host file the consumer mounts, and saying so here stops
+# it reading as a broken gate.
+if [[ ! "$host_spec_sha" =~ ^[0-9a-f]{64}\ \ .+$ ]]; then
+  fail "the host cannot hash $SPEC, so the sandbox has no contract bytes to be compared against; this is the consumer's mounted file, not part of the gate" \
+    "sha256sum said: $host_spec_sha"
+fi
 
 cat >"$workdir/visibility.sh" <<'VISIBILITY'
 # Runs inside the sandbox. Emits one key=value line per component so each can
