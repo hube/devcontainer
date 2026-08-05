@@ -1,0 +1,483 @@
+#!/usr/local/bin/node
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/git-commit-attribution/cli.ts
+var cli_exports = {};
+__export(cli_exports, {
+  DEFAULT_SPEC_PATH: () => DEFAULT_SPEC_PATH,
+  main: () => main
+});
+module.exports = __toCommonJS(cli_exports);
+
+// src/git-commit-attribution/validate.ts
+var import_node_fs = require("node:fs");
+var import_node_child_process2 = require("node:child_process");
+
+// src/git-commit-attribution/spec.ts
+var SUPPORTED_SPEC_VERSION = 1;
+function reject(problem) {
+  return { ok: false, problem };
+}
+function parseSpec(text) {
+  let version;
+  let mode;
+  const trailers = [];
+  const seenTrailerKeys = /* @__PURE__ */ new Set();
+  const agentAuthors = [];
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (line === "") continue;
+    const fields = line.split(/\s+/);
+    const recordType = fields[0];
+    switch (recordType) {
+      case "version": {
+        if (version !== void 0) {
+          return reject(`duplicate version record: "${line}"`);
+        }
+        if (fields.length !== 2 || !/^\d+$/.test(fields[1])) {
+          return reject(`malformed version line: "${line}"`);
+        }
+        version = Number(fields[1]);
+        if (version !== SUPPORTED_SPEC_VERSION) {
+          return reject(
+            `spec declares version ${version}, but this validator supports version ${SUPPORTED_SPEC_VERSION} \u2014 rebuild the container to update the validator, or pin the spec to the older grammar`
+          );
+        }
+        break;
+      }
+      case "mode": {
+        if (mode !== void 0) {
+          return reject(`duplicate mode record: "${line}"`);
+        }
+        if (fields.length !== 2 || fields[1] !== "warn" && fields[1] !== "enforce") {
+          return reject(`malformed mode line: "${line}"`);
+        }
+        mode = fields[1];
+        break;
+      }
+      case "trailer": {
+        if (fields.length < 3 || fields.length > 4) {
+          return reject(`malformed trailer line: "${line}"`);
+        }
+        const key = fields[1];
+        if (fields[2] !== "required") {
+          return reject(`trailer record must specify "required": "${line}"`);
+        }
+        let last = false;
+        if (fields.length === 4) {
+          if (fields[3] !== "last") {
+            return reject(`unknown trailer modifier: "${line}"`);
+          }
+          last = true;
+        }
+        if (seenTrailerKeys.has(key)) {
+          return reject(`duplicate trailer key "${key}": "${line}"`);
+        }
+        seenTrailerKeys.add(key);
+        trailers.push({ key, last });
+        break;
+      }
+      case "agent-author": {
+        if (fields.length !== 2) {
+          return reject(`malformed agent-author line: "${line}"`);
+        }
+        agentAuthors.push(fields[1].toLowerCase());
+        break;
+      }
+      default:
+        return reject(`unknown spec record type: "${line}"`);
+    }
+  }
+  if (version === void 0) {
+    return reject("spec is missing a version record");
+  }
+  if (mode === void 0) {
+    return reject("spec is missing a mode record");
+  }
+  if (trailers.length === 0) {
+    return reject("spec must declare at least one trailer record");
+  }
+  const lastFlags = trailers.map((t) => t.last);
+  const lastCount = lastFlags.filter(Boolean).length;
+  if (lastCount !== 1 || !lastFlags[lastFlags.length - 1]) {
+    return reject(
+      'exactly one trailer record must be marked "last", and it must be the final trailer record in the spec'
+    );
+  }
+  if (agentAuthors.length === 0) {
+    return reject("spec must declare at least one agent-author record");
+  }
+  return { ok: true, spec: { version, mode, trailers, agentAuthors } };
+}
+
+// src/git-commit-attribution/trailers.ts
+var import_node_child_process = require("node:child_process");
+function escapeRegExp(source) {
+  return source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function triggers(rawMessage, spec) {
+  for (const rule of spec.trailers) {
+    const linePattern = new RegExp(`^${escapeRegExp(rule.key)}:.*$`, "gm");
+    const matches = rawMessage.match(linePattern);
+    if (!matches) continue;
+    if (!rule.last) {
+      return true;
+    }
+    for (const line of matches) {
+      const lowerLine = line.toLowerCase();
+      if (spec.agentAuthors.some((address) => lowerLine.includes(address))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+function parseTrailers(rawMessage) {
+  const result = (0, import_node_child_process.spawnSync)("git", ["interpret-trailers", "--parse"], {
+    input: rawMessage,
+    encoding: "utf8"
+  });
+  if (result.error) {
+    throw new Error(`could not launch git interpret-trailers --parse: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `git interpret-trailers --parse exited with status ${result.status}: ${result.stderr}`
+    );
+  }
+  return result.stdout.split("\n").filter((line) => line.length > 0).map((line) => {
+    const separatorIndex = line.indexOf(": ");
+    if (separatorIndex === -1) {
+      return { key: line, value: "" };
+    }
+    return {
+      key: line.slice(0, separatorIndex),
+      value: line.slice(separatorIndex + 2)
+    };
+  });
+}
+function compareSequence(trailers, spec) {
+  const problems = [];
+  const nonLastRules = spec.trailers.filter((rule) => !rule.last);
+  const lastRule = spec.trailers[spec.trailers.length - 1];
+  const lastKey = lastRule.key;
+  let anyMissing = false;
+  for (const rule of nonLastRules) {
+    const count = trailers.filter((t) => t.key === rule.key).length;
+    if (count === 0) {
+      problems.push(`missing the required trailer '${rule.key}'`);
+      anyMissing = true;
+    } else if (count > 1) {
+      problems.push(
+        `duplicate trailer '${rule.key}': expected exactly one in the message, found ${count}`
+      );
+    }
+  }
+  const lastCount = trailers.filter((t) => t.key === lastKey).length;
+  if (lastCount < 1) {
+    problems.push(`missing the required trailer '${lastKey}'`);
+    anyMissing = true;
+  }
+  if (anyMissing) {
+    return problems;
+  }
+  const requiredKeys = new Set(spec.trailers.map((rule) => rule.key));
+  const firstRequiredIndex = trailers.findIndex((t) => requiredKeys.has(t.key));
+  const tail = trailers.slice(firstRequiredIndex);
+  const nonLastRunLength = nonLastRules.length;
+  const misplacedLastIndex = tail.findIndex(
+    (t, i) => t.key === lastKey && i < nonLastRunLength
+  );
+  if (misplacedLastIndex !== -1) {
+    problems.push(`'${lastKey}' must end the attribution block`);
+    return problems;
+  }
+  for (let i = 0; i < nonLastRunLength; i++) {
+    const expectedKey = nonLastRules[i].key;
+    const actual = tail[i];
+    if (!actual || actual.key !== expectedKey) {
+      const found = actual ? `'${actual.key}'` : "the end of the message";
+      problems.push(
+        `expected trailer '${expectedKey}' next in the attribution block, but found ${found}`
+      );
+      return problems;
+    }
+  }
+  const terminalRun = tail.slice(nonLastRunLength);
+  if (terminalRun.length === 0) {
+    problems.push(`missing the required trailer '${lastKey}'`);
+    return problems;
+  }
+  for (const t of terminalRun) {
+    if (t.key !== lastKey) {
+      problems.push(`unexpected trailer '${t.key}' inside the attribution block`);
+      return problems;
+    }
+  }
+  return problems;
+}
+
+// src/git-commit-attribution/validate.ts
+var MISSING_SPEC_CONSEQUENCE = "every commit is rejected until it exists";
+var MISSING_SPEC_REMEDY = "mount ~/.claude/git-commit-attribution.conf \u2014 a checkout of hube/claude-home \u2014 to this path, or bypass once with git commit --no-verify";
+var SPEC_PROBLEM_CONSEQUENCE = "every commit is rejected until this validator accepts the spec";
+var SPEC_PROBLEM_REMEDY = "resolve the problem named above, or bypass once with git commit --no-verify";
+var CONTRACT_LINES = [
+  "Agent-authored commits must end with this contiguous block, Co-Authored-By last:",
+  "",
+  "  Harness: <harness>",
+  "  Harness-Version: <version>",
+  "  Model: <model id>",
+  "  Skills: <skills used, comma-separated, or 'none'>",
+  "  Co-Authored-By: <model display name> <noreply address>",
+  ""
+];
+function rejectSpecPath(specPath, problem) {
+  return {
+    exitCode: 1,
+    stderr: [
+      `git-commit-attribution: ${problem}.`,
+      "The commit was not created.",
+      `${MISSING_SPEC_CONSEQUENCE}; ${MISSING_SPEC_REMEDY}.`,
+      "",
+      `Spec: ${specPath}`
+    ]
+  };
+}
+function rejectSpecProblem(specPath, problem) {
+  return {
+    exitCode: 1,
+    stderr: [
+      `git-commit-attribution: ${problem}.`,
+      "The commit was not created.",
+      `${SPEC_PROBLEM_CONSEQUENCE}; ${SPEC_PROBLEM_REMEDY}.`,
+      "",
+      `Spec: ${specPath}`
+    ]
+  };
+}
+function loadSpec(specPath) {
+  let stat;
+  try {
+    stat = (0, import_node_fs.statSync)(specPath);
+  } catch (err) {
+    const code = err.code;
+    const problem = code === "ENOENT" ? `no spec at ${specPath}` : `cannot read spec at ${specPath}: ${err.message}`;
+    return { ok: false, outcome: rejectSpecPath(specPath, problem) };
+  }
+  if (!stat.isFile()) {
+    return { ok: false, outcome: rejectSpecPath(specPath, `spec at ${specPath} is not a file`) };
+  }
+  let text;
+  try {
+    text = (0, import_node_fs.readFileSync)(specPath, "utf8");
+  } catch (err) {
+    return {
+      ok: false,
+      outcome: rejectSpecPath(specPath, `cannot read spec at ${specPath}: ${err.message}`)
+    };
+  }
+  const parsed = parseSpec(text);
+  if (!parsed.ok) {
+    return { ok: false, outcome: rejectSpecProblem(specPath, parsed.problem) };
+  }
+  return { ok: true, spec: parsed.spec };
+}
+function violationOutcome(problems, specPath, context) {
+  const consequence = context === "range" ? "This commit violates the trailer contract." : "The commit was not created.";
+  return {
+    exitCode: 1,
+    stderr: [
+      ...problems.map((p) => `git-commit-attribution: commit message: ${p}.`),
+      consequence,
+      ...CONTRACT_LINES,
+      `Spec: ${specPath}`
+    ]
+  };
+}
+function warningOutcome(problems, specPath) {
+  return {
+    exitCode: 0,
+    stderr: [
+      ...problems.map((p) => `git-commit-attribution: WARNING: commit message: ${p}.`),
+      "This is a warning only: it will become an error once mode enforce is set.",
+      ...CONTRACT_LINES,
+      `Spec: ${specPath}`
+    ]
+  };
+}
+function checkMessage(raw, spec, specPath, context = "hook") {
+  if (!triggers(raw, spec)) {
+    return { exitCode: 0, stderr: [] };
+  }
+  let trailerList;
+  try {
+    trailerList = parseTrailers(raw);
+  } catch (err) {
+    const consequence = context === "range" ? "This commit could not be checked." : "The commit was not created.";
+    return {
+      exitCode: 1,
+      stderr: [
+        `git-commit-attribution: could not validate commit-message trailers: ${err.message}.`,
+        consequence,
+        "This validator could not run \u2014 check that git is installed and on PATH, or bypass once with git commit --no-verify.",
+        "",
+        `Spec: ${specPath}`
+      ]
+    };
+  }
+  const problems = compareSequence(trailerList, spec);
+  if (problems.length === 0) {
+    return { exitCode: 0, stderr: [] };
+  }
+  return spec.mode === "enforce" ? violationOutcome(problems, specPath, context) : warningOutcome(problems, specPath);
+}
+function runCommitMsg(msgfile, specPath) {
+  const loaded = loadSpec(specPath);
+  if (!loaded.ok) return loaded.outcome;
+  let raw;
+  try {
+    raw = (0, import_node_fs.readFileSync)(msgfile, "utf8");
+  } catch (err) {
+    return {
+      exitCode: 1,
+      stderr: [
+        `git-commit-attribution: cannot read the commit message file at ${msgfile}: ${err.message}.`,
+        "The commit was not created.",
+        "This validator could not run \u2014 check that the commit message file is readable, or bypass once with git commit --no-verify.",
+        "",
+        `Spec: ${specPath}`
+      ]
+    };
+  }
+  return checkMessage(raw, loaded.spec, specPath);
+}
+function runRange(range, specPath) {
+  const loaded = loadSpec(specPath);
+  if (!loaded.ok) return loaded.outcome;
+  const revList = (0, import_node_child_process2.spawnSync)("git", ["rev-list", "--reverse", range], { encoding: "utf8" });
+  if (revList.error || revList.status !== 0) {
+    const detail = revList.error ? revList.error.message : revList.stderr.trim();
+    return {
+      exitCode: 1,
+      stderr: [
+        `git-commit-attribution: could not list commits for range '${range}': ${detail}.`,
+        "The range check did not run.",
+        "",
+        `Spec: ${specPath}`
+      ]
+    };
+  }
+  const shas = revList.stdout.split("\n").map((s) => s.trim()).filter(Boolean);
+  let exitCode = 0;
+  const stderr = [];
+  for (const sha of shas) {
+    const shortResult = (0, import_node_child_process2.spawnSync)("git", ["rev-parse", "--short", sha], { encoding: "utf8" });
+    const short = shortResult.status === 0 ? shortResult.stdout.trim() : sha.slice(0, 7);
+    const logResult = (0, import_node_child_process2.spawnSync)("git", ["log", "-1", "--format=%B", sha], { encoding: "utf8" });
+    const outcome = logResult.error || logResult.status !== 0 ? {
+      exitCode: 1,
+      stderr: [
+        `git-commit-attribution: could not read the commit message for ${sha}: ${logResult.error ? logResult.error.message : logResult.stderr.trim()}.`,
+        "This commit could not be checked.",
+        "",
+        `Spec: ${specPath}`
+      ]
+    } : checkMessage(logResult.stdout, loaded.spec, specPath, "range");
+    if (outcome.stderr.length > 0) {
+      for (const line of outcome.stderr) {
+        stderr.push(line === "" ? "" : `${short}: ${line}`);
+      }
+      if (outcome.exitCode === 1) {
+        exitCode = 1;
+      }
+    }
+  }
+  return { exitCode, stderr };
+}
+
+// src/git-commit-attribution/cli.ts
+var DEFAULT_SPEC_PATH = "/etc/devcontainer/feature/git-commit-attribution/trailer-contract";
+var USAGE = [
+  "Usage:",
+  "  validate commit-msg <msgfile> [--spec <path>]",
+  "  validate --range <BASE..HEAD> [--spec <path>]"
+].join("\n");
+function fail(problems) {
+  for (const problem of problems) {
+    process.stderr.write(`git-commit-attribution: ${problem}.
+`);
+  }
+  process.stderr.write(`${USAGE}
+`);
+  return 1;
+}
+function extractSpec(rest, problems) {
+  let specPath;
+  const positional = [];
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === "--spec") {
+      if (i + 1 >= rest.length) {
+        problems.push("'--spec' requires a value");
+        break;
+      }
+      specPath = rest[i + 1];
+      i++;
+    } else {
+      positional.push(rest[i]);
+    }
+  }
+  return { specPath, positional };
+}
+function main(argv) {
+  if (argv.length === 0) {
+    return fail(["no command given; expected commit-msg <msgfile> or --range <BASE..HEAD>"]);
+  }
+  const [command, ...rest] = argv;
+  if (command !== "commit-msg" && command !== "--range") {
+    return fail([`unrecognized argument '${command}'`]);
+  }
+  const problems = [];
+  const { specPath, positional } = extractSpec(rest, problems);
+  const positionalName = command === "commit-msg" ? "<msgfile>" : "<BASE..HEAD>";
+  if (positional.length === 0) {
+    problems.push(`${command} requires ${positionalName}`);
+  } else if (positional.length > 1) {
+    problems.push(`unexpected extra argument(s): ${positional.slice(1).join(" ")}`);
+  }
+  if (problems.length > 0) {
+    return fail(problems);
+  }
+  const resolvedSpec = specPath ?? DEFAULT_SPEC_PATH;
+  const outcome = command === "commit-msg" ? runCommitMsg(positional[0], resolvedSpec) : runRange(positional[0], resolvedSpec);
+  for (const line of outcome.stderr) {
+    process.stderr.write(`${line}
+`);
+  }
+  return outcome.exitCode;
+}
+if (require.main === module) {
+  process.exitCode = main(process.argv.slice(2));
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  DEFAULT_SPEC_PATH,
+  main
+});

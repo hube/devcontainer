@@ -1,7 +1,9 @@
 # Git Commit Attribution Design
 
-Status: Draft — in review on `hube/devcontainer#38`. See the *Changelog* at the
-end for what has changed across revisions.
+Status: Accepted — merged via hube/devcontainer#38 (2026-07-18). Implementation:
+docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md
+and docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md.
+See the *Changelog* at the end for what has changed across revisions.
 
 ## Context
 
@@ -67,8 +69,9 @@ One wrinkle arrived with `main`'s Codex inner sandbox: a `git commit` Codex
 launches as a sandboxed command runs inside that sandbox, and the gate fires
 only if the sandbox exposes system git config, the hooks directory, and the
 spec. Commits from an interactive shell are outside the inner sandbox and
-unaffected. This is the one unconfirmed link in the premise; see *Reconciliation
-with `main`* and *Open Questions*.
+unaffected. All three are exposed there. A commit is blocked outright only for
+a repository that predates the sandbox; under `:workspace` one created inside it
+reaches the hook. See *Reconciliation with `main`* and *Verified Behavior*.
 
 This rules out keying enforcement off the environment. `CLAUDECODE` and
 `AI_AGENT` are Claude Code's; Codex sets neither. The gate reads the **commit
@@ -394,20 +397,33 @@ So the installed hooks directory is a dispatcher, not a single hook.
 `install.sh` creates one symlink per hook name in githooks(5), all pointing at
 one POSIX `sh` script, which:
 
-- resolves the repository's default hook as
-  `"$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"`,
+- resolves the repository's default hook by testing the command before
+  composing the path —
+  `if common_dir="$(git rev-parse --git-common-dir 2>/dev/null)"; then repo_hook="$common_dir/hooks/$(basename "$0")"; else repo_hook=""; fi`.
+  Outside a repository (e.g. `reference-transaction` firing mid-`git init`,
+  before the repository is recognized) `rev-parse` fails; `2>/dev/null` keeps
+  that transient failure off the user's stderr, and the `if` is what leaves
+  the resolved hook path empty, so both the `-x` and `-f` tests below see it
+  as absent. Interpolating the command substitution straight into the string
+  would instead yield `/hooks/<hook name>` there — a bogus path, not an empty
+  one,
 - `exec`s it when executable, preserving arguments, stdin, and exit status, and
 - warns — the equivalent of git's own `advice.ignoredHook` hint — when the
   repository hook exists but is not executable, then continues as if it were
   absent, so installing the gate does not hide a repository misconfiguration
   git would have surfaced.
 
-For `commit-msg` — and only `commit-msg` — the dispatcher first runs the
-validator bundle. A rejection stops the commit and nothing chains. **Every
-other outcome chains**: trigger not fired, validation passed, and warn-mode
-violations all fall through to the repository's own `commit-msg`. Chaining
-only after validation would eat repo `commit-msg` hooks on exactly the commits
-that fire no trigger — the human-authored ones.
+For `commit-msg` — and only `commit-msg` — the dispatcher runs the
+repository's own `commit-msg` hook **first**, then the validator bundle judges
+whatever message file that hook leaves behind. Git permits a `commit-msg` hook
+to rewrite the message file in place, so validating first would let a repo
+hook silently strip or reorder the required trailers after the only
+validation pass; running the repo hook first means the validator always
+judges the message git will actually use. The repo hook's own non-zero exit
+stops the commit before the validator ever runs. Control returns to the
+dispatcher after the repo hook (rather than `exec`ing it) because validation
+still has to run afterward; every other hook name keeps the plain `exec`
+chain described above.
 
 ### Presence-Sensitive Hooks
 
@@ -454,10 +470,9 @@ control protects — refs and working trees — and nowhere else.
   Equivalence here is ref-level only, and narrower than it looks: it is
   established for the single-ref rejection path, not for multi-ref or atomic
   pushes, and the two paths report different remote errors. That is sufficient,
-  because both outcomes are *reject the push*; a dispatcher that instead exited
-  0 would tell receive-pack the refs were handled when nothing had handled
-  them. Nothing in this container sets `receive.procReceiveRefs`; the adapter
-  exists so nothing breaks if something ever does.
+  because both outcomes are *reject the push*. Nothing in this container sets
+  `receive.procReceiveRefs`; the adapter exists so nothing breaks if something
+  ever does.
 
 Every other githooks(5) hook is delegation-safe: the `pre-*` and `*-msg`
 families veto, the `post-*` family and `reference-transaction` observe, and
@@ -556,7 +571,13 @@ bootstrap-or-hot-path reason — is generalized for future Feature authors in
 ## Validation Flow
 
 ```
-validate commit-msg <msgfile>          (dispatcher passes no --spec)
+dispatch.sh commit-msg <msgfile>
+  │
+  ├─ repository's own commit-msg hook, if executable, runs FIRST
+  │    non-zero exit → stop; the validator never runs, commit is not created
+  │    (may rewrite <msgfile> in place; the validator judges what it leaves)
+  │
+  validate commit-msg <msgfile>          (dispatcher passes no --spec)
   │
   ├─ read spec  ← the compiled-in default path, or --spec if CI overrides it
   │             (see Spec Resolution)
@@ -575,8 +596,8 @@ validate commit-msg <msgfile>          (dispatcher passes no --spec)
   │                                an error, PASS
   │      no violation            → PASS
   │
-  └─ PASS → dispatcher chains to the repository's own commit-msg
-     REJECT → non-zero exit; nothing chains, the commit is not created
+  └─ PASS → the commit proceeds (the repository's own commit-msg already ran, above)
+     REJECT → non-zero exit; the commit is not created
 ```
 
 Two reads of the message, for two different questions.
@@ -602,8 +623,10 @@ makes git return only the trailers after it, and a stray line makes git return
 nothing. Both surface as missing required trailers.
 
 Commits that trip no trigger pass silently: human-authored commits, GitHub merge
-commits, and human-to-human `Co-Authored-By` among them. On every PASS path the
-dispatcher chains to the repository's own `commit-msg` (see *Hook Dispatch*).
+commits, and human-to-human `Co-Authored-By` among them. The repository's own
+`commit-msg` hook already ran before any of this, unconditionally (see *Hook
+Dispatch*); a PASS here means the commit git already handed to that hook is
+also allowed to proceed.
 
 ### Sequence Semantics
 
@@ -685,7 +708,7 @@ reaches an agent that never read `CLAUDE.md`, including a Codex or ChatGPT agent
 that nobody configured.
 
 ```
-git-commit-attribution: commit message is missing the required trailer 'Skills'.
+git-commit-attribution: commit message: missing the required trailer 'Skills'.
 The commit was not created.
 Agent-authored commits must end with this contiguous block, Co-Authored-By last:
 
@@ -705,8 +728,8 @@ The postStart script never blocks container start, matching the idiom
 `local-features/agent-skills/bin/.../postStartScript.sh` establishes and now
 published for all Feature authors in
 [`docs/feature-authoring.md`](../feature-authoring.md). It warns when the spec
-mount is absent, and it names any repository under `/workspaces` whose local
-`core.hooksPath` shadows the gate.
+mount is absent, and it names a repository it scans under `/workspaces` whose
+effective `core.hooksPath` shadows the gate.
 
 ## Rollout
 
@@ -731,10 +754,11 @@ violations against real commits while `hube/agent-skills#9` is fixed.
 and `hube/worklog` have no workflows at all, and `hube/devcontainer` has only
 `publish.yaml`.
 
-- **A repository with its own `core.hooksPath`.** Local config outranks global,
-  so husky, lefthook, and pre-commit silently bypass the gate. Bypassed by
-  accident, with no output. Not fixable from global config. postStart names such
-  repositories at container start.
+- **A repository with its own `core.hooksPath`.** Worktree, local, and global
+  config all outrank the system-scope value this Feature writes, so husky,
+  lefthook, and pre-commit silently bypass the gate. Bypassed by accident, with
+  no output. Not fixable from global config. postStart reads each candidate
+  repository's effective value and names such repositories at container start.
 - **`git commit --no-verify`.** One flag. Also the documented escape hatch when
   the spec is broken.
 - **Commits made outside the container.** No gate at all.
@@ -882,6 +906,42 @@ These were established by experiment in the container, not assumed.
   and would disable the gate for any future committing process that inherited
   it, so the *Bypasses* entry is a real mechanism, not a hypothetical. This
   resolves a prior open question.
+- Codex's inner bwrap sandbox (`codex-cli 0.146.0`) shows a sandboxed command
+  the same gate the host sees. Under `codex sandbox -P :workspace` — the
+  profile the Codex Feature's `postCreateScript.sh` launches —
+  `core.hooksPath` still resolves from `file:/etc/gitconfig`, and the
+  `commit-msg` hook, the validator and the trailer contract are all readable
+  and hash byte-for-byte identical to the host's copies — the contract whole,
+  not just its `mode`, since its `version`, `trailer` and `agent-author`
+  records decide what the gate accepts too.
+  **Whether a commit can be made there depends on when the repository was
+  created.** Codex builds a real sandbox for two of its three built-in
+  profiles: under `:workspace` and `:read-only` a command gets fresh mount,
+  user, pid and net namespaces, whereas under `:danger-full-access` it reports
+  the host's own four namespace ids and a byte-identical
+  `/proc/self/mountinfo`, so that profile is not a sandbox at all. For a
+  repository that already exists when the sandbox starts, `git commit` under
+  both real profiles fails creating `.git/index.lock` with `EROFS` before any
+  `commit-msg` hook runs: `:workspace` re-mounts that repository's `.git`
+  read-only inside an otherwise writable workspace, and `:read-only` carries no
+  `.git` mount at all because `/` itself is read-only. That is a Codex
+  filesystem policy and not a permission problem (`.git` is `755` and owned by
+  the invoking user), not an unwritable workdir (under `:workspace` a plain
+  file written beside `.git` succeeds), and not specific to `/tmp` (it
+  reproduces for a repository under `/workspaces`). `test/test-codex-sandbox.sh`
+  is the probe for the visibility half, and the gate's behavior on a
+  commit that runs on the **host** path is covered by
+  `test/test-integration.sh`.
+
+  **One escape, under `:workspace` only.** Codex re-mounts the `.git`
+  directories that exist when it starts, so a repository created *inside* the
+  sandbox is not covered: its `.git` is writable and its commit does reach the
+  `commit-msg` hook. `:read-only` has no such escape — a later repository
+  cannot be created there at all, since `mkdir` itself returns `EROFS`. What
+  the gate does once it reaches that hook is **not** established here: the
+  validator returns normally under `:workspace` for a message it need not
+  judge, but does not return for an agent-authored one it must produce a
+  diagnosis for.
 - `local-features/agent-skills`' postStart script runs `git fetch` and never
   checks out, so its clone is a developer working tree and cannot carry
   distributed artifacts.
@@ -901,23 +961,12 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
   sandbox exposes `/etc/gitconfig`, the hooks directory, and the read-only spec
   mount to it. Codex's own `NOTES.md` records that interactive shells and
   lifecycle scripts do **not** get the inner sandbox, so a commit made from a
-  shell is unaffected; the sandboxed-command path is the one to confirm. See
-  *Open Questions*.
+  shell is unaffected. What happens on the sandboxed-command path is recorded
+  under *Verified Behavior*.
 - **Nothing in `main` moved git config, hooks, or the `claude-home` mount**, so
   the git-config placement rule and the `core.hooksPath` mechanism are
   unaffected. The `NOTES.md`/`MAINTAINERS.md` split the Codex Feature now models
   is the documentation convention this Feature already follows.
-
-## Open Questions
-
-- Whether a `git commit` Codex launches **inside its inner bwrap sandbox** sees
-  `/etc/gitconfig`, `/usr/local/share/git-commit-attribution/hooks`, and the
-  read-only spec mount. Codex's default sandbox exposes the root filesystem
-  read-only with a writable workspace, which would keep all three visible and
-  the gate active — but this was not exercised (the gate does not exist yet to
-  test against). The integration suite must add a Codex-sandboxed commit case;
-  until then this is the one unverified link in the "every commit passes through
-  the gate" claim.
 
 ## Related
 
@@ -941,6 +990,24 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
+- **2026-08-05** — Codex inner-sandbox visibility exercised in the rebuilt
+  container and recorded under *Verified Behavior*, closing the last open
+  question; the *Open Questions* section goes with it. The gate is fully
+  visible under `codex sandbox -P :workspace`. A commit is impossible there
+  only for a repository that predates the sandbox — one created inside it
+  reaches the hook under `:workspace`, and what the gate does then is
+  unestablished and tracked in `#51`. `test/test-codex-sandbox.sh` narrowed to
+  the visibility assertion, leaving host-path commit behavior to
+  `test/test-integration.sh`.
+- **2026-08-04** — Implemented per
+  `docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md`
+  and the companion
+  `docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md`:
+  the TypeScript validator, hook dispatcher, install/postStart scripts, and CI
+  landed in `mode warn`. Added `test/test-codex-sandbox.sh`, the in-container
+  probe that resolves the Codex-sandbox open question. `hube/agent-skills#9`
+  has since closed, so the `enforce` flip now gates only on the rollout state
+  tracked in `#51`.
 - **2026-07-17** — Spec resolution reworked to a fixed, system-wide FHS path
   (`/etc/devcontainer/feature/git-commit-attribution/trailer-contract`) that
   serves `root` and every user identically. The validator compiles that path in

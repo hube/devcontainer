@@ -1,0 +1,20 @@
+{
+  "name": "hube-devcontainer-tooling",
+  "private": true,
+  "engines": { "node": ">=24.0.0" },
+  "comment_typescript": "Pinned to 6.0.3 (not the 7.x latest) because typescript-eslint@8.66.0's peerDependencies range is >=4.8.4 <6.1.0 and rejects TypeScript 7; tracked at https://github.com/typescript-eslint/typescript-eslint/issues/10940",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src scripts tests-vitest",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.2",
+    "esbuild": "0.28.1",
+    "eslint": "10.8.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.66.0",
+    "vitest": "4.1.10"
+  }
+}

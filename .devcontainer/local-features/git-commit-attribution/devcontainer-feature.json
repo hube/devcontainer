@@ -1,0 +1,12 @@
+{
+  "id": "git-commit-attribution",
+  "name": "Git commit attribution gate",
+  "version": "1.0.0",
+  "description": "commit-msg gate enforcing the attribution trailer contract. The consumer must bind-mount the contract read-only; see NOTES.md.",
+  "dependsOn": {
+    // The gate must not inherit node's liveness from a cosmetic Feature
+    // (ccstatusline); it owns its own interpreter dependency.
+    "ghcr.io/devcontainers/features/node:2": {}
+  },
+  "postStartCommand": "~/bin/devcontainer-feature/git-commit-attribution/postStartScript.sh"
+}
