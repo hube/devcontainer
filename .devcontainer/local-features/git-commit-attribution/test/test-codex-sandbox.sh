@@ -22,14 +22,19 @@
 # uses. There is deliberately no end-to-end "commit and check the diagnosis"
 # arm, for two reasons that would otherwise invite someone to add one back:
 #
-#   * Inside a real Codex sandbox a commit is impossible, so there is nothing
-#     to assert. `git commit` cannot create `.git/index.lock`: under
-#     `:workspace` the repository's `.git` is re-mounted read-only inside an
-#     otherwise writable workspace, and under `:read-only` there is no `.git`
-#     mount at all because `/` itself is read-only. That is a Codex filesystem
-#     policy, upstream of this Feature. A commit arm here would fail with
-#     `Unable to create '.../.git/index.lock': Read-only file system`, which
-#     says nothing whatever about the gate.
+#   * A commit is impossible for the repository this probe would use, so there
+#     is nothing to assert. Codex re-mounts the `.git` directories that exist
+#     when the sandbox starts, and `git init` below runs on the host first, so
+#     this repository's `.git` is read-only inside: under `:workspace` it is
+#     re-mounted read-only inside an otherwise writable workspace, and under
+#     `:read-only` there is no `.git` mount at all because `/` itself is
+#     read-only. That is a Codex filesystem policy, upstream of this Feature. A
+#     commit arm here would fail with `Unable to create
+#     '.../.git/index.lock': Read-only file system`, which says nothing
+#     whatever about the gate. (A repository created *inside* `:workspace` is
+#     not re-mounted and its commit does reach the hook — but that path hangs
+#     in the validator, which `#51` tracks as a rollout hazard. It is a worse
+#     candidate for a commit arm here, not a better one.)
 #   * `-P :danger-full-access`, the one built-in profile where `.git` is
 #     writable, is not a sandbox: a command run under it reports the host's own
 #     mount, user, pid and net namespace ids and a byte-identical
