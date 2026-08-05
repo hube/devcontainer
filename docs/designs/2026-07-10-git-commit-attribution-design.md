@@ -100,8 +100,7 @@ agent can still write `Skills: none` untruthfully, but it must now state
 something false rather than stay silent — and silence is what actually happened.
 
 This makes some existing compliant messages newly non-compliant, including the
-Codex-authored trailer block on `hube/devcontainer#15`. The rollout accounts for
-this.
+Codex-authored trailer block on `hube/devcontainer#15`.
 
 ## Architecture
 
@@ -213,7 +212,7 @@ Only one of the dependencies among them is hard, so it is worth being exact:
 - **The `enforce` flip depends on `#9`.** The moment the gate rejects, the
   current hardcoded `worklog-contribute` message fails, so `enforce` must wait
   for `#9`. This is the one hard ordering constraint, and satisfying it is why
-  the rollout is warn-first (see *Rollout*).
+  the rollout is warn-first.
 
 So the chain is refactor → `#9` → `enforce`; the gate landing in warn mode sits
 outside it. This design does **not** implement the `OperationResult` boundary
@@ -730,23 +729,6 @@ published for all Feature authors in
 [`docs/feature-authoring.md`](../feature-authoring.md). It warns when the spec
 mount is absent, and it names a repository it scans under `/workspaces` whose
 effective `core.hooksPath` shadows the gate.
-
-## Rollout
-
-The gate ships in `mode warn` and is promoted to `mode enforce` by editing the
-spec on the host. No rebuild, reversible in seconds. The sequence is tracked in
-[`hube/devcontainer#51`](https://github.com/hube/devcontainer/issues/51).
-
-This ordering matters. The moment `core.hooksPath` is in force,
-`worklog-contribute`'s hardcoded message parses to a single `Co-Authored-By`
-trailer and would be rejected, so every `/write-worklog` invocation in the
-container would fail. Warn mode lets the gate land first and report real
-violations against real commits while `hube/agent-skills#9` is fixed.
-
-1. Land the spec and the `CLAUDE.md` pointer in `claude-home`, with `mode warn`.
-2. Land the Feature in `devcontainer`, plus `tests.yml`.
-3. Fix `hube/agent-skills#9`.
-4. Flip `mode enforce` on the host.
 
 ## Bypasses
 
