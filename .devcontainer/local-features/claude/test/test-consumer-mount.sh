@@ -24,9 +24,21 @@ mounts = config.get("mounts", [])
 matching = [m for m in mounts if isinstance(m, dict) and m.get("target") == EXPECTED_TARGET]
 
 if not matching:
-    failures.append(
-        f"consumer devcontainer.json declares no mount targeting {EXPECTED_TARGET}"
-    )
+    # The spec also allows the string form ("type=bind,src=...,dst=..."), which
+    # this repo does not use; say so rather than claiming nothing is declared.
+    string_form = [m for m in mounts if isinstance(m, str) and EXPECTED_TARGET in m]
+    if string_form:
+        failures.append(
+            f"consumer devcontainer.json declares a string-form mount targeting "
+            f"{EXPECTED_TARGET}; this repo declares mounts in the object form, so "
+            f"the source, target, and type cannot be checked. Rewrite it as a JSON "
+            f"object with source, target, and type keys"
+        )
+    else:
+        failures.append(
+            f"consumer devcontainer.json declares no object-form mount targeting "
+            f"{EXPECTED_TARGET}"
+        )
 elif len(matching) > 1:
     failures.append(
         f"consumer devcontainer.json declares {len(matching)} mounts targeting "
