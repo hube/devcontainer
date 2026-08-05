@@ -929,7 +929,7 @@ These were established by experiment in the container, not assumed.
   the invoking user), not an unwritable workdir (under `:workspace` a plain
   file written beside `.git` succeeds), and not specific to `/tmp` (it
   reproduces for a repository under `/workspaces`). `test/test-codex-sandbox.sh`
-  is the committed probe for the visibility half, and the gate's behavior on a
+  is the probe for the visibility half, and the gate's behavior on a
   commit that runs on the **host** path is covered by
   `test/test-integration.sh`.
 
@@ -941,7 +941,7 @@ These were established by experiment in the container, not assumed.
   the gate does once it reaches that hook is **not** established here: the
   validator returns normally under `:workspace` for a message it need not
   judge, but does not return for an agent-authored one it must produce a
-  diagnosis for. That is tracked as a rollout hazard in `#51`.
+  diagnosis for.
 - `local-features/agent-skills`' postStart script runs `git fetch` and never
   checks out, so its clone is a developer working tree and cannot carry
   distributed artifacts.
