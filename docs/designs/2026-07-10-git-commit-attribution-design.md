@@ -396,13 +396,16 @@ So the installed hooks directory is a dispatcher, not a single hook.
 `install.sh` creates one symlink per hook name in githooks(5), all pointing at
 one POSIX `sh` script, which:
 
-- resolves the repository's default hook as
-  `"$(git rev-parse --git-common-dir 2>/dev/null)/hooks/$(basename "$0")"`, with
-  the `2>/dev/null` guarded: outside a repository (e.g. `reference-transaction`
-  firing mid-`git init`, before the repository is recognized) the command
-  fails, the failure is swallowed rather than leaked to the user's stderr, and
-  the resolved hook path is left empty, so both the `-x` and `-f` tests below
-  see it as absent,
+- resolves the repository's default hook by testing the command before
+  composing the path —
+  `if common_dir="$(git rev-parse --git-common-dir 2>/dev/null)"; then repo_hook="$common_dir/hooks/$(basename "$0")"; else repo_hook=""; fi`.
+  Outside a repository (e.g. `reference-transaction` firing mid-`git init`,
+  before the repository is recognized) `rev-parse` fails; `2>/dev/null` keeps
+  that transient failure off the user's stderr, and the `if` is what leaves
+  the resolved hook path empty, so both the `-x` and `-f` tests below see it
+  as absent. Interpolating the command substitution straight into the string
+  would instead yield `/hooks/<hook name>` there — a bogus path, not an empty
+  one,
 - `exec`s it when executable, preserving arguments, stdin, and exit status, and
 - warns — the equivalent of git's own `advice.ignoredHook` hint — when the
   repository hook exists but is not executable, then continues as if it were

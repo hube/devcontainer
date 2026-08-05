@@ -164,7 +164,7 @@ export function parseSpec(text: string): SpecParseResult;
 {
   "name": "hube-devcontainer-tooling",
   "private": true,
-  "engines": { "node": ">=18.17" },
+  "engines": { "node": ">=24.0.0" },
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
@@ -202,7 +202,7 @@ await build({
   bundle: true,
   platform: 'node',
   format: 'cjs',
-  target: 'node18',
+  target: 'node24',
   // Fixed interpreter path: install.sh guarantees this symlink, so the
   // committed bundle carries no container-specific value (design, *Node*).
   banner: { js: '#!/usr/local/bin/node' },
