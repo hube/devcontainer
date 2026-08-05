@@ -910,8 +910,10 @@ These were established by experiment in the container, not assumed.
   the same gate the host sees. Under `codex sandbox -P :workspace` — the
   profile the Codex Feature's `postCreateScript.sh` launches —
   `core.hooksPath` still resolves from `file:/etc/gitconfig`, and the
-  `commit-msg` hook, the validator and the read-only spec mount are all
-  readable, the two executables hashing to the same sha256 as outside.
+  `commit-msg` hook, the validator and the trailer contract are all readable
+  and hash byte-for-byte identical to the host's copies — the contract whole,
+  not just its `mode`, since its `version`, `trailer` and `agent-author`
+  records decide what the gate accepts too.
   **No commit can be made there, though.** Codex builds a real sandbox for two
   of its three built-in profiles: under `:workspace` and `:read-only` a command
   gets fresh mount, user, pid and net namespaces, whereas under

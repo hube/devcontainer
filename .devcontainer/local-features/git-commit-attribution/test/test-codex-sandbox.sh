@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # Probes what the design records under *Verified Behavior* about Codex's inner
 # bwrap sandbox: that a command Codex launches there sees the same gate the
-# host does — /etc/gitconfig, the hooks directory, and the read-only spec
-# mount. This cannot be answered from CI (no bwrap user-namespace support on
-# the runner) or from a container where the gate has not been installed, so the
+# host does — the system git config that routes to it, the hook and validator
+# it runs, and the trailer contract they enforce. Every one is compared against
+# the host's own value, the three files by the sha256 of their whole contents,
+# so "the same gate" means the same bytes and not merely something present at
+# the same path. What this does NOT check is that the contract mount is still
+# read-only inside the sandbox: no claim in the design rests on that, and under
+# `:workspace` the entire root filesystem is mounted read-only in any case.
+# This cannot be answered from CI (no bwrap user-namespace support on the
+# runner) or from a container where the gate has not been installed, so the
 # guards below make this script a safe no-op in both places; it is meant to be
 # run manually inside a rebuilt container (tracked in #51).
 #
@@ -29,10 +35,10 @@
 #     spec plus a fixture missing `Skills:` gives exit 0, a created commit, and
 #     the WARNING on stderr) against a real built image.
 #
-# This probe never writes or mounts a spec and never flips `mode`. It reads the
-# live spec at the fixed /etc path only to compare what the sandbox sees
-# against what the host sees, so it stays valid under any `mode` — including
-# after the rollout flips to enforce.
+# This probe never writes or mounts a contract and never flips `mode`. It only
+# hashes the live contract at the fixed /etc path, to compare what the sandbox
+# sees against what the host sees, so it stays valid whatever that contract
+# says — including after the rollout flips `mode` to enforce.
 set -uo pipefail
 
 GCA_ROOT=/usr/local/share/git-commit-attribution
@@ -90,7 +96,11 @@ host_hooks_origin="$(git config --show-origin --get core.hooksPath 2>&1 | tr '\t
 host_commit_msg_path="$(readlink -f "$HOOKS_DIR/commit-msg" 2>&1)"
 host_commit_msg_sha="$(sha256sum "$HOOKS_DIR/commit-msg" 2>&1)"
 host_validator_sha="$(sha256sum "$VALIDATOR" 2>&1)"
-host_spec_mode="$(awk '$1 == "mode" { print $2; exit }' "$SPEC" 2>&1)"
+# The whole contract, not the `mode` line: `version`, `trailer` and
+# `agent-author` records decide what the gate accepts just as much as `mode`
+# does, so matching one field would not show the sandbox reading the same
+# contract.
+host_spec_sha="$(sha256sum "$SPEC" 2>&1)"
 
 # A component the host itself cannot read leaves an error string in the
 # baseline, and the sandbox would report the same error string — so the
@@ -106,16 +116,12 @@ if [[ ! -e "$host_commit_msg_path" ]]; then
   fail "the host cannot resolve $HOOKS_DIR/commit-msg to an existing file, so the sandbox has no hook to be compared against" \
     "readlink -f said: $host_commit_msg_path"
 fi
-for baseline in "$host_commit_msg_sha" "$host_validator_sha"; do
+for baseline in "$host_commit_msg_sha" "$host_validator_sha" "$host_spec_sha"; do
   if [[ ! "$baseline" =~ ^[0-9a-f]{64}\ \ .+$ ]]; then
     fail "the host cannot hash one of the gate's own files, so the sandbox has no bytes to be compared against" \
       "sha256sum said: $baseline"
   fi
 done
-if [[ -z "$host_spec_mode" ]]; then
-  fail "$SPEC declares no 'mode', so this probe cannot tell whether the sandbox reads the same spec the host does" \
-    "spec said: $(cat "$SPEC" 2>&1)"
-fi
 
 cat >"$workdir/visibility.sh" <<'VISIBILITY'
 # Runs inside the sandbox. Emits one key=value line per component so each can
@@ -131,7 +137,7 @@ printf 'hooks-origin=%s\n' "$(git config --show-origin --get core.hooksPath 2>&1
 printf 'commit-msg-path=%s\n' "$(readlink -f "$hooks_dir/commit-msg" 2>&1)"
 printf 'commit-msg-sha=%s\n' "$(sha256sum "$hooks_dir/commit-msg" 2>&1)"
 printf 'validator-sha=%s\n' "$(sha256sum "$validator" 2>&1)"
-printf 'spec-mode=%s\n' "$(awk '$1 == "mode" { print $2; exit }' "$spec" 2>&1)"
+printf 'spec-sha=%s\n' "$(sha256sum "$spec" 2>&1)"
 VISIBILITY
 
 vis_err="$workdir/visibility.err"
@@ -165,7 +171,7 @@ expect_same hooks-origin "$host_hooks_origin"
 expect_same commit-msg-path "$host_commit_msg_path"
 expect_same commit-msg-sha "$host_commit_msg_sha"
 expect_same validator-sha "$host_validator_sha"
-expect_same spec-mode "$host_spec_mode"
+expect_same spec-sha "$host_spec_sha"
 
-echo "PASS: gate visible inside codex sandbox -P :workspace (config origin, hook bytes, validator bytes and spec mode all identical to the host)"
+echo "PASS: gate visible inside codex sandbox -P :workspace (config origin, hook bytes, validator bytes and contract bytes all identical to the host)"
 exit 0
