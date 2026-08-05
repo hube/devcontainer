@@ -254,6 +254,18 @@ whose finding arrives with the owner's decision attached is fixed, not
 escalated, even when it is the third consecutive round confined to that
 mechanism.
 
+**Remedy scoped to cause.** The breaker's trigger stays recurrence alone —
+three consecutive rounds confined to the same section or mechanism, with no
+narrower accretion-only reading. Its owner options memo names the remedy that
+fits *why* the rounds recurred (false claims, distinct genuine defects, an
+unfixed recurring defect, reviewer disagreement, adjacent breakage, or
+tolerable risk), rather than only the three machinery options above, which
+remain one row of that set; the full table is in the reference. Recurrence on
+a **mechanism** stops fixing it and waits for the owner; recurrence on a
+**claim** is self-authorising — delete and disclose rather than stopping,
+since subtraction cannot over-build. Decided (owner, 2026-08-05:
+https://github.com/hube/claude-home/pull/9#issuecomment-5195559451).
+
 ### Defer implementation-level correctness
 
 Anything whose truth is established by **running code** — I/O ordering,
@@ -740,3 +752,9 @@ change.
   per project" note, since the note was removed under owner direction; and
   recorded the owner's 2026-08-05 ruling that reader-proxy findings are
   advisory while effectiveness data is collected.
+- 2026-08-05: Owner decision on `hube/claude-home#9`. Option B: the churn
+  breaker's trigger stays recurrence alone (the accretion-only narrowing an
+  implementation round introduced is reverted); its remedy is now scoped to
+  the cause of the recurrence rather than limited to the three machinery
+  options, and recurrence on a claim is self-authorising (delete and
+  disclose) where recurrence on a mechanism still waits for the owner.
