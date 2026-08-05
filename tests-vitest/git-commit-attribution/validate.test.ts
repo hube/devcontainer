@@ -125,9 +125,10 @@ describe('loadSpec', () => {
     const text = result.outcome.stderr.join('\n');
     expect(text).toContain('bogus-record foo');
     expect(text).toContain('The commit was not created.');
-    // An unparseable spec rejects every commit regardless of mode, so the
-    // message has to say how to get out of it or the operator is locked out.
-    expect(text).toContain('correct or restore the spec');
+    // A rejected spec rejects every commit regardless of mode, so the message
+    // has to say how to get out of it or the operator is locked out.
+    expect(text).toContain('every commit is rejected until this validator accepts the spec');
+    expect(text).toContain('resolve the problem named above');
     expect(text).toContain('git commit --no-verify');
   });
 
@@ -141,6 +142,13 @@ describe('loadSpec', () => {
     const text = result.outcome.stderr.join('\n');
     expect(text).toContain('rebuild the container');
     expect(text).toContain('pin the spec');
+    // This spec's grammar is valid, so the shared line below the problem must
+    // not claim it fails to parse, and must not send the operator to restore
+    // it — restoring from claude-home reinstalls the same newer spec.
+    expect(text).toContain('every commit is rejected until this validator accepts the spec');
+    expect(text).toContain('resolve the problem named above');
+    expect(text).not.toContain('until the spec parses');
+    expect(text).not.toContain('correct or restore');
   });
 
   it('rejects an unreadable spec file, naming the path and giving a remedy instead of throwing', () => {

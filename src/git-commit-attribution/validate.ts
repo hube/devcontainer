@@ -15,10 +15,12 @@ const MISSING_SPEC_REMEDY =
   'mount ~/.claude/git-commit-attribution.conf — a checkout of hube/claude-home — to this path, ' +
   'or bypass once with git commit --no-verify';
 
-const UNPARSEABLE_SPEC_CONSEQUENCE = 'every commit is rejected until the spec parses';
-const UNPARSEABLE_SPEC_REMEDY =
-  'correct or restore the spec at this path — the defect named above — ' +
-  'or bypass once with git commit --no-verify';
+// Shared by every parseSpec rejection, including the unsupported-`version`
+// case whose grammar is valid and whose remedy is rebuilding the container.
+// Both halves therefore have to hold for a spec that parses fine, which is
+// why the remedy defers to the problem line rather than prescribing a fix.
+const SPEC_PROBLEM_CONSEQUENCE = 'every commit is rejected until this validator accepts the spec';
+const SPEC_PROBLEM_REMEDY = 'resolve the problem named above, or bypass once with git commit --no-verify';
 
 /**
  * The contract block shown in every rejection/warning (design, *Failure
@@ -57,7 +59,7 @@ function rejectSpecProblem(specPath: string, problem: string): Outcome {
     stderr: [
       `git-commit-attribution: ${problem}.`,
       'The commit was not created.',
-      `${UNPARSEABLE_SPEC_CONSEQUENCE}; ${UNPARSEABLE_SPEC_REMEDY}.`,
+      `${SPEC_PROBLEM_CONSEQUENCE}; ${SPEC_PROBLEM_REMEDY}.`,
       '',
       `Spec: ${specPath}`,
     ],
