@@ -4,9 +4,13 @@ set -euo pipefail
 SHARE=/usr/local/share/git-commit-attribution
 HOOKS="$SHARE/hooks"
 
-# Hook names from githooks(5) of git 2.53 (the image's git). A name added by
-# a future git version must be classified absence-equivalent-or-adapter
-# before joining this list — see NOTES.md.
+# Hook names from githooks(5) of git 2.53 (the image's git), exactly once, no
+# extras. A name added by a future git version joins this list only once
+# classified: absence-equivalent (a passthrough exiting 0 with no repository
+# hook installed leaves the same ref/worktree/index outcome as no hook at all,
+# which is true of most of githooks(5)) or in need of its own adapter in
+# dispatch.sh (the hook changes git's behavior merely by existing). The design
+# doc classifies every name below and covers the two adapters.
 HOOK_NAMES=(
   applypatch-msg pre-applypatch post-applypatch
   pre-commit pre-merge-commit prepare-commit-msg commit-msg post-commit

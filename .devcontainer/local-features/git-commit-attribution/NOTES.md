@@ -15,11 +15,10 @@ invocation, checks the candidate commit message against it. The spec's
 - `mode: enforce` — a violation rejects the commit (non-zero exit); the
   commit is not created.
 
-The gate **fails closed**: a missing spec, a spec path that is not a regular
-file, a malformed spec, an unsupported spec `version`, an unknown record
-type, or an unexecutable validator all reject the commit with a
-problem → consequence → remedy message, regardless of `mode`. Only an actual
-parsed spec in `mode: warn` lets a violating commit through.
+The gate **fails closed**: a spec it cannot find, read, or parse rejects the
+commit regardless of `mode`, with a problem → consequence → remedy message
+naming the specific cause. Only an actual parsed spec in `mode: warn` lets a
+violating commit through.
 
 ## Consumer mount
 
@@ -37,6 +36,16 @@ this block into the consumer's `mounts`:
 }
 ```
 
+That source is the contract itself: `hube/claude-home` supplies it at
+`~/.claude/git-commit-attribution.conf` on the host, and `mode` is a field in
+it — so a host checkout of `hube/claude-home` at `~/.claude` is what both
+states the required trailers and sets the enforcement level.
+
+The mount takes effect on a container rebuild. A healthy install then reads
+back `git config --system core.hooksPath` as
+`/usr/local/share/git-commit-attribution/hooks`, and postStart prints
+nothing — every postStart message names a problem.
+
 Keeping the mount on the consumer side also means a Codex-only consumer with
 no Claude-branded host directory can supply its own source path; the Feature
 ships unchanged either way.
@@ -49,11 +58,8 @@ Four ways the gate does not apply, stated plainly:
   git config all outrank the system-scope `core.hooksPath` this Feature
   writes, so a repo already running husky, lefthook, or pre-commit (or a
   linked worktree with its own `extensions.worktreeConfig` override) bypasses
-  the gate silently, by accident. Not fixable from global config. The
-  postStart script reads each candidate repo's *effective* `core.hooksPath`
-  (not just `--local`, which misses a worktree-scoped override) and names any
-  repository under the scan root whose effective value differs from the
-  installed gate path, along with that value.
+  the gate silently, by accident. Not fixable from global config. postStart
+  warns when it finds one, naming the repository and the path it sets.
 - **`git commit --no-verify`.** One flag skips the `commit-msg` hook
   entirely. This is also the documented escape hatch for the one commit that
   needs to land while the spec itself is broken.
@@ -64,39 +70,13 @@ Four ways the gate does not apply, stated plainly:
   process that sets or inherits this variable bypasses the gate, regardless
   of why it was set.
 
-## Hook-name policy
-
-The symlink farm in `install.sh` (`HOOK_NAMES`) is every hook name documented
-in githooks(5) for git 2.53 (the image's git), exactly once, no extras. A
-name added by a future git version must be classified before joining the
-list: **absence-equivalent** (exiting 0 with no repository hook installed
-produces the same ref/worktree/index outcome as having no hook at all — true
-of most of githooks(5)) or in need of its own **adapter** (the hook changes
-git's behavior merely by existing, so a bare passthrough would silently
-change behavior).
-
-Two hooks in the current list are presence-sensitive and get adapters rather
-than a bare `exit 0`:
-
-- **`push-to-checkout`** — under `receive.denyCurrentBranch=updateInstead`,
-  an exit-0 hook tells git the worktree update was already handled. A bare
-  passthrough would let the ref advance while the worktree and index stayed
-  at the old commit, leaving the repository dirty. The adapter emulates
-  git's own built-in `updateInstead` behavior instead: it refuses when the
-  worktree or index differ from `HEAD`, and otherwise updates both.
-- **`proc-receive`** — speaks a pkt-line protocol no generic script can
-  emulate. The adapter fails, which rejects the matched ref exactly as an
-  absent hook does; a bare `exit 0` would instead claim refs were handled
-  when nothing handled them.
-
 ## Failure handling
 
-The gate never blocks container start: `postStartScript.sh` only warns, and
-always exits 0, whether the spec is missing, misplaced, or a repository's
-effective `core.hooksPath` shadows the gate. A missing spec warns at postStart
-and rejects at commit time; a malformed spec passes the postStart
-file-existence check silently and is caught only at commit time — the
-fail-closed behavior described under *Behavior* above. When hook resolution
-runs outside a repository (e.g. `reference-transaction` firing mid-`git
-init`, before the repository is recognized), the dispatcher exits quietly
-rather than leaking the transient failure to the user.
+The gate never blocks container start: postStart only warns, whether the spec
+is missing, misplaced, or a repository's effective `core.hooksPath` shadows
+the gate. A missing spec warns at postStart and rejects at commit time; a
+malformed spec is not detected at postStart and is caught only at commit
+time — the fail-closed behavior described under *Behavior* above. When hook
+resolution runs outside a repository (e.g. `reference-transaction` firing
+mid-`git init`, before the repository is recognized), nothing is printed: the
+transient failure is not leaked to the user.

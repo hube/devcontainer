@@ -2,7 +2,7 @@
 # Dispatcher for the git-commit-attribution gate. A container-wide
 # core.hooksPath replaces the hook directory for EVERY hook git knows, so
 # this script is symlinked under every githooks(5) name and chains to the
-# repository's own hook. See NOTES.md for the classification rule new hook
+# repository's own hook. See install.sh for the classification rule new hook
 # names must pass before joining the symlink farm.
 set -u
 
