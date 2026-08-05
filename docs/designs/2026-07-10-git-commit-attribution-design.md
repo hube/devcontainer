@@ -69,8 +69,9 @@ One wrinkle arrived with `main`'s Codex inner sandbox: a `git commit` Codex
 launches as a sandboxed command runs inside that sandbox, and the gate fires
 only if the sandbox exposes system git config, the hooks directory, and the
 spec. Commits from an interactive shell are outside the inner sandbox and
-unaffected. This is the one unconfirmed link in the premise; see *Reconciliation
-with `main`* and *Open Questions*.
+unaffected. All three are exposed there. A commit is blocked outright only for
+a repository that predates the sandbox; under `:workspace` one created inside it
+reaches the hook. See *Reconciliation with `main`* and *Verified Behavior*.
 
 This rules out keying enforcement off the environment. `CLAUDECODE` and
 `AI_AGENT` are Claude Code's; Codex sets neither. The gate reads the **commit
@@ -905,6 +906,42 @@ These were established by experiment in the container, not assumed.
   and would disable the gate for any future committing process that inherited
   it, so the *Bypasses* entry is a real mechanism, not a hypothetical. This
   resolves a prior open question.
+- Codex's inner bwrap sandbox (`codex-cli 0.146.0`) shows a sandboxed command
+  the same gate the host sees. Under `codex sandbox -P :workspace` — the
+  profile the Codex Feature's `postCreateScript.sh` launches —
+  `core.hooksPath` still resolves from `file:/etc/gitconfig`, and the
+  `commit-msg` hook, the validator and the trailer contract are all readable
+  and hash byte-for-byte identical to the host's copies — the contract whole,
+  not just its `mode`, since its `version`, `trailer` and `agent-author`
+  records decide what the gate accepts too.
+  **Whether a commit can be made there depends on when the repository was
+  created.** Codex builds a real sandbox for two of its three built-in
+  profiles: under `:workspace` and `:read-only` a command gets fresh mount,
+  user, pid and net namespaces, whereas under `:danger-full-access` it reports
+  the host's own four namespace ids and a byte-identical
+  `/proc/self/mountinfo`, so that profile is not a sandbox at all. For a
+  repository that already exists when the sandbox starts, `git commit` under
+  both real profiles fails creating `.git/index.lock` with `EROFS` before any
+  `commit-msg` hook runs: `:workspace` re-mounts that repository's `.git`
+  read-only inside an otherwise writable workspace, and `:read-only` carries no
+  `.git` mount at all because `/` itself is read-only. That is a Codex
+  filesystem policy and not a permission problem (`.git` is `755` and owned by
+  the invoking user), not an unwritable workdir (under `:workspace` a plain
+  file written beside `.git` succeeds), and not specific to `/tmp` (it
+  reproduces for a repository under `/workspaces`). `test/test-codex-sandbox.sh`
+  is the probe for the visibility half, and the gate's behavior on a
+  commit that runs on the **host** path is covered by
+  `test/test-integration.sh`.
+
+  **One escape, under `:workspace` only.** Codex re-mounts the `.git`
+  directories that exist when it starts, so a repository created *inside* the
+  sandbox is not covered: its `.git` is writable and its commit does reach the
+  `commit-msg` hook. `:read-only` has no such escape — a later repository
+  cannot be created there at all, since `mkdir` itself returns `EROFS`. What
+  the gate does once it reaches that hook is **not** established here: the
+  validator returns normally under `:workspace` for a message it need not
+  judge, but does not return for an agent-authored one it must produce a
+  diagnosis for.
 - `local-features/agent-skills`' postStart script runs `git fetch` and never
   checks out, so its clone is a developer working tree and cannot carry
   distributed artifacts.
@@ -924,26 +961,12 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
   sandbox exposes `/etc/gitconfig`, the hooks directory, and the read-only spec
   mount to it. Codex's own `NOTES.md` records that interactive shells and
   lifecycle scripts do **not** get the inner sandbox, so a commit made from a
-  shell is unaffected; the sandboxed-command path is the one to confirm. See
-  *Open Questions*.
+  shell is unaffected. What happens on the sandboxed-command path is recorded
+  under *Verified Behavior*.
 - **Nothing in `main` moved git config, hooks, or the `claude-home` mount**, so
   the git-config placement rule and the `core.hooksPath` mechanism are
   unaffected. The `NOTES.md`/`MAINTAINERS.md` split the Codex Feature now models
   is the documentation convention this Feature already follows.
-
-## Open Questions
-
-- Whether a `git commit` Codex launches **inside its inner bwrap sandbox** sees
-  `/etc/gitconfig`, `/usr/local/share/git-commit-attribution/hooks`, and the
-  read-only spec mount. Codex's default sandbox exposes the root filesystem
-  read-only with a writable workspace, which would keep all three visible and
-  the gate active — but this has not been exercised inside an actual rebuilt,
-  Codex-enabled container, which is the one unverified link in the "every
-  commit passes through the gate" claim. `test/test-codex-sandbox.sh` is the
-  committed probe that answers it: it runs a violating fixture through
-  `codex sandbox -P :workspace -C <dir> git commit` and checks for the exact
-  warn-mode diagnosis on stderr plus a created commit. This is resolved by
-  running that script inside the first rebuilt container.
 
 ## Related
 
@@ -967,6 +990,15 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
+- **2026-08-05** — Codex inner-sandbox visibility exercised in the rebuilt
+  container and recorded under *Verified Behavior*, closing the last open
+  question; the *Open Questions* section goes with it. The gate is fully
+  visible under `codex sandbox -P :workspace`. A commit is impossible there
+  only for a repository that predates the sandbox — one created inside it
+  reaches the hook under `:workspace`, and what the gate does then is
+  unestablished and tracked in `#51`. `test/test-codex-sandbox.sh` narrowed to
+  the visibility assertion, leaving host-path commit behavior to
+  `test/test-integration.sh`.
 - **2026-08-04** — Implemented per
   `docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md`
   and the companion
