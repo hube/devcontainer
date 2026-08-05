@@ -60,8 +60,9 @@ additional entries rather than attempting to override the embedded contract.
 Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
 mounts from the host's `~/.claude/CLAUDE.md` — a single shared file under two
 names, separate from the `~/.agents/instructions` directory mount described
-below. Bulk references that file points at — the rigor-levels reference and the
-verbatim reviewer dispatch blocks — are read from `~/.agents/instructions`.
+below. Bulk references that file points at are read from
+`~/.agents/instructions`, which holds three files: `rigor-levels.md`,
+`review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
 This Feature owns only the container **target** path. The mount itself is
 **consumer-declared**. Add it once to your `devcontainer.json` — not per
@@ -85,8 +86,16 @@ once per Feature.
 
 **The host source directory must exist before you declare the mount.** Docker
 rejects a bind mount whose host source is missing, and that failure breaks
-container startup outright. Create `~/.claude/instructions` on the host first,
-then add the mount.
+container startup outright — before anything can report it. Create
+`~/.claude/instructions` on the host first, then add the mount. The host file
+this Feature binds as `AGENTS.md` must exist for the same reason.
+
+To confirm the mount landed, list the target inside the container — it shows the
+three files named above:
+
+```bash
+ls ~/.agents/instructions
+```
 
 If the mount is absent, the container still starts. Codex loads `AGENTS.md`
 normally, and only the referenced bulk detail is unavailable.

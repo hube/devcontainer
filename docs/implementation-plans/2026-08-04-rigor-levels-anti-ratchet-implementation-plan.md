@@ -11,13 +11,12 @@ always-on, harness-neutral agent guidance — inline discipline in the shared
 content: the always-on inline rules in `CLAUDE.md`, plus three new files under
 `instructions/`. `hube/devcontainer` holds the plumbing: one consumer-declared,
 read-only bind mount exposing that directory at the harness-neutral container
-path `~/.agents/instructions`, and a postStart warning in each harness Feature
-for when the mount is absent. A host-state gate sits between them.
+path `~/.agents/instructions`. Each harness Feature owns only that container
+target path. A host-state gate sits between them.
 
 **Tech Stack:** Markdown (agent instructions), Dev Container Feature manifests
-(JSON with comments), Bash postStart hooks, Bash/Python test harnesses in the
-style already used by `local-features/github-cli-config` and
-`local-features/codex`.
+(JSON with comments), Bash/Python test harnesses in the style already used by
+`local-features/github-cli-config` and `local-features/codex`.
 
 **Source design:** `docs/designs/2026-07-22-rigor-levels-anti-ratchet-design.md`
 (merged in `hube/devcontainer#55`, merge commit `029d6f8`). The design is
@@ -46,9 +45,10 @@ settled; this plan implements it and does not revisit its decisions.
 - **The mount source is exactly `${localEnv:HOME}/.claude/instructions`** and the
   target exactly `/home/${localEnv:USERNAME:devcontainer}/.agents/instructions`,
   read-only, declared **once** by the consumer, never by a Feature.
-- **postStart never blocks container start.** Every hook added here exits 0 on
-  every path and writes problem → consequence → remedy, in that order, to stderr
-  (`docs/feature-authoring.md`).
+- **No Feature lifecycle hook is added.** By owner decision (2026-08-05, in
+  session) neither harness Feature detects an absent mount; see the design's
+  "No absent-mount detection". Diagnostics this plan does write still follow
+  problem → consequence → remedy, in that order (`docs/feature-authoring.md`).
 - **Commit trailers.** Every commit ends with a contiguous trailer block, no
   blank line inside it:
 
@@ -83,18 +83,11 @@ settled; this plan implements it and does not revisit its decisions.
 
 | File | Responsibility |
 |---|---|
-| `.devcontainer/local-features/claude/devcontainer-feature.json` (modify) | Repair malformed JSON (pre-existing); declare `postStartCommand` |
-| `.devcontainer/local-features/claude/install.sh` (modify) | Copy `bin/` into the container user's home with executable mode |
-| `.devcontainer/local-features/claude/bin/devcontainer-feature/claude/postStartScript.sh` (create) | Warn when `~/.agents/instructions` is absent |
-| `.devcontainer/local-features/claude/NOTES.md` (create) | Document the consumer mount and the host prerequisite |
-| `.devcontainer/local-features/claude/test/test-poststart.sh` (create) | Cover the hook's three paths |
-| `.devcontainer/local-features/claude/test/test-consumer-mount.sh` (create) | Assert the consumer `devcontainer.json` declares source, target, and read-only |
-| `.devcontainer/local-features/codex/devcontainer-feature.json` (modify) | Declare `postStartCommand` |
-| `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postStartScript.sh` (create) | Warn when `~/.agents/instructions` is absent |
-| `.devcontainer/local-features/codex/NOTES.md` (modify) | Document the consumer mount and the host prerequisite |
-| `.devcontainer/local-features/codex/test/test-poststart.sh` (create) | Cover the hook's three paths |
-| `.devcontainer/local-features/codex/test/test-feature-config.py` (modify) | Assert the new `postStartCommand` value |
-| `.devcontainer/devcontainer.json` (modify) | Declare the consumer mount once, read-only |
+| `.devcontainer/local-features/claude/devcontainer-feature.json` (modify) | Repair malformed JSON (pre-existing) |
+| `.devcontainer/local-features/claude/NOTES.md` (create) | Document the consumer mount and the host prerequisite, standing alone |
+| `.devcontainer/local-features/claude/test/test-consumer-mount.sh` (create) | Assert the consumer `devcontainer.json` declares source, target, and the exact `bind,readonly` type |
+| `.devcontainer/local-features/codex/NOTES.md` (modify) | Document the consumer mount and the host prerequisite, standing alone |
+| `.devcontainer/devcontainer.json` (modify) | Declare the consumer mount once, read-only, in the single shared `mounts` array |
 | `README.md` (modify) | Link the new Claude feature notes |
 
 ---
@@ -709,23 +702,22 @@ is the first thing every harness reads):
 ```markdown
 # Shared agent instructions
 
-Bulk references shared across harnesses live in `~/.agents/instructions`, a
-read-only mount present in every devcontainer. Open these files directly — this
-is a plain textual pointer, not an `@import`, because Codex reads `AGENTS.md`
-wholesale and would silently ignore an import.
+Guidance too long to keep inline lives in `~/.agents/instructions`:
 
-- `~/.agents/instructions/rigor-levels.md` — the rigor-level vocabulary, the
-  churn-breaker counting mechanics, ratification triggers, checkpoint cadence,
-  thresholds, and the brainstorming elicitation prompts.
-- `~/.agents/instructions/review-dispatch-scope.md` — the reviewer scope block,
-  included **verbatim** in every design and code review dispatch.
-- `~/.agents/instructions/reader-proxy-review-dispatch.md` — the reader-proxy
-  dispatch block.
+- `rigor-levels.md` — the rigor-level vocabulary, the churn-breaker counting
+  mechanics, ratification triggers, checkpoint cadence, thresholds, and the
+  brainstorming elicitation prompts.
+- `review-dispatch-scope.md` — the reviewer scope block, included **verbatim**
+  in every design and code review dispatch.
+- `reader-proxy-review-dispatch.md` — the reader-proxy dispatch block.
 
-If the directory is absent, the container is missing the consumer mount its
-harness Feature warns about at startup; the rules below still bind, but the
-referenced detail is unavailable — say so rather than inventing it.
+Open these files directly. If they are unavailable, the rules below still bind
+— say the referenced detail is unavailable rather than inventing it.
 ```
+
+The pointer is plain text rather than an `@import` because Codex reads
+`AGENTS.md` wholesale and would silently ignore an import. That reasoning
+stays here, in the plan — it is not written into `CLAUDE.md`.
 
 - [ ] **Step 3: Insert the design-authoring discipline**
 
@@ -958,9 +950,9 @@ container sees only the specific bind mounts the Feature declares
 directory itself.
 
 The gate is **host state, not repository merge order**: Docker rejects a bind
-mount whose host source does not exist, breaking container startup outright
-before any postStart warning could run. Merging Phase A to `main` creates
-nothing on the host until it is deployed into the checkout backing `~/.claude`.
+mount whose host source does not exist, breaking container startup outright.
+Merging Phase A to `main` creates nothing on the host until it is deployed into
+the checkout backing `~/.claude`.
 
 - [ ] **Step 1: Owner deploys Phase A to the host**
 
@@ -1075,204 +1067,48 @@ the commas. Then the trailer block.
 
 ---
 
-### Task B1: Claude Feature — postStart warning, docs, tests
+### Task B1: Claude Feature — docs
 
-> **Superseded in part (owner, 2026-08-05, in session).** The absent-mount
-> postStart warning is dropped: the hook, its test suite, its manifest
-> `postStartCommand`, and the `install.sh` `bin/` copy this task adds were all
-> removed while addressing review round 1. The Feature owns only the container
-> target path. The `NOTES.md` and `README.md` steps below still stand. See the
-> design's "No absent-mount detection".
+> **Revised (owner, 2026-08-05, in session).** This task originally built an
+> absent-mount postStart warning. No Feature detects an absent mount; see the
+> design's "No absent-mount detection". The hook, its test suite, its manifest
+> `postStartCommand`, and the `install.sh` `bin/` copy have been removed, and
+> the steps that built them are deleted here rather than left as instructions
+> nobody should follow — git history holds them. What remains is the
+> documentation.
 
 **Files:**
-- Create: `.devcontainer/local-features/claude/bin/devcontainer-feature/claude/postStartScript.sh`
-- Create: `.devcontainer/local-features/claude/test/test-poststart.sh`
 - Create: `.devcontainer/local-features/claude/NOTES.md`
 - Modify: `.devcontainer/local-features/claude/devcontainer-feature.json`
-- Modify: `.devcontainer/local-features/claude/install.sh`
+  (pre-existing malformed JSON only)
 - Modify: `README.md`
 
 **Interfaces:**
 - Produces: the container target path `~/.agents/instructions`, referenced
-  identically by Task B2's Codex hook and Task B3's consumer mount.
-- Produces: the hook path
-  `~/bin/devcontainer-feature/claude/postStartScript.sh`, the value the manifest
-  `postStartCommand` must hold.
+  identically by Task B2's Codex notes and Task B3's consumer mount.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write `NOTES.md`**
 
-Create `.devcontainer/local-features/claude/test/test-poststart.sh` with this
-content:
+Create `.devcontainer/local-features/claude/NOTES.md`. The notes must stand
+alone: no reference to how any particular repository is configured, no
+reference to another repository, no reference to a sibling Feature's docs, and
+no rationale for why the design is what it is — all four were owner findings on
+review round 1. Where two Features describe the same target path, give conflict
+guidance rather than a pointer.
 
-```bash
-#!/usr/bin/env bash
-# Tests the shared-instructions mount warning. The hook must never fail
-# container start, and must distinguish "absent" from "present but not a
-# directory" — the two need different remedies.
-set -uo pipefail
-
-HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/devcontainer-feature/claude/postStartScript.sh"
-passed=0
-failed=0
-
-pass() { printf 'ok   %s\n' "$1"; passed=$((passed + 1)); }
-fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
-
-setup_world() {
-  WORLD="$(mktemp -d)"
-  export HOME="$WORLD/home"
-  mkdir -p "$HOME"
-}
-
-teardown_world() { rm -rf "$WORLD"; }
-
-run_hook() {
-  out="$("$HOOK" 2>&1)"
-  rc=$?
-}
-
-# A present directory is the healthy case: exit 0, say nothing.
-setup_world
-mkdir -p "$HOME/.agents/instructions"
-run_hook
-[[ $rc -eq 0 ]] && pass "mounted: exits 0" || fail "mounted: exits 0" "got $rc"
-[[ -z "$out" ]] && pass "mounted: stays silent" || fail "mounted: stays silent" "$out"
-teardown_world
-
-# An absent directory warns without blocking container start.
-setup_world
-run_hook
-[[ $rc -eq 0 ]] && pass "absent: exits 0" || fail "absent: exits 0" "got $rc"
-[[ "$out" == *"claude: $HOME/.agents/instructions is absent, so the shared agent instructions are not mounted."* ]] && pass "absent: states problem" || fail "absent: states problem" "$out"
-[[ "$out" == *"Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable."* ]] && pass "absent: states consequence" || fail "absent: states consequence" "$out"
-[[ "$out" == *"Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container."* ]] && pass "absent: states remedy" || fail "absent: states remedy" "$out"
-teardown_world
-
-# A non-directory at the target needs a different remedy than an absent one.
-setup_world
-mkdir -p "$HOME/.agents"
-: > "$HOME/.agents/instructions"
-run_hook
-[[ $rc -eq 0 ]] && pass "not a directory: exits 0" || fail "not a directory: exits 0" "got $rc"
-[[ "$out" == *"claude: $HOME/.agents/instructions exists but is not a directory, so the shared agent instructions cannot be read."* ]] && pass "not a directory: states problem" || fail "not a directory: states problem" "$out"
-[[ "$out" == *"Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source."* ]] && pass "not a directory: states remedy" || fail "not a directory: states remedy" "$out"
-[[ "$out" != *"is absent"* ]] && pass "not a directory: does not report absence" || fail "not a directory: does not report absence" "$out"
-teardown_world
-
-# The manifest must actually run the hook, or none of the above ever executes.
-manifest_command="$(python3 -c "
-import json, re, sys
-raw = open('$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/devcontainer-feature.json').read()
-print(json.loads(re.sub(r'(?m)^\s*//.*$', '', raw)).get('postStartCommand', ''))
-")"
-[[ "$manifest_command" == "~/bin/devcontainer-feature/claude/postStartScript.sh" ]] && pass "manifest: declares postStartCommand" || fail "manifest: declares postStartCommand" "got '$manifest_command'"
-
-# install.sh must copy bin/ executable, or the declared hook is never installed.
-install_sh="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/install.sh"
-grep -q 'F755' "$install_sh" && grep -q '"bin/\."' "$install_sh" && pass "install: copies bin executable" || fail "install: copies bin executable" "install.sh does not rsync bin/. with F755"
-
-printf '\n%d passed, %d failed\n' "$passed" "$failed"
-[[ $failed -eq 0 ]]
-```
-
-Then make it executable: `chmod +x .devcontainer/local-features/claude/test/test-poststart.sh`
-
-- [ ] **Step 2: Run the test to verify it fails**
-
-Run: `.devcontainer/local-features/claude/test/test-poststart.sh`
-Expected: FAIL — the hook file does not exist, so every `run_hook` case fails,
-and the manifest and install assertions fail too.
-
-- [ ] **Step 3: Write the hook**
-
-Create
-`.devcontainer/local-features/claude/bin/devcontainer-feature/claude/postStartScript.sh`:
-
-```bash
-#!/usr/bin/env bash
-# Warns when the shared agent instructions mount is absent. Never fails
-# container start: missing shared instructions degrade guidance, they do not
-# make the container unusable.
-set -uo pipefail
-
-instructions="$HOME/.agents/instructions"
-
-if [[ -d "$instructions" ]]; then
-  exit 0
-fi
-
-# A file or symlink at the target is a different failure from nothing at all:
-# it must be removed before a bind mount can land there.
-if [[ -e "$instructions" || -L "$instructions" ]]; then
-  printf '%s\n' \
-    "claude: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source." >&2
-  exit 0
-fi
-
-printf '%s\n' \
-  "claude: $instructions is absent, so the shared agent instructions are not mounted. Claude Code cannot resolve the ~/.agents/instructions pointer in CLAUDE.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/claude/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
-
-exit 0
-```
-
-Then: `chmod +x .devcontainer/local-features/claude/bin/devcontainer-feature/claude/postStartScript.sh`
-
-- [ ] **Step 4: Declare `postStartCommand` in the manifest**
-
-In `.devcontainer/local-features/claude/devcontainer-feature.json`, add this
-key after the closing `]` of `mounts`:
-
-```json
-  "postStartCommand": "~/bin/devcontainer-feature/claude/postStartScript.sh"
-```
-
-Remember the comma after the `mounts` array's `]`.
-
-- [ ] **Step 5: Install the hook from `install.sh`**
-
-In `.devcontainer/local-features/claude/install.sh`, inside the root branch,
-immediately after the existing `rsync ... "home/." "/home/${_CONTAINER_USER}"`
-block and **before** the `for i in {1..3}` loop, add:
-
-```bash
-  # Separate rsync: hooks need the execute bit, which the config copy's F644
-  # would strip.
-  rsync -rp \
-      --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
-      --chmod=D755,F755 \
-      "bin/." "/home/${_CONTAINER_USER}/bin"
-```
-
-- [ ] **Step 6: Run the test to verify it passes**
-
-Run: `.devcontainer/local-features/claude/test/test-poststart.sh`
-Expected: PASS — `12 passed, 0 failed`.
-
-- [ ] **Step 7: Write `NOTES.md`**
-
-Create `.devcontainer/local-features/claude/NOTES.md`:
+Add the section below under the Feature's existing preamble:
 
 ````markdown
-# Claude
-
-This local feature installs Claude Code and configures up to four independent
-Claude Code accounts (`~/.claude` and `~/.claude-1` through `~/.claude-3`), each
-backed by its own named volume, and each sharing the host's `CLAUDE.md` and
-`projects` directory.
-
 ## Shared agent instructions
 
-Bulk agent instructions shared across every harness in the container — the
-rigor-levels reference and the verbatim reviewer dispatch blocks — are read from
-`~/.agents/instructions`. The shared `CLAUDE.md` points at that path as plain
-text.
+Bulk agent instructions shared across every harness in the container are read
+from `~/.agents/instructions`. The shared `CLAUDE.md` points at that path as
+plain text. The directory holds three files: `rigor-levels.md`,
+`review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
 This Feature owns only the container **target** path. The mount itself is
-**consumer-declared**: its host source `~/.claude/instructions` is specific to
-the Claude configuration layout, and hardcoding it in a Feature would leak that
-layout into otherwise neutral Feature source and give the single target
-duplicate owners. Add it once to your `devcontainer.json`, not per Feature and
-not per account:
+**consumer-declared**. Add it once to your `devcontainer.json` — not per Feature
+and not per account:
 
 ```json
 {
@@ -1286,21 +1122,29 @@ not per account:
 }
 ```
 
-One mount serves every harness in the container: the Codex feature reads the
-same target path. The mount is read-only because the instructions are read,
-never written, so no approved command in any harness can alter them through it.
+One mount serves every harness in the container. Where another Feature's notes
+describe this same target path, both describe one declaration: add it once, not
+once per Feature.
 
-**The host directory must exist before you declare the mount.** Docker rejects a
-bind mount whose host source is missing, and that failure breaks container
-startup outright — before any startup warning could run. Create or deploy
-`~/.claude/instructions` on the host first, then add the mount.
+**These host paths must exist before you start the container**, because Docker
+rejects a bind mount whose host source is missing and that breaks container
+startup outright: `~/.claude/CLAUDE.md` and `~/.claude/projects`, which this
+Feature binds into every account directory, and `~/.claude/instructions` if you
+declare the mount above.
 
-If the mount is absent, the container still starts. The Feature's startup hook
-warns on stderr, Claude Code loads its always-on `CLAUDE.md` normally, and only
-the referenced bulk detail is unavailable.
+To confirm the mount landed, list the target inside the container — it shows the
+three files named above:
+
+```bash
+ls ~/.agents/instructions
+```
+
+If the mount is absent, the container still starts. Claude Code loads its
+always-on `CLAUDE.md` normally, and only the referenced bulk detail is
+unavailable.
 ````
 
-- [ ] **Step 8: Link the notes from `README.md`**
+- [ ] **Step 2: Link the notes from `README.md`**
 
 In the "The devcontainer in this repo includes:" list in `README.md`, replace
 the plain `* Claude Code` item with:
@@ -1310,7 +1154,7 @@ the plain `* Claude Code` item with:
   the [Claude feature notes](.devcontainer/local-features/claude/NOTES.md).
 ```
 
-- [ ] **Step 9: Confirm the Codex documentation test still passes**
+- [ ] **Step 3: Confirm the Codex documentation test still passes**
 
 `README.md` is asserted on by the Codex feature's documentation test. Run it:
 
@@ -1319,186 +1163,107 @@ Expected: PASS. If it fails on the README image-contents list shape, the new
 item must match the same `* …` / two-space-continuation form the Codex item
 uses — fix the item, not the test.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add .devcontainer/local-features/claude/ README.md
-git commit   # subject: Warn when the shared agent instructions mount is absent
+git commit   # subject: Document the shared agent instructions mount
 git log -1 --pretty=%B | git interpret-trailers --parse
 ```
 
 Body: the Feature owns only the container target; the mount is
-consumer-declared; the hook exits 0 on every path so a missing mount never
-blocks container start. Then the trailer block.
+consumer-declared and declared once for the whole container. Then the trailer
+block.
 
 ---
 
-### Task B2: Codex Feature — postStart warning, docs, tests
+### Task B2: Codex Feature — docs
 
-> **Superseded in part (owner, 2026-08-05, in session).** As in Task B1, the
-> absent-mount postStart warning is dropped: the hook, its test suite, the
-> manifest `postStartCommand`, and the `test-feature-config.py` assertion on it
-> were all removed while addressing review round 1. The `NOTES.md` step below
-> still stands, rewritten so the Codex notes stand alone. See the design's "No
+> **Revised (owner, 2026-08-05, in session).** As in Task B1, this task
+> originally built an absent-mount postStart warning. The hook, its test suite,
+> the manifest `postStartCommand`, and the `test-feature-config.py` assertion on
+> it have been removed, and the steps that built them are deleted here rather
+> than left as instructions nobody should follow. See the design's "No
 > absent-mount detection".
 
 **Files:**
-- Create: `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postStartScript.sh`
-- Create: `.devcontainer/local-features/codex/test/test-poststart.sh`
-- Modify: `.devcontainer/local-features/codex/devcontainer-feature.json`
-- Modify: `.devcontainer/local-features/codex/test/test-feature-config.py`
 - Modify: `.devcontainer/local-features/codex/NOTES.md`
 
 **Interfaces:**
 - Consumes: the container target `~/.agents/instructions` established in Task B1.
-- Produces: the hook path `~/bin/devcontainer-feature/codex/postStartScript.sh`.
 
-Codex's `install.sh` already rsyncs `bin/.` with `--chmod=D755,F755`, so no
-installer change is needed here.
-
-- [ ] **Step 1: Write the failing test**
-
-Create `.devcontainer/local-features/codex/test/test-poststart.sh` with the same
-structure as Task B1's test, with these substitutions: `HOOK` resolves to
-`bin/devcontainer-feature/codex/postStartScript.sh`; every expected message
-begins `codex:` instead of `claude:`; the consequence sentence is
-`Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable.`;
-the remedy sentences name
-`hube/devcontainer`'s `.devcontainer/local-features/codex/NOTES.md`; and the final `install.sh`
-assertion is dropped (Codex's installer already copies `bin/`). Keep the
-manifest assertion, changed to expect
-`~/bin/devcontainer-feature/codex/postStartScript.sh`.
-
-Write it out in full — do not `source` or import Task B1's file; the two
-Features are independent units and a shared helper would couple them.
-
-Then: `chmod +x .devcontainer/local-features/codex/test/test-poststart.sh`
-
-- [ ] **Step 2: Run the test to verify it fails**
-
-Run: `.devcontainer/local-features/codex/test/test-poststart.sh`
-Expected: FAIL — the hook does not exist and the manifest declares no
-`postStartCommand`.
-
-- [ ] **Step 3: Write the hook**
-
-Create
-`.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postStartScript.sh`:
-
-```bash
-#!/usr/bin/env bash
-# Warns when the shared agent instructions mount is absent. Never fails
-# container start: missing shared instructions degrade guidance, they do not
-# make the container unusable.
-set -uo pipefail
-
-instructions="$HOME/.agents/instructions"
-
-if [[ -d "$instructions" ]]; then
-  exit 0
-fi
-
-# A file or symlink at the target is a different failure from nothing at all:
-# it must be removed before a bind mount can land there.
-if [[ -e "$instructions" || -L "$instructions" ]]; then
-  printf '%s\n' \
-    "codex: $instructions exists but is not a directory, so the shared agent instructions cannot be read. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Remove it, declare the consumer mount documented in hube/devcontainer's .devcontainer/local-features/codex/NOTES.md, then restart the container. If ~/.claude/instructions on the host is itself a file rather than a directory, replace it with a directory on the host, because declaring the mount cannot fix a file at the mount's source." >&2
-  exit 0
-fi
-
-printf '%s\n' \
-  "codex: $instructions is absent, so the shared agent instructions are not mounted. Codex cannot resolve the ~/.agents/instructions pointer in AGENTS.md, so the rigor-levels reference and the reviewer dispatch blocks are unavailable. Add the consumer mount documented in hube/devcontainer's .devcontainer/local-features/codex/NOTES.md to devcontainer.json, ensure ~/.claude/instructions exists on the host, then restart the container." >&2
-
-exit 0
-```
-
-Then: `chmod +x .devcontainer/local-features/codex/bin/devcontainer-feature/codex/postStartScript.sh`
-
-- [ ] **Step 4: Declare `postStartCommand` in the manifest**
-
-In `.devcontainer/local-features/codex/devcontainer-feature.json`, add after the
-existing `postCreateCommand` line:
-
-```json
-  "postStartCommand": "~/bin/devcontainer-feature/codex/postStartScript.sh",
-```
-
-Keep valid JSON — this manifest has no comments and is parsed with a strict
-`json.loads` by three existing tests.
-
-- [ ] **Step 5: Assert the new key in the existing config test**
-
-In `.devcontainer/local-features/codex/test/test-feature-config.py`, beside the
-existing `POST_CREATE_COMMAND` constant (line ~24), add:
-
-```python
-POST_START_COMMAND = "~/bin/devcontainer-feature/codex/postStartScript.sh"
-```
-
-and in the check list beside the existing `postCreateCommand` entry (line ~430),
-add:
-
-```python
-        (
-            "postStartCommand",
-            lambda: assert_equal(manifest.get("postStartCommand"), POST_START_COMMAND),
-        ),
-```
-
-- [ ] **Step 6: Run the tests to verify they pass**
-
-```bash
-.devcontainer/local-features/codex/test/test-poststart.sh
-python3 .devcontainer/local-features/codex/test/test-feature-config.py
-```
-
-Expected: both PASS.
-
-- [ ] **Step 7: Document the mount in the Codex notes**
+- [ ] **Step 1: Document the mount in the Codex notes**
 
 In `.devcontainer/local-features/codex/NOTES.md`, insert a new
 `## Shared agent instructions` section immediately before
-`## Creation and health failures`:
+`## Creation and health failures`. These notes must **stand alone** — they carry
+the declaration and its host prerequisite themselves rather than linking the
+Claude Feature's notes, and give conflict guidance where both describe the same
+target path:
 
 ````markdown
 ## Shared agent instructions
 
 Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
-mounts from the host's shared agent instruction file. Bulk references that file
-points at — the rigor-levels reference and the verbatim reviewer dispatch blocks
-— are read from `~/.agents/instructions`. The pointer is plain text, not an
-`@path` import: Codex reads `AGENTS.md` wholesale and does not expand imports,
-so an import would silently do nothing.
+mounts from the host's `~/.claude/CLAUDE.md` — a single shared file under two
+names, separate from the `~/.agents/instructions` directory mount described
+below. Bulk references that file points at are read from
+`~/.agents/instructions`, which holds three files: `rigor-levels.md`,
+`review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
-This Feature owns only the container **target** path. The mount is
-**consumer-declared** — its host source is specific to the Claude configuration
-layout — and is declared **once** for the whole container, serving every harness
-in it. The declaration and its host prerequisite are documented in the
-[Claude feature notes](../claude/NOTES.md).
+This Feature owns only the container **target** path. The mount itself is
+**consumer-declared**. Add it once to your `devcontainer.json` — not per
+Feature:
 
-If the mount is absent the container still starts. The Feature's startup hook
-warns on stderr, Codex loads `AGENTS.md` normally, and only the referenced bulk
-detail is unavailable.
+```json
+{
+  "mounts": [
+    {
+      "type": "bind,readonly",
+      "source": "${localEnv:HOME}/.claude/instructions",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
+    }
+  ]
+}
+```
+
+One mount serves every harness in the container. Where another Feature's notes
+describe this same target path, both describe one declaration: add it once, not
+once per Feature.
+
+**The host source directory must exist before you declare the mount.** Docker
+rejects a bind mount whose host source is missing, and that failure breaks
+container startup outright. Create `~/.claude/instructions` on the host first,
+then add the mount.
+
+To confirm the mount landed, list the target inside the container — it shows the
+three files named above:
+
+```bash
+ls ~/.agents/instructions
+```
+
+If the mount is absent, the container still starts. Codex loads `AGENTS.md`
+normally, and only the referenced bulk detail is unavailable.
 ````
 
-- [ ] **Step 8: Run the Codex documentation test**
+- [ ] **Step 2: Run the Codex documentation test**
 
 Run: `.devcontainer/local-features/codex/test/test-documentation.sh`
 Expected: PASS. The test asserts required NOTES content and forbids
 maintainer-only procedures; the new section adds neither a forbidden string nor
 removes a required one.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add .devcontainer/local-features/codex/
-git commit   # subject: Warn from Codex when the instructions mount is absent
+git commit   # subject: Document the shared instructions mount for Codex
 git log -1 --pretty=%B | git interpret-trailers --parse
 ```
 
-Body: same reasoning as B1, plus the note that no installer change is needed
-because Codex's `install.sh` already copies `bin/` with the execute bit. Then
-the trailer block.
+Body: the Feature owns only the container target; the notes stand alone rather
+than referencing a sibling Feature's documentation. Then the trailer block.
 
 ---
 
@@ -1707,13 +1472,13 @@ gh pr create --repo hube/devcontainer --base main \
 gh pr edit --repo hube/devcontainer <N> --add-reviewer hube
 ```
 
-PR body states: what lands (consumer mount, two postStart warnings, tests, the
-Feature notes, the pre-existing manifest JSON repair); that it implements the
+PR body states: what lands (consumer mount, tests, the Feature notes, the
+pre-existing manifest JSON repair); that it implements the
 `hube/devcontainer#55` design; **the merge gate** — this PR must not merge until
 `~/.claude/instructions` exists on the host, because Docker rejects a bind mount
-whose source is missing and that breaks container startup before any warning can
-run; and the link to the claude-home PR it depends on. End with the metadata
-trailer block in a fenced code block.
+whose source is missing and that breaks container startup; and the link to the
+claude-home PR it depends on. End with the metadata trailer block in a fenced
+code block.
 
 - [ ] **Step 6: Monitor checks**
 
@@ -1751,7 +1516,7 @@ task status, and whether changes are uncommitted, committed, or pushed.
 | Thresholds | A1 |
 | Hybrid placement: inline + directory-mounted reference | A4 + A1–A3 |
 | The mount (consumer-declared, once, read-only) | B3 |
-| Feature target + postStart absent-mount warning | B1, B2 |
+| Feature owns only the container target path | B1, B2 |
 | Feature `NOTES.md` documents the consumer mount | B1, B2 |
 | claude-home `.gitignore` allow-list | A1 |
 | Rollout ordering (host-state gate) | G |

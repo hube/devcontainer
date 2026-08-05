@@ -317,12 +317,15 @@ The fin#48 guardrails, generalized:
   command; it can only describe the workaround. A satisfiability check is not
   conformance evidence, so it does not trigger the separation rule above.
 - **A reader-proxy review is dispatched on any PR that authors or revises
-  operator-facing prose.** A PR that only repairs a reference — a renamed path,
-  a deleted link — does not trigger it; there is no new prose for a new reader
-  to fail on, and firing the review there teaches everyone to treat the rule as
-  noise. Its findings are advisory while effectiveness data is collected: they
-  are weighed but do not block, and the dispatch obligation is discharged by
-  running the review and dispositioning its output. Decided (owner, 2026-08-05:
+  operator-facing prose** — which includes **agent-facing guidance**, files like
+  `CLAUDE.md`, `AGENTS.md`, and the shared `instructions/` documents, as
+  distinct from code, tests, and design documents. A PR that only repairs a
+  reference — a renamed path, a deleted link — does not trigger it; there is no
+  new prose for a new reader to fail on, and firing the review there teaches
+  everyone to treat the rule as noise. Its findings are advisory while
+  effectiveness data is collected: they are weighed but do not block, and the
+  dispatch obligation is discharged by running the review and dispositioning
+  its output. Decided (owner, 2026-08-05:
   https://github.com/hube/claude-home/pull/9#issuecomment-5194813422).
 
 ### The reader-proxy dispatch
@@ -382,8 +385,7 @@ owner's tolerance, not from the draft's invariants.
 The breaker's **3 consecutive same-mechanism rounds** and the checkpoint's **10
 rounds** are stated as concrete defaults — the values fin uses, carried forward
 by owner decision. They are a chosen starting point, not an empirically
-measured optimum. `CLAUDE.md` states the rules; the numbers live in the
-reference.
+measured optimum.
 
 ## Placement across harnesses
 
@@ -505,15 +507,16 @@ mechanics differ.
 
 ### `hube/claude-home` (content)
 
-- **`CLAUDE.md`** — fold the lean always-on discipline into existing sections:
-  design-doc guidance gains rigor-levels-are-inputs + the altitude step +
-  defer-to-fixture; "Scope of a code review" gains meets-not-exceeds,
-  over-engineering-is-a-defect, and don't-infer-or-reverse; the escalation rule
-  gains the same-mechanism breaker as the matched complement to the existing
-  contested-twice rule; the review-feedback guidance gains the
-  exchange-proportionality trio; the PR workflow guidance gains the
-  change-sequencing guardrails; and a plain-text pointer to
-  `~/.agents/instructions`.
+- **`CLAUDE.md`** — two new top-level sections plus folds into three existing
+  ones. New: `Shared agent instructions`, the plain-text pointer to
+  `~/.agents/instructions`; and `Design authoring: rigor discipline`, carrying
+  rigor-levels-are-inputs, the altitude step, defer-to-fixture, and
+  elicit-levels-first. Folded in: `Scope of a code review` gains
+  meets-not-exceeds, over-engineering-is-a-defect, and don't-infer-or-reverse;
+  `Responding to PR Review Feedback` gains the same-mechanism breaker as the
+  matched complement to the existing contested-twice rule, and the
+  exchange-proportionality trio; `Working with branches and PRs` gains the
+  change-sequencing guardrails.
 - **`instructions/rigor-levels.md`** (new) — the full vocabulary reference,
   breaker counting mechanics (including the breaker boundary), ratification
   triggers, checkpoint cadence, thresholds, and brainstorming elicitation
@@ -786,8 +789,22 @@ change.
   patching the two differences reported: the counting-mechanics paragraph now
   says the **author** owns the count and that blocked-mechanism findings are
   collected into **an options memo**; deleted the dangling reference to "the
-  three machinery options above", a list this document never contained; recorded
-  the reader-proxy port's one owner-approved adaptation and the `in session`
-  status-marker form; and deleted the Open questions claim that the deployed
-  `CLAUDE.md` is byte-identical to the tracked copy, which merging claude-home
-  did not make true.
+  three machinery options above"; recorded the reader-proxy port's one
+  owner-approved adaptation and the `in session` status-marker form; and deleted
+  the Open questions claim that the deployed `CLAUDE.md` is byte-identical to
+  the tracked copy, which merging claude-home did not make true.
+- 2026-08-05: Review round 2 (devcontainer#59, Claude reviewer). Round 1's
+  reconcile was incomplete and added a false claim; both are corrected here.
+  Deleted "the numbers live in the reference", which shipped `CLAUDE.md`
+  contradicts by hardcoding the three-round threshold. Corrected the
+  `CLAUDE.md` description: claude-home#9 added two new top-level sections and
+  folded into three existing ones, rather than folding into existing sections
+  throughout. Added the scope half of the reader-proxy ruling — agent-facing
+  guidance counts as operator-facing prose — which was recorded only in its
+  advisory half. Deleted this changelog's own claim that the three-options list
+  was "a list this document never contained": it was present at `029d6f8` and
+  removed by `747c4cf`, a commit in this PR.
+- 2026-08-05: Owner decisions (devcontainer#59, in session). The `## Changelog`
+  section stays: it is the one section authorized to preserve revision history.
+  This design declares no `Rigor levels` table of its own and rests on the
+  default floor; revisit if the design is reopened.
