@@ -33,9 +33,8 @@
 #
 # No comment in this file restates a fact the design owns — Codex's filesystem
 # behavior, the gate's behavior, the contract's schema — and none should start
-# to. Every such copy written here so far has ended up contradicting the design
-# once that design was rescoped, in four separate places. Cite the section and
-# let the design say it: a pointer cannot go stale that way.
+# to. Cite the section and let the design say it: a pointer cannot go stale
+# that way.
 #
 # This probe never writes or mounts a contract and never flips `mode`. It only
 # hashes the live contract at the fixed /etc path, to compare what the sandbox
