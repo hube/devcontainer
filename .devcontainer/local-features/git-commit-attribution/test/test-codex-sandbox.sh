@@ -6,12 +6,10 @@
 # the host's own value, the three files by the sha256 of their whole contents,
 # so "the same gate" means the same bytes and not merely something present at
 # the same path. What this does NOT check is that the contract mount is still
-# read-only inside the sandbox. The design does rest a claim on that mount
-# being unwritable — editing the contract you are about to be judged against is
-# the cheapest bypass there is — but read-onlyness is inherited from the
-# host-side `"type": "bind,readonly"` declaration rather than granted by the
-# sandbox, so it needs no assertion here; and `/etc`, where the contract lives,
-# is read-only under `:workspace` regardless.
+# read-only inside the sandbox: that property is inherited from how the
+# consumer declares the mount rather than granted by the sandbox, so there is
+# nothing sandbox-shaped to assert. The design's *Container Filesystem* is
+# where the property and why it matters are recorded.
 # This cannot be answered from CI (no bwrap user-namespace support on the
 # runner) or from a container where the gate has not been installed, so the
 # guards below make this script a safe no-op in both places; it is meant to be
@@ -22,27 +20,20 @@
 # uses. There is deliberately no end-to-end "commit and check the diagnosis"
 # arm, for two reasons that would otherwise invite someone to add one back:
 #
-#   * A commit is impossible for the repository this probe would use, so there
-#     is nothing to assert. Codex re-mounts the `.git` directories that exist
-#     when the sandbox starts, and `git init` below runs on the host first, so
-#     this repository's `.git` is read-only inside: under `:workspace` it is
-#     re-mounted read-only inside an otherwise writable workspace, and under
-#     `:read-only` there is no `.git` mount at all because `/` itself is
-#     read-only. That is a Codex filesystem policy, upstream of this Feature. A
-#     commit arm here would fail with `Unable to create
-#     '.../.git/index.lock': Read-only file system`, which says nothing
-#     whatever about the gate. (A repository created *inside* `:workspace` is
-#     not re-mounted and its commit does reach the hook — but that path hangs
-#     in the validator, which `#51` tracks as a rollout hazard. It is a worse
-#     candidate for a commit arm here, not a better one.)
-#   * `-P :danger-full-access`, the one built-in profile where `.git` is
-#     writable, is not a sandbox: a command run under it reports the host's own
-#     mount, user, pid and net namespace ids and a byte-identical
-#     /proc/self/mountinfo, whereas `:workspace` and `:read-only` each enter
-#     four fresh namespaces. Committing under it would measure the host path,
-#     not Codex — and test-integration.sh case 3 already covers that path (warn
-#     spec plus a fixture missing `Skills:` gives exit 0, a created commit, and
-#     the WARNING on stderr) against a real built image.
+#   * A commit arm would fail before it ever reached the gate. `git init` below
+#     runs on the host, before `codex sandbox` starts, and the design's
+#     *Verified Behavior* records what Codex does to such a repository's
+#     `.git`; the arm would die on `Unable to create '.../.git/index.lock':
+#     Read-only file system`, which says nothing whatever about the gate.
+#   * `-P :danger-full-access` would not measure Codex at all — again, see
+#     *Verified Behavior* — so committing under it would exercise the host
+#     path, which `test-integration.sh` case 3 already covers against a real
+#     built image.
+#
+# Neither bullet restates the design's findings about Codex's filesystem
+# behavior or about the gate, and they should not start to. Those findings have
+# been rescoped twice while this comment sat next to them, and each restatement
+# here was left contradicting them; a pointer cannot go stale that way.
 #
 # This probe never writes or mounts a contract and never flips `mode`. It only
 # hashes the live contract at the fixed /etc path, to compare what the sandbox
