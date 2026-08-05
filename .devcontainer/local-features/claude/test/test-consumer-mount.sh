@@ -17,6 +17,7 @@ config = json.loads(re.sub(r"(?m)^\s*//.*$", "", raw))
 
 EXPECTED_SOURCE = "${localEnv:HOME}/.claude/instructions"
 EXPECTED_TARGET = "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
+EXPECTED_TYPE = "bind,readonly"
 
 failures = []
 mounts = config.get("mounts", [])
@@ -37,9 +38,11 @@ else:
         failures.append(
             f"instructions mount source is {mount.get('source')!r}, expected {EXPECTED_SOURCE!r}"
         )
-    if "readonly" not in str(mount.get("type", "")):
+    # Exact, not a substring: "volume,readonly" is read-only but is not the host
+    # bind the target path depends on.
+    if mount.get("type") != EXPECTED_TYPE:
         failures.append(
-            f"instructions mount type is {mount.get('type')!r}, which is not read-only"
+            f"instructions mount type is {mount.get('type')!r}, expected {EXPECTED_TYPE!r}"
         )
 
 if failures:

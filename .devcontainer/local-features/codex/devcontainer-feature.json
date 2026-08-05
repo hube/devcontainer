@@ -12,7 +12,6 @@
   ],
   "capAdd": [],
   "postCreateCommand": "~/bin/devcontainer-feature/codex/postCreateScript.sh",
-  "postStartCommand": "~/bin/devcontainer-feature/codex/postStartScript.sh",
   "mounts": [
     {
       "type": "volume",

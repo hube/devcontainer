@@ -59,23 +59,37 @@ additional entries rather than attempting to override the embedded contract.
 
 Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
 mounts from the host's `~/.claude/CLAUDE.md` — a single shared file under two
-names, separate from the `~/.agents/instructions` directory mount below. Bulk
-references that file points at — the rigor-levels reference and the verbatim
-reviewer dispatch blocks — are read from `~/.agents/instructions`. The pointer
-is plain text, not an `@path` import: Codex reads `AGENTS.md` wholesale and does
-not expand imports, so an import would silently do nothing.
+names, separate from the `~/.agents/instructions` directory mount described
+below. Bulk references that file points at — the rigor-levels reference and the
+verbatim reviewer dispatch blocks — are read from `~/.agents/instructions`.
 
-This Feature owns only the container **target** path. The mount is
-**consumer-declared** — its host source is specific to the Claude configuration
-layout — and is declared **once** for the whole container, serving every harness
-in it. The declaration and its host prerequisite are documented in the
-[Claude feature notes](../claude/NOTES.md).
+This Feature owns only the container **target** path. The mount itself is
+**consumer-declared**. Add it once to your `devcontainer.json` — not per
+Feature:
 
-If the mount is absent the container still starts. The Feature's startup hook
-warns on stderr during container start, so the message appears wherever your
-Dev Containers tooling surfaces startup output — for the CLI, the
-`devcontainer up` output. Codex loads `AGENTS.md` normally, and only the
-referenced bulk detail is unavailable.
+```json
+{
+  "mounts": [
+    {
+      "type": "bind,readonly",
+      "source": "${localEnv:HOME}/.claude/instructions",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
+    }
+  ]
+}
+```
+
+One mount serves every harness in the container. Where another Feature's notes
+describe this same target path, both describe one declaration: add it once, not
+once per Feature.
+
+**The host source directory must exist before you declare the mount.** Docker
+rejects a bind mount whose host source is missing, and that failure breaks
+container startup outright. Create `~/.claude/instructions` on the host first,
+then add the mount.
+
+If the mount is absent, the container still starts. Codex loads `AGENTS.md`
+normally, and only the referenced bulk detail is unavailable.
 
 ## Creation and health failures
 

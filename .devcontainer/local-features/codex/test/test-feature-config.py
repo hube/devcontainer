@@ -22,7 +22,6 @@ RUNTIME_CAPABILITY_CANDIDATES = (
 )
 EXPECTED_CAP_ADD: list[str] = []
 POST_CREATE_COMMAND = "~/bin/devcontainer-feature/codex/postCreateScript.sh"
-POST_START_COMMAND = "~/bin/devcontainer-feature/codex/postStartScript.sh"
 
 REQUIRED_INSTALLER_COMMANDS = {
     "Bubblewrap package installation": re.compile(
@@ -430,10 +429,6 @@ def main() -> None:
         (
             "postCreateCommand",
             lambda: assert_equal(manifest.get("postCreateCommand"), POST_CREATE_COMMAND),
-        ),
-        (
-            "postStartCommand",
-            lambda: assert_equal(manifest.get("postStartCommand"), POST_START_COMMAND),
         ),
         ("installer commands", lambda: assert_installer_commands(installer)),
         (

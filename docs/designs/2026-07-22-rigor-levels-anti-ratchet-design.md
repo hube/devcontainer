@@ -1,8 +1,9 @@
 # Rigor levels and anti-ratchet review discipline
 
-Status: Draft — in review on `hube/devcontainer#55`. Generalizes the
-assurance-level conventions and PR circuit-breaker introduced in
-[`hube/fin#5`](https://github.com/hube/fin/pull/5), as since revised through
+Status: Accepted (`hube/devcontainer#55`). Content implemented in
+`hube/claude-home#9`; plumbing in review on `hube/devcontainer#59`.
+Generalizes the assurance-level conventions and PR circuit-breaker introduced
+in [`hube/fin#5`](https://github.com/hube/fin/pull/5), as since revised through
 [`hube/fin#48`](https://github.com/hube/fin/issues/48), into harness-neutral,
 user-level agent guidance.
 
@@ -139,7 +140,8 @@ Reusing the marker convention already in `CLAUDE.md`:
   provisional level, a mechanism/level mismatch is a calibration question
   routed to the owner, never a defect with a prescribed fix.
 - `Decided (owner, YYYY-MM-DD: link)` — a settled input; the review scope rule
-  applies.
+  applies. Where the decision was made in conversation and no artifact exists,
+  `Decided (owner, YYYY-MM-DD, in session)` rather than no marker at all.
 
 ### Weak default floor
 
@@ -244,10 +246,10 @@ wanted, and escalation is only for repetition or decision-contradiction.)
 Counting mechanics (in the reference): a **round** is one aggregated review cycle
 against a single named head — concurrent reviewers at one head are one round, a
 re-review after new commits is the next. Recurrence is counted **per mechanism**;
-the author/orchestrator owns the count, and a reviewer only *discloses*
-recurrence. The breaker blocks only the churning mechanism — reviews and fixes
-elsewhere continue, and further findings against a blocked mechanism are
-collected into its memo rather than answered. Resume only after the owner picks.
+the author owns the count, and a reviewer only *discloses* recurrence. The
+breaker blocks only the churning mechanism — reviews and fixes elsewhere
+continue, and further findings against a blocked mechanism are collected into an
+options memo rather than answered. Resume only after the owner picks.
 
 **The breaker routes unresolved requirement questions to the owner; it is not a
 mechanism for declining an instruction the owner has already given.** A round
@@ -260,9 +262,8 @@ three consecutive rounds confined to the same section or mechanism, with no
 narrower accretion-only reading. Its owner options memo names the remedy that
 fits *why* the rounds recurred (false claims, distinct genuine defects, an
 unfixed recurring defect, reviewer disagreement, adjacent breakage, or
-tolerable risk), rather than only the three machinery options above, which
-remain one row of that set; the full table is in the reference. Recurrence on
-a **mechanism** stops fixing it and waits for the owner; recurrence on a
+tolerable risk); the full table is in the reference. Recurrence on a
+**mechanism** stops fixing it and waits for the owner; recurrence on a
 **claim** is self-authorising — delete and disclose rather than stopping,
 since subtraction cannot over-build. Decided (owner, 2026-08-05:
 https://github.com/hube/claude-home/pull/9#issuecomment-5195559451).
@@ -446,10 +447,16 @@ specific, so the mount is declared **once** in the project `devcontainer.json`,
 not by each Feature. Declaring it per Feature would both leak the `.claude`
 layout into the neutral Codex Feature and give the single `~/.agents/instructions`
 target duplicate owners. Each harness Feature owns only the stable container
-*target* — it references the path in its guidance pointer and **warns at
-postStart when the mount is absent** (problem/consequence/remedy, non-blocking).
-This mirrors the `git-commit-attribution` consumer-declared spec mount already
-cited below.
+*target*, referencing the path in its guidance pointer. This mirrors the
+`git-commit-attribution` consumer-declared spec mount already cited below.
+
+**No absent-mount detection.** No Feature warns when the mount is missing. A
+directory test at the target cannot distinguish a landed bind from any other
+directory occupying the path, and a mount-point probe would report a failure for
+instructions that arrived by some route other than a bind. A container without
+the mount still starts, and each harness's always-on file already instructs it
+to say the referenced detail is unavailable rather than invent it. Decided
+(owner, 2026-08-05, in session).
 
 **Read-only.** The instructions are read, never written, so the mount is
 `readonly`: no approved/full-access command in any harness can alter the shared
@@ -482,15 +489,14 @@ To add harness *N*:
    `GEMINI.md`) via a **consumer-declared** mount — the host source
    `~/.claude/CLAUDE.md` is Claude-layout-specific, so per the same
    mount-ownership convention as the instructions mount, *N*'s Feature must not
-   declare it. The Feature owns only its stable container target and a
-   postStart absent-mount warning. (The existing Claude and Codex file mounts
-   are Feature-declared — the Codex Feature hardcodes the `~/.claude/CLAUDE.md`
-   source today — and remain grandfathered pre-existing plumbing, unchanged
-   like their writable `bind` mode; new Features do not repeat the leak); and
+   declare it. The Feature owns only its stable container target. (The existing
+   Claude and Codex file mounts are Feature-declared — the Codex Feature
+   hardcodes the `~/.claude/CLAUDE.md` source today — and remain grandfathered
+   pre-existing plumbing, unchanged like their writable `bind` mode; new
+   Features do not repeat the leak); and
 2. **no new instructions mount is needed** — the single consumer-declared
    `~/.agents/instructions` mount already serves every harness in the container.
-   *N*'s Feature owns only the target-path reference and the postStart
-   absent-mount warning.
+   *N*'s Feature owns only the target-path reference.
 
 Content stays neutral; add a per-harness subsection only where dispatch
 mechanics differ.
@@ -540,7 +546,11 @@ mechanics differ.
 - **`instructions/reader-proxy-review-dispatch.md`** (new) — the canonical
   reader-proxy block, ported from fin: the four reporting categories, the
   orchestrator's no-further-context rule, "cannot complete" as a finding not a
-  blocker, and refuse-context-out-loud.
+  blocker, and refuse-context-out-loud. The port carries **one adaptation**: a
+  header sentence naming what "this block" is — the content between the `---`
+  separators, excluding the header paragraph and the orchestrator note — plus
+  the closing `---` that sentence refers to, so an assembler transcluding the
+  block knows where it ends. Decided (owner, 2026-08-05, in session).
 - **`.gitignore`** — the repo excludes everything by default (`*`) with an
   allow-list. New `!instructions` and `!instructions/**/*` includes are
   **required**, or the new files are silently untracked.
@@ -553,10 +563,8 @@ mechanics differ.
   One consumer-declared mount serves every harness in the container — no
   per-Feature and no per-`.claude-N`-account duplication.
 - **`local-features/claude`** and **`local-features/codex`** — own only the
-  stable container target `~/.agents/instructions`: each references it in the
-  shared guidance pointer and **warns at postStart when the mount is absent**
-  (problem/consequence/remedy, exit 0 — the repo's non-blocking convention), so a
-  container missing the consumer mount stays usable.
+  stable container target `~/.agents/instructions`, referencing it in the shared
+  guidance pointer. Neither adds a lifecycle hook.
 - Feature `NOTES.md` documents the consumer mount users must add, per the repo's
   docs conventions.
 
@@ -572,12 +580,10 @@ host**. Sequence: land claude-home (the `instructions/` directory and its
 gitignore allow-list); deploy it to the host and verify the host directory
 exists — folded into the same implementation-time step that re-confirms
 deployed-`CLAUDE.md` parity (Open questions); only then land the
-devcontainer change (consumer mount and Feature postStart warnings).
+devcontainer change (the consumer mount).
 
 The gate is load-bearing because Docker rejects a bind mount whose host
-source does not exist, breaking container startup outright before any
-postStart warning could run — the warning only covers the opposite gap,
-Features present but no consumer mount declared. (Method: with
+source does not exist, breaking container startup outright. (Method: with
 `/nonexistent-path-129fd48b` first confirmed absent via `test ! -e`,
 `docker run --rm --mount
 type=bind,source=/nonexistent-path-129fd48b,target=/probe alpine:latest true`
@@ -650,9 +656,10 @@ change.
 
 - **Confirm deployed `CLAUDE.md` parity at implementation time.** The deployed
   `~/.claude/CLAUDE.md` must match claude-home's tracked copy before the new
-  inline discipline and pointer ship. They are byte-identical in the current
-  environment; because the deployed file is a mount of the host checkout, the
-  implementation should re-confirm parity rather than assume it.
+  inline discipline and pointer ship. Because the deployed file is a mount of
+  the host checkout, merging claude-home does not change it; parity must be
+  confirmed on the host, not assumed. This is the same host-deployment step the
+  rollout gate above requires for `~/.claude/instructions`.
 
 ## Related
 
@@ -767,3 +774,20 @@ change.
   scoped to cause** paragraph instead of restating the three machinery
   options as the whole memo; the thresholds paragraph now refers to
   repetition rather than accretion.
+- 2026-08-05: Owner decision (devcontainer#59, in session). The absent-mount
+  postStart warning is dropped from both harness Features. A directory test at
+  the target cannot distinguish a landed bind from any directory occupying the
+  path, and a mount-point probe would misreport instructions arriving by any
+  other route; the always-on guidance already tells each harness to say the
+  referenced detail is unavailable. Features now own only the container target
+  path.
+- 2026-08-05: Review round 1 (devcontainer#59, Claude reviewer). Reconciled the
+  design against the guidance as shipped in claude-home `859cccd` rather than
+  patching the two differences reported: the counting-mechanics paragraph now
+  says the **author** owns the count and that blocked-mechanism findings are
+  collected into **an options memo**; deleted the dangling reference to "the
+  three machinery options above", a list this document never contained; recorded
+  the reader-proxy port's one owner-approved adaptation and the `in session`
+  status-marker form; and deleted the Open questions claim that the deployed
+  `CLAUDE.md` is byte-identical to the tracked copy, which merging claude-home
+  did not make true.

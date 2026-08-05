@@ -1077,6 +1077,13 @@ the commas. Then the trailer block.
 
 ### Task B1: Claude Feature — postStart warning, docs, tests
 
+> **Superseded in part (owner, 2026-08-05, in session).** The absent-mount
+> postStart warning is dropped: the hook, its test suite, its manifest
+> `postStartCommand`, and the `install.sh` `bin/` copy this task adds were all
+> removed while addressing review round 1. The Feature owns only the container
+> target path. The `NOTES.md` and `README.md` steps below still stand. See the
+> design's "No absent-mount detection".
+
 **Files:**
 - Create: `.devcontainer/local-features/claude/bin/devcontainer-feature/claude/postStartScript.sh`
 - Create: `.devcontainer/local-features/claude/test/test-poststart.sh`
@@ -1327,6 +1334,13 @@ blocks container start. Then the trailer block.
 ---
 
 ### Task B2: Codex Feature — postStart warning, docs, tests
+
+> **Superseded in part (owner, 2026-08-05, in session).** As in Task B1, the
+> absent-mount postStart warning is dropped: the hook, its test suite, the
+> manifest `postStartCommand`, and the `test-feature-config.py` assertion on it
+> were all removed while addressing review round 1. The `NOTES.md` step below
+> still stands, rewritten so the Codex notes stand alone. See the design's "No
+> absent-mount detection".
 
 **Files:**
 - Create: `.devcontainer/local-features/codex/bin/devcontainer-feature/codex/postStartScript.sh`
