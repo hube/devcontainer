@@ -306,7 +306,10 @@ The fin#48 guardrails, generalized:
   operator-facing prose.** A PR that only repairs a reference — a renamed path,
   a deleted link — does not trigger it; there is no new prose for a new reader
   to fail on, and firing the review there teaches everyone to treat the rule as
-  noise.
+  noise. Its findings are advisory while effectiveness data is collected: they
+  are weighed but do not block, and the dispatch obligation is discharged by
+  running the review and dispositioning its output. Decided (owner, 2026-08-05:
+  https://github.com/hube/claude-home/pull/9#issuecomment-5194813422).
 
 ### The reader-proxy dispatch
 
@@ -364,9 +367,9 @@ owner's tolerance, not from the draft's invariants.
 
 The breaker's **3 consecutive same-mechanism rounds** and the checkpoint's **10
 rounds** are stated as concrete defaults — the values fin uses, carried forward
-by owner decision — with an explicit "tune per project" note. They are a chosen
-starting point, not an empirically measured optimum. `CLAUDE.md` states the
-rules; the numbers live in the reference.
+by owner decision. They are a chosen starting point, not an empirically
+measured optimum. `CLAUDE.md` states the rules; the numbers live in the
+reference.
 
 ## Placement across harnesses
 
@@ -498,14 +501,20 @@ mechanics differ.
   prompts.
 - **`instructions/review-dispatch-scope.md`** (new) — the canonical reviewer
   scope block, ported from fin's current `design-review-dispatch.md` with
-  **two adaptations**: assurance→rigor renaming, and retargeting the block's
+  **six adaptations**: assurance→rigor renaming; retargeting the block's
   fin-repo-local cross-references — the preamble's `docs/designs/CONVENTIONS.md`
   and `docs/prompts/reader-proxy-review-dispatch.md` citations become the
   neighboring `~/.agents/instructions/rigor-levels.md` and
   `~/.agents/instructions/reader-proxy-review-dispatch.md`, and rule 9's
   pointer to "this repository's `AGENTS.md`" proportionality section becomes
   the shared always-on `CLAUDE.md`/`AGENTS.md` (an arbitrary project's own
-  `AGENTS.md` does not carry that section). The port keeps
+  `AGENTS.md` does not carry that section); dropping the preamble's
+  "for this repository" qualifier, since the block now serves every consumer
+  repo, not one; adding a header sentence clarifying that "this block" means
+  the content between the `---` separators, not the header paragraph itself;
+  narrowing rule 6's "author/orchestrator" to "author"; and dropping rule 9's
+  trailing rationale sentence ("It is named here rather than copied because a
+  second copy would drift from the first"). The port keeps
   its numbered scope rules (meets-not-exceeds with
   the no-severity rationale, over-engineering with equal credit for removable
   machinery, don't-infer-or-reverse, provisional-levels-are-questions,
@@ -608,7 +617,7 @@ mounted directory.
 
 Rejected. Qualitative-only guidance ("a few rounds", "periodically") is not
 actionable out of the box. fin's 3-round breaker and 10-round checkpoint ship as
-concrete defaults with a "tune per project" note.
+concrete defaults.
 
 ### Exclude the owner-checkpoint cadence from global guidance
 
@@ -719,3 +728,15 @@ change.
   method's `<missing>` placeholder is replaced with the actual absent path
   used, its absence pre-checked via `test ! -e`, making the recorded command
   executable as written (probe re-run to confirm).
+- 2026-08-05: Review round 11 (devcontainer#55, three reviewers). Synced the
+  design with owner-directed guidance changes made after it merged: corrected
+  the `review-dispatch-scope.md` port's adaptation count from two to six
+  (assurance→rigor renaming; cross-reference retargeting; dropping the
+  preamble's "for this repository" qualifier; adding a header sentence
+  clarifying what "this block" refers to; narrowing rule 6's
+  "author/orchestrator" to "author"; dropping rule 9's trailing rationale
+  sentence); removed the Thresholds section's and the "No fixed thresholds"
+  rejected alternative's claim that the defaults ship with an explicit "tune
+  per project" note, since the note was removed under owner direction; and
+  recorded the owner's 2026-08-05 ruling that reader-proxy findings are
+  advisory while effectiveness data is collected.
