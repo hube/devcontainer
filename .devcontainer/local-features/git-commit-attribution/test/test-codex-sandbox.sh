@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Probes what the design records under *Verified Behavior* about Codex's inner
-# bwrap sandbox: that a command Codex launches there sees the same gate the
+# bwrap sandbox (docs/designs/2026-07-10-git-commit-attribution-design.md):
+# that a command Codex launches there sees the same gate the
 # host does — the system git config that routes to it, the hook and validator
 # it runs, and the trailer contract they enforce. Every one is compared against
 # the host's own value, the three files by the sha256 of their whole contents,
@@ -30,10 +31,11 @@
 #     path, which `test-integration.sh` case 3 already covers against a real
 #     built image.
 #
-# Neither bullet restates the design's findings about Codex's filesystem
-# behavior or about the gate, and they should not start to. Those findings have
-# been rescoped twice while this comment sat next to them, and each restatement
-# here was left contradicting them; a pointer cannot go stale that way.
+# No comment in this file restates a fact the design owns — Codex's filesystem
+# behavior, the gate's behavior, the contract's schema — and none should start
+# to. Every such copy written here so far has ended up contradicting the design
+# once that design was rescoped, in four separate places. Cite the section and
+# let the design say it: a pointer cannot go stale that way.
 #
 # This probe never writes or mounts a contract and never flips `mode`. It only
 # hashes the live contract at the fixed /etc path, to compare what the sandbox
@@ -96,10 +98,8 @@ host_hooks_origin="$(git config --show-origin --get core.hooksPath 2>&1 | tr '\t
 host_commit_msg_path="$(readlink -f "$HOOKS_DIR/commit-msg" 2>&1)"
 host_commit_msg_sha="$(sha256sum "$HOOKS_DIR/commit-msg" 2>&1)"
 host_validator_sha="$(sha256sum "$VALIDATOR" 2>&1)"
-# The whole contract, not the `mode` line: `version`, `trailer` and
-# `agent-author` records decide what the gate accepts just as much as `mode`
-# does, so matching one field would not show the sandbox reading the same
-# contract.
+# The whole contract, not the `mode` line: matching a single field would not
+# show the sandbox reading the same contract.
 host_spec_sha="$(sha256sum "$SPEC" 2>&1)"
 
 # A component the host itself cannot read leaves an error string in the
