@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Tests postStartScript.sh: warns about a missing/malformed trailer contract
-# and about repositories whose local core.hooksPath shadows the gate. Never
+# Tests postStartScript.sh: warns about a missing trailer contract (a present
+# but unparseable one is caught by the validator at commit time, not here) and
+# about repositories whose effective core.hooksPath shadows the gate. Never
 # blocks container start, so every case asserts exit 0. All git activity
 # happens inside a tmp world; the script's spec path and scan root are
 # steered by the GCA_SPEC_PATH / GCA_SCAN_ROOT env seams so this suite never

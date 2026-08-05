@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Warns about a missing trailer contract and about repositories whose local
-# core.hooksPath shadows the gate. Never fails container start.
+# Warns about a missing trailer contract and about repositories whose
+# effective core.hooksPath shadows the gate. Never fails container start.
 set -uo pipefail
 
 SPEC="${GCA_SPEC_PATH:-/etc/devcontainer/feature/git-commit-attribution/trailer-contract}"

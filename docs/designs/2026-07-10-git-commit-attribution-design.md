@@ -753,10 +753,11 @@ violations against real commits while `hube/agent-skills#9` is fixed.
 and `hube/worklog` have no workflows at all, and `hube/devcontainer` has only
 `publish.yaml`.
 
-- **A repository with its own `core.hooksPath`.** Local config outranks global,
-  so husky, lefthook, and pre-commit silently bypass the gate. Bypassed by
-  accident, with no output. Not fixable from global config. postStart names such
-  repositories at container start.
+- **A repository with its own `core.hooksPath`.** Worktree, local, and global
+  config all outrank the system-scope value this Feature writes, so husky,
+  lefthook, and pre-commit silently bypass the gate. Bypassed by accident, with
+  no output. Not fixable from global config. postStart reads each candidate
+  repository's effective value and names such repositories at container start.
 - **`git commit --no-verify`.** One flag. Also the documented escape hatch when
   the spec is broken.
 - **Commits made outside the container.** No gate at all.
