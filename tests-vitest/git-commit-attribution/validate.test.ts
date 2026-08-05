@@ -114,7 +114,7 @@ describe('loadSpec', () => {
     expect(text).toContain('The commit was not created.');
   });
 
-  it('rejects a malformed spec, naming the offending line', () => {
+  it('rejects a malformed spec, naming the offending line and the remedy that unblocks committing', () => {
     const dir = makeTmpDir();
     const specPath = join(dir, 'trailer-contract');
     writeFileSync(specPath, 'version      1\nmode         warn\nbogus-record foo\n');
@@ -122,7 +122,13 @@ describe('loadSpec', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.outcome.exitCode).toBe(1);
-    expect(result.outcome.stderr.join('\n')).toContain('bogus-record foo');
+    const text = result.outcome.stderr.join('\n');
+    expect(text).toContain('bogus-record foo');
+    expect(text).toContain('The commit was not created.');
+    // An unparseable spec rejects every commit regardless of mode, so the
+    // message has to say how to get out of it or the operator is locked out.
+    expect(text).toContain('correct or restore the spec');
+    expect(text).toContain('git commit --no-verify');
   });
 
   it('rejects an unsupported spec version, naming the remedy', () => {

@@ -237,6 +237,8 @@ function compareSequence(trailers, spec) {
 // src/git-commit-attribution/validate.ts
 var MISSING_SPEC_CONSEQUENCE = "every commit is rejected until it exists";
 var MISSING_SPEC_REMEDY = "mount ~/.claude/git-commit-attribution.conf \u2014 a checkout of hube/claude-home \u2014 to this path, or bypass once with git commit --no-verify";
+var UNPARSEABLE_SPEC_CONSEQUENCE = "every commit is rejected until the spec parses";
+var UNPARSEABLE_SPEC_REMEDY = "correct or restore the spec at this path \u2014 the defect named above \u2014 or bypass once with git commit --no-verify";
 var CONTRACT_LINES = [
   "Agent-authored commits must end with this contiguous block, Co-Authored-By last:",
   "",
@@ -262,7 +264,13 @@ function rejectSpecPath(specPath, problem) {
 function rejectSpecProblem(specPath, problem) {
   return {
     exitCode: 1,
-    stderr: [`git-commit-attribution: ${problem}.`, "The commit was not created.", "", `Spec: ${specPath}`]
+    stderr: [
+      `git-commit-attribution: ${problem}.`,
+      "The commit was not created.",
+      `${UNPARSEABLE_SPEC_CONSEQUENCE}; ${UNPARSEABLE_SPEC_REMEDY}.`,
+      "",
+      `Spec: ${specPath}`
+    ]
   };
 }
 function loadSpec(specPath) {
