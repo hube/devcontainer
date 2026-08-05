@@ -10,7 +10,7 @@ await build({
   bundle: true,
   platform: 'node',
   format: 'cjs',
-  target: 'node18',
+  target: 'node24',
   // Fixed interpreter path: install.sh guarantees this symlink, so the
   // committed bundle carries no container-specific value (design, *Node*).
   banner: { js: '#!/usr/local/bin/node' },
