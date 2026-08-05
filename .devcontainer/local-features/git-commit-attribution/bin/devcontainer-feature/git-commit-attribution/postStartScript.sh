@@ -20,9 +20,9 @@ fi
 # descend into it further) or 1 (not a repository — caller may look one level
 # deeper). Bounded to two levels below SCAN_ROOT: this container's checkouts
 # sit at /workspaces/<parent>/<repo>, one level deeper than a plain
-# /workspaces/<repo> layout, and either shape is live simultaneously (see
-# NOTES.md). Descent stops the moment a repo is found so a repo's own
-# subdirectories are never re-scanned as separate candidates.
+# /workspaces/<repo> layout, and either shape is live simultaneously. Descent
+# stops the moment a repo is found so a repo's own subdirectories are never
+# re-scanned as separate candidates.
 scan_candidate() {
   local candidate="$1"
   if git -C "$candidate" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

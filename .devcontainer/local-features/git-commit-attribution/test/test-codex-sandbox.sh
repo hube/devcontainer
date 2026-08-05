@@ -72,7 +72,7 @@ err="$(cat "$err_file" 2>/dev/null || true)"
 # inside the sandbox instead emits a distinct rejection (e.g. "no spec at
 # ...") with the same "git-commit-attribution:" prefix and a non-zero exit —
 # matching only the prefix would call that a PASS too.
-EXPECTED_DIAGNOSIS="git-commit-attribution: WARNING: commit message is missing the required trailer 'Skills'."
+EXPECTED_DIAGNOSIS="git-commit-attribution: WARNING: commit message: missing the required trailer 'Skills'."
 
 dump_and_fail() {
   echo "FAIL: $1" >&2

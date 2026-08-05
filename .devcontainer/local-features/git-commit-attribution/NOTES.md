@@ -56,8 +56,7 @@ Four ways the gate does not apply, stated plainly:
 
 - **A repository with its own `core.hooksPath`.** Worktree, local, or global
   git config all outrank the system-scope `core.hooksPath` this Feature
-  writes, so a repo already running husky, lefthook, or pre-commit (or a
-  linked worktree with its own `extensions.worktreeConfig` override) bypasses
+  writes, so a repo already running husky, lefthook, or pre-commit bypasses
   the gate silently, by accident. Not fixable from global config. postStart
   warns when it finds one, naming the repository and the path it sets.
 - **`git commit --no-verify`.** One flag skips the `commit-msg` hook

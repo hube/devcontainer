@@ -106,7 +106,7 @@ function violationOutcome(problems: string[], specPath: string, context: Context
   return {
     exitCode: 1,
     stderr: [
-      ...problems.map((p) => `git-commit-attribution: commit message is ${p}.`),
+      ...problems.map((p) => `git-commit-attribution: commit message: ${p}.`),
       consequence,
       ...CONTRACT_LINES,
       `Spec: ${specPath}`,
@@ -118,7 +118,7 @@ function warningOutcome(problems: string[], specPath: string): Outcome {
   return {
     exitCode: 0,
     stderr: [
-      ...problems.map((p) => `git-commit-attribution: WARNING: commit message is ${p}.`),
+      ...problems.map((p) => `git-commit-attribution: WARNING: commit message: ${p}.`),
       'This is a warning only: it will become an error once mode enforce is set.',
       ...CONTRACT_LINES,
       `Spec: ${specPath}`,

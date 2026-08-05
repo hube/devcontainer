@@ -469,10 +469,9 @@ control protects — refs and working trees — and nowhere else.
   Equivalence here is ref-level only, and narrower than it looks: it is
   established for the single-ref rejection path, not for multi-ref or atomic
   pushes, and the two paths report different remote errors. That is sufficient,
-  because both outcomes are *reject the push*; a dispatcher that instead exited
-  0 would tell receive-pack the refs were handled when nothing had handled
-  them. Nothing in this container sets `receive.procReceiveRefs`; the adapter
-  exists so nothing breaks if something ever does.
+  because both outcomes are *reject the push*. Nothing in this container sets
+  `receive.procReceiveRefs`; the adapter exists so nothing breaks if something
+  ever does.
 
 Every other githooks(5) hook is delegation-safe: the `pre-*` and `*-msg`
 families veto, the `post-*` family and `reference-transaction` observe, and
@@ -708,7 +707,7 @@ reaches an agent that never read `CLAUDE.md`, including a Codex or ChatGPT agent
 that nobody configured.
 
 ```
-git-commit-attribution: commit message is missing the required trailer 'Skills'.
+git-commit-attribution: commit message: missing the required trailer 'Skills'.
 The commit was not created.
 Agent-authored commits must end with this contiguous block, Co-Authored-By last:
 
@@ -728,8 +727,8 @@ The postStart script never blocks container start, matching the idiom
 `local-features/agent-skills/bin/.../postStartScript.sh` establishes and now
 published for all Feature authors in
 [`docs/feature-authoring.md`](../feature-authoring.md). It warns when the spec
-mount is absent, and it names any repository under `/workspaces` whose local
-`core.hooksPath` shadows the gate.
+mount is absent, and it names a repository it scans under `/workspaces` whose
+effective `core.hooksPath` shadows the gate.
 
 ## Rollout
 

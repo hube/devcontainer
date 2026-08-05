@@ -200,7 +200,12 @@ describe('compareSequence', () => {
       'Model: claude-haiku-4-5-20251001\n' +
       'Skills: none\n' +
       'Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\n';
-    expect(problemsFor(message)).not.toEqual([]);
+    // The specific diagnosis, not merely "some problem": the contiguity pass
+    // rejects this message on its own, so a weaker assertion stays green even
+    // with the exactly-once cardinality check disabled.
+    expect(problemsFor(message)).toContain(
+      "duplicate trailer 'Model': expected exactly one in the message, found 2",
+    );
   });
 
   it('rejects two complete attribution blocks, one valid', () => {
@@ -216,7 +221,9 @@ describe('compareSequence', () => {
       'Model: gpt-5\n' +
       'Skills: none\n' +
       'Co-Authored-By: GPT-5 <noreply@openai.com>\n';
-    expect(problemsFor(message)).not.toEqual([]);
+    expect(problemsFor(message)).toContain(
+      "duplicate trailer 'Model': expected exactly one in the message, found 2",
+    );
   });
 
   it('passes Signed-off-by before the block', () => {

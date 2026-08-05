@@ -135,7 +135,7 @@ repo=$(mktemp -d); cd "$repo"; git init --quiet -b main . >/dev/null 2>&1
 git -c user.email=t@t -c user.name=t commit --allow-empty -m "'"$FABRICATED_MSG"'"
 ')"; rc2=$?
 [ "$rc2" -ne 0 ] && pass "2 enforce+fabricated: rejected" || fail "2 enforce+fabricated: rejected" "got rc=$rc2: $out2"
-[[ "$out2" == *"git-commit-attribution: commit message is missing the required trailer 'Skills'"* ]] \
+[[ "$out2" == *"git-commit-attribution: commit message: missing the required trailer 'Skills'"* ]] \
   && pass "2 enforce+fabricated: stderr names 'Skills'" || fail "2 enforce+fabricated: stderr names 'Skills'" "$out2"
 # Discriminating check: the same substring must NOT appear in case 1's
 # compliant-message output, or this assertion would pass vacuously against
@@ -151,7 +151,7 @@ echo "COMMIT_RC=$?"
 ')"; rc3=$?
 [ "$rc3" -eq 0 ] && pass "3 warn+fabricated: exit 0" || fail "3 warn+fabricated: exit 0" "got $rc3: $out3"
 [[ "$out3" == *"COMMIT_RC=0"* ]] && pass "3 warn+fabricated: commit created" || fail "3 warn+fabricated: commit created" "$out3"
-[[ "$out3" == *"git-commit-attribution: WARNING: commit message is missing the required trailer 'Skills'"* ]] \
+[[ "$out3" == *"git-commit-attribution: WARNING: commit message: missing the required trailer 'Skills'"* ]] \
   && pass "3 warn+fabricated: WARNING printed" || fail "3 warn+fabricated: WARNING printed" "$out3"
 
 # ============================================================ 4: enforce + worklog-contribute's current message -> rejected
@@ -160,7 +160,7 @@ repo=$(mktemp -d); cd "$repo"; git init --quiet -b main . >/dev/null 2>&1
 git -c user.email=t@t -c user.name=t commit --allow-empty -m "'"$WORKLOG_MSG"'"
 ')"; rc4=$?
 [ "$rc4" -ne 0 ] && pass "4 enforce+worklog-message: rejected" || fail "4 enforce+worklog-message: rejected" "got rc=$rc4: $out4"
-[[ "$out4" == *"git-commit-attribution: commit message is missing the required trailer 'Harness'"* ]] \
+[[ "$out4" == *"git-commit-attribution: commit message: missing the required trailer 'Harness'"* ]] \
   && pass "4 enforce+worklog-message: names missing 'Harness'" || fail "4 enforce+worklog-message: names missing 'Harness'" "$out4"
 
 # ============================================================ 5: human commit, no trailers -> created, silently
@@ -218,7 +218,7 @@ git -c user.email=t@t -c user.name=t commit --allow-empty -m "'"$FABRICATED_MSG"
 # diagnosis proves the gate actually re-ran content validation under root,
 # rather than merely failing closed for an unrelated root-specific reason
 # (e.g. a permission/read quirk).
-[[ "$out9" == *"git-commit-attribution: commit message is missing the required trailer 'Skills'"* ]] \
+[[ "$out9" == *"git-commit-attribution: commit message: missing the required trailer 'Skills'"* ]] \
   && pass "9 root: rejection re-validates content (names missing 'Skills', not just a generic failure)" \
   || fail "9 root: rejection re-validates content (names missing 'Skills', not just a generic failure)" "$out9"
 

@@ -13,8 +13,9 @@ failed=0
 pass() { printf 'ok   %s\n' "$1"; passed=$((passed + 1)); }
 fail() { printf 'FAIL %s\n     %s\n' "$1" "$2"; failed=$((failed + 1)); }
 
-# Every githooks(5) name install.sh will symlink. Kept local to the test
-# rather than sourced from install.sh, which does not exist yet (Task 7).
+# Every githooks(5) name install.sh symlinks. Kept local to the test rather
+# than sourced from install.sh, so the list is asserted independently of the
+# one the installer uses.
 HOOK_NAMES="applypatch-msg pre-applypatch post-applypatch pre-commit
 pre-merge-commit prepare-commit-msg commit-msg post-commit pre-rebase
 post-checkout post-merge pre-push pre-receive update proc-receive

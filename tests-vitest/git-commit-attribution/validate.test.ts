@@ -198,7 +198,7 @@ describe('checkMessage', () => {
     const outcome = checkMessage(message, enforceSpec, DEFAULT_SPEC_PATH);
     expect(outcome.exitCode).toBe(1);
     expect(outcome.stderr.join('\n')).toBe(
-      "git-commit-attribution: commit message is missing the required trailer 'Skills'.\n" +
+      "git-commit-attribution: commit message: missing the required trailer 'Skills'.\n" +
         'The commit was not created.\n' +
         'Agent-authored commits must end with this contiguous block, Co-Authored-By last:\n' +
         '\n' +

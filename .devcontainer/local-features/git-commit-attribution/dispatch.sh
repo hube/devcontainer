@@ -74,8 +74,7 @@ case "$hook_name" in
     ;;
   proc-receive)
     # Presence-sensitive: speaks a pkt-line protocol no generic script can
-    # emulate. Failing rejects the matched ref exactly as an absent hook
-    # does; exit 0 would claim refs were handled when nothing handled them.
+    # emulate. Failing rejects the matched ref exactly as an absent hook does.
     exit 1
     ;;
   *)

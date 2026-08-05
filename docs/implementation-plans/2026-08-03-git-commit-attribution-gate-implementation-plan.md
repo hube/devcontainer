@@ -1,5 +1,7 @@
 # Git Commit Attribution — Gate Implementation Plan (`hube/devcontainer`)
 
+**Status:** Execution-time document — historical as of the merge of [`hube/devcontainer#60`](https://github.com/hube/devcontainer/pull/60) and not maintained thereafter; git history is the record from then on, and the design doc is the living artifact. `Decided (owner, 2026-08-05, in session)`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement the `git-commit-attribution` gate designed in
