@@ -1,0 +1,43 @@
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # A stale committed bundle fails here; this is what makes the
+      # byte-identical-bundle claim enforceable.
+      - run: npm run build && git diff --exit-code -- .devcontainer/local-features/git-commit-attribution/dist/
+
+  local-features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Run every local-feature test suite
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for t in .devcontainer/local-features/*/test/*.sh; do
+            case "$t" in
+              *test-codex-sandbox.sh) echo "skip (in-container only): $t"; continue ;;
+              *test-image-consumer.sh) echo "skip (requires a real IMAGE argument and a Docker Desktop daemon; this runner has neither): $t"; continue ;;
+              *test-runtime.sh) echo "skip (requires a Docker Desktop daemon identity; GitHub-hosted runners ship Docker Server/Client, not Docker Desktop): $t"; continue ;;
+            esac
+            echo "== $t"
+            bash "$t"
+          done
