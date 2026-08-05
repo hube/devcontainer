@@ -225,14 +225,15 @@ complement and presents them as a pair:
 
 - **Contested twice** (disagreement-churn) — a decision contested across more
   than one round → stop and ask the owner. *(existing)*
-- **Three rounds confined to the same section or mechanism** (agreement-churn —
-  each round agrees with the last and *adds*) → stop fixing that mechanism and
-  record an owner options memo: *finish the machinery / simplify to a weaker
-  stated level / accept the risk explicitly*. **(new)**
+- **Three rounds confined to the same section or mechanism** (motivated by
+  agreement-churn — uncontested accretion, where each round agrees with the
+  last and *adds*) → stop fixing that mechanism and record an owner options
+  memo naming the remedy that fits the cause; see **Remedy scoped to cause**
+  below. **(new)**
 
 The thresholds differ deliberately: disagreement is a sharper signal than
-agreement, so a contested decision escalates after two rounds while accretion is
-allowed three before the breaker fires.
+agreement, so a contested decision escalates after two rounds while repetition
+is allowed three before the breaker fires.
 
 **Guard against false positives.** The breaker fires on *repetition on the same
 ground*, not on breadth. Deliberate multi-angle review that sweeps many
@@ -758,3 +759,11 @@ change.
   the cause of the recurrence rather than limited to the three machinery
   options, and recurrence on a claim is self-authorising (delete and
   disclose) where recurrence on a mechanism still waits for the owner.
+- 2026-08-05: Propagated the Option B decision above to the two places in
+  "The churn tripwire" section that still described the breaker in terms of
+  the reverted accretion-only reading. The trigger bullet's parenthetical now
+  names agreement-churn/accretion as the trigger's motivating case rather
+  than the trigger itself, and its remedy clause points at the **Remedy
+  scoped to cause** paragraph instead of restating the three machinery
+  options as the whole memo; the thresholds paragraph now refers to
+  repetition rather than accretion.
