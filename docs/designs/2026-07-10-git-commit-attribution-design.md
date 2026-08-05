@@ -896,16 +896,14 @@ These were established by experiment in the container, not assumed.
   harness and `AGENTS.md` by the other, a `@path` line would silently no-op
   under Codex. So the spec pointer in the shared prose must be plain text a
   reader chooses to follow — which is a further reason the rejection message,
-  not the prose pointer, carries the teaching weight. This resolves a prior open
-  question.
+  not the prose pointer, carries the teaching weight.
 - `GIT_CONFIG_NOSYSTEM=1` is **live** in this container's tooling: the
   `security-guidance` Claude Code plugin hook sets it (together with
   `GIT_CONFIG_GLOBAL=/dev/null`) for a read-only, non-committing agentic
   security-review subprocess that runs `git diff/log/show`. That subprocess
   never commits, so it does not bypass the gate today — but the env is present
   and would disable the gate for any future committing process that inherited
-  it, so the *Bypasses* entry is a real mechanism, not a hypothetical. This
-  resolves a prior open question.
+  it, so the *Bypasses* entry is a real mechanism, not a hypothetical.
 - Codex's inner bwrap sandbox (`codex-cli 0.146.0`) shows a sandboxed command
   the same gate the host sees. Under `codex sandbox -P :workspace`,
   `core.hooksPath` still resolves from `file:/etc/gitconfig`, and the
@@ -937,10 +935,7 @@ These were established by experiment in the container, not assumed.
   sandbox is not covered: its `.git` is writable and its commit does reach the
   `commit-msg` hook. `:read-only` has no such escape — a later repository
   cannot be created there at all, since `mkdir` itself returns `EROFS`. What
-  the gate does once it reaches that hook is **not** established here: the
-  validator returns normally under `:workspace` for a message it need not
-  judge, but does not return for an agent-authored one it must produce a
-  diagnosis for.
+  the gate does once it reaches that hook is **not** established here.
 - `local-features/agent-skills`' postStart script runs `git fetch` and never
   checks out, so its clone is a developer working tree and cannot carry
   distributed artifacts.
