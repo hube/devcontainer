@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseSpec } from '../../src/git-commit-attribution/spec';
 
 // Byte-identical to the design doc's *The spec* section — and therefore to
-// hube/claude-home's git-commit-attribution.conf (the sibling spec plan).
+// hube/claude-home's git-commit-attribution.conf.
 const LIVE_SPEC = `version      1
 mode         warn
 
