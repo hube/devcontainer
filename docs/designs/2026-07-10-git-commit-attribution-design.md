@@ -13,7 +13,7 @@ line splitting it. That contract existed only as prose in the host's
 `~/.claude/CLAUDE.md`, which reaches Claude Code and Codex through bind mounts.
 Nothing checked it.
 
-Two open issues are the same defect seen from opposite ends.
+Two issues are the same defect seen from opposite ends.
 
 `hube/agent-skills#9` is a **producer** failure. `src/worklog/git.ts` builds a
 commit message from a hardcoded template that carries only `Co-Authored-By`, and
