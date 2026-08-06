@@ -15,10 +15,10 @@ Nothing checked it.
 
 Two issues are the same defect seen from opposite ends.
 
-`hube/agent-skills#9` is a **producer** failure. `src/worklog/git.ts` builds a
-commit message from a hardcoded template that carries only `Co-Authored-By`, and
-pastes a model ID where the display name belongs. No agent misbehaves; the code
-predates the contract. It has shipped to production twice (`hube/worklog#33` and
+`hube/agent-skills#9` is a **producer** failure. `src/worklog/git.ts` built a
+commit message from a hardcoded template that carried only `Co-Authored-By`, and
+pasted a model ID where the display name belongs. No agent misbehaved; the code
+predated the contract. It shipped to production twice (`hube/worklog#33` and
 `#36`), and each occurrence required a hand-written history rewrite and a
 `--force-with-lease` on an open pull request.
 
