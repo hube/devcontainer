@@ -200,18 +200,11 @@ block fails every worklog commit, so `enforce` cannot precede the producer fix.
 That is the one hard ordering constraint here, and it is why the rollout is
 warn-first.
 
-The producer fix should follow the fallback-safety refactor in
-`hube/agent-skills`'
+The fallback-safety refactor in `hube/agent-skills`'
 [`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md)
-— for rework and collision avoidance, not correctness. That refactor retypes the
-worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`, and both it
-and `#9` edit `src/worklog/git.ts`. `#9` would *function* if it landed first, but
-it would add a Boolean-returning path the refactor then has to retype, and the
-two would conflict in that file. Landing the refactor first avoids both.
-
-This design does **not** implement the `OperationResult` boundary and does not
-depend on it — it only constrains the `--trailer` work to be forwards-compatible
-with it:
+retypes the worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`.
+This design does **not** implement that boundary and does not depend on it — it
+only constrains the `--trailer` work to be forwards-compatible with it:
 
 - The `--trailer` flag is passed *through* to `git commit`; a commit that fails
   because the gate rejected it must surface as a typed `COMMIT_FAILED`
