@@ -5,7 +5,8 @@ development dependencies so that they can be used across projects and
 development machines. The devcontainer in this repo includes:
 * Zsh and Oh My Zsh
 * Git
-* Claude Code
+* Claude Code; the shared agent instructions mount it expects is described in
+  the [Claude feature notes](.devcontainer/local-features/claude/NOTES.md).
 * Codex; its supported runtime and operator guidance are in the
   [Codex feature notes](.devcontainer/local-features/codex/NOTES.md).
 

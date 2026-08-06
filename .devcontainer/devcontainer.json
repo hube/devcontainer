@@ -20,6 +20,8 @@
     "./local-features/workspaces-permissions": {}
   },
   "containerUser": "${localEnv:USERNAME:devcontainer}",
+  // One array for every consumer-declared mount: a second "mounts" key would
+  // not conflict textually, and the last one silently wins.
   "mounts": [
     // Trailer contract for the git-commit-attribution gate. The Feature owns
     // the container path; the consumer owns this mount — see the Feature's
@@ -29,6 +31,15 @@
       "type": "bind,readonly",
       "source": "${localEnv:HOME}/.claude/git-commit-attribution.conf",
       "target": "/etc/devcontainer/feature/git-commit-attribution/trailer-contract"
+    },
+    // Bulk agent instructions shared by every harness in the container.
+    // Consumer-declared: the source is specific to the Claude configuration
+    // layout, so a Feature must not hardcode it. Read-only: the instructions
+    // are read, never written.
+    {
+      "type": "bind,readonly",
+      "source": "${localEnv:HOME}/.claude/instructions",
+      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
     }
   ],
   "containerEnv": {

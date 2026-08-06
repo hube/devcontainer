@@ -55,13 +55,60 @@ Consumer-supplied seccomp or AppArmor values in additional `securityOpt`
 entries conflict with the image's settings and are unsupported; remove those
 additional entries rather than attempting to override the embedded contract.
 
+## Shared agent instructions
+
+Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
+mounts from the host's `~/.claude/CLAUDE.md` — a single shared file under two
+names, separate from the `~/.agents/instructions` directory mount described
+below. Bulk references that file points at are read from
+`~/.agents/instructions`, which holds three files: `rigor-levels.md`,
+`review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
+
+This Feature owns only the container **target** path. The mount itself is
+**consumer-declared**: you choose the host directory it reads from. Copy this
+block into the top-level `mounts` array of your `devcontainer.json` — once for
+the container, not per Feature — with `source` set to that directory:
+
+```json
+{
+  "type": "bind,readonly",
+  "source": "${localEnv:HOME}/agent-instructions",
+  "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
+}
+```
+
+**The host directory you name as `source` must exist before you start the
+container.** Docker rejects a bind mount whose host source is missing, and that
+failure breaks container startup outright — before anything can report it. The
+host file this Feature binds as `AGENTS.md` must exist for the same reason.
+Docker names the offending path when this happens:
+
+```
+Error response from daemon: invalid mount config for type "bind":
+bind source path does not exist: /Users/you/agent-instructions
+```
+
+To confirm the mount landed, list the target inside the container. It must
+exist; an empty listing means either nothing was mounted onto it or the host
+directory is itself empty, so check the host path before changing any JSON:
+
+```bash
+ls -ld ~/.agents/instructions && ls ~/.agents/instructions
+```
+
+If you never declare the mount, the container still starts. Codex loads
+`AGENTS.md` normally, and only the referenced bulk detail is unavailable.
+
 ## Creation and health failures
 
-If container creation fails before the post-create hook runs, Docker Desktop
-could not apply the image's published runtime contract. The failed
-`devcontainer up` output is authoritative. Confirm Docker Desktop is running
-Linux containers, remove conflicting consumer `securityOpt` entries, and
-recreate the container. Preserve the complete CLI output when requesting help.
+If container creation fails before the post-create hook runs, read the failed
+`devcontainer up` output first — it is authoritative, and two different causes
+land here. If it names a bind source that does not exist, a mount is declared
+whose host path is missing; create that path and recreate the container (see
+"Shared agent instructions" above). Otherwise Docker Desktop could not apply the
+image's published runtime contract: confirm Docker Desktop is running Linux
+containers, remove conflicting consumer `securityOpt` entries, and recreate the
+container. Preserve the complete CLI output when requesting help.
 
 If the post-create health check fails, Codex could not validate the ownership
 and mode of system Bubblewrap or could not create and read a marker through

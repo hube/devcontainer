@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Verifies the configuration this repo owns: that its own consumer
+# devcontainer.json declares the shared-instructions mount with the source,
+# target, and read-only flag the Features' target path depends on. Docker's
+# enforcement of a correctly declared read-only bind is assumed, not retested.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+CONSUMER="$ROOT/.devcontainer/devcontainer.json"
+
+python3 - "$CONSUMER" <<'PY'
+import json, re, sys
+from pathlib import Path
+
+raw = Path(sys.argv[1]).read_text(encoding="utf-8")
+config = json.loads(re.sub(r"(?m)^\s*//.*$", "", raw))
+
+EXPECTED_SOURCE = "${localEnv:HOME}/.claude/instructions"
+EXPECTED_TARGET = "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
+EXPECTED_TYPE = "bind,readonly"
+
+failures = []
+mounts = config.get("mounts", [])
+matching = [m for m in mounts if isinstance(m, dict) and m.get("target") == EXPECTED_TARGET]
+
+if not matching:
+    # The spec also allows the string form ("type=bind,src=...,dst=..."), which
+    # this repo does not use; say so rather than claiming nothing is declared.
+    string_form = [m for m in mounts if isinstance(m, str) and EXPECTED_TARGET in m]
+    if string_form:
+        failures.append(
+            f"consumer devcontainer.json declares a string-form mount targeting "
+            f"{EXPECTED_TARGET}; this repo declares mounts in the object form, so "
+            f"the source, target, and type cannot be checked. Rewrite it as a JSON "
+            f"object with source, target, and type keys"
+        )
+    else:
+        failures.append(
+            f"consumer devcontainer.json declares no object-form mount targeting "
+            f"{EXPECTED_TARGET}"
+        )
+elif len(matching) > 1:
+    failures.append(
+        f"consumer devcontainer.json declares {len(matching)} mounts targeting "
+        f"{EXPECTED_TARGET}; the mount is declared once for the whole container"
+    )
+else:
+    mount = matching[0]
+    if mount.get("source") != EXPECTED_SOURCE:
+        failures.append(
+            f"instructions mount source is {mount.get('source')!r}, expected {EXPECTED_SOURCE!r}"
+        )
+    # Exact, not a substring: "volume,readonly" is read-only but is not the host
+    # bind the target path depends on.
+    if mount.get("type") != EXPECTED_TYPE:
+        failures.append(
+            f"instructions mount type is {mount.get('type')!r}, expected {EXPECTED_TYPE!r}"
+        )
+
+if failures:
+    print("FAIL")
+    for failure in failures:
+        print(f"  {failure}")
+    raise SystemExit(1)
+
+print("ok   consumer devcontainer.json declares the read-only instructions mount")
+PY

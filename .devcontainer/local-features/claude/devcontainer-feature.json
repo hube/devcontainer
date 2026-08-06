@@ -22,7 +22,7 @@
       "type": "bind",
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude/CLAUDE.md"
-    }
+    },
     // Claude Code configuration 1
     {
       "type": "volume",
@@ -38,7 +38,7 @@
       "type": "bind",
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-1/CLAUDE.md"
-    }
+    },
     // Claude Code configuration 2
     {
       "type": "volume",
@@ -54,7 +54,7 @@
       "type": "bind",
       "source": "${localEnv:HOME}/.claude/CLAUDE.md",
       "target": "/home/${localEnv:USERNAME:devcontainer}/.claude-2/CLAUDE.md"
-    }
+    },
     // Claude Code configuration 3
     {
       "type": "volume",
