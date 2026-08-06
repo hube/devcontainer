@@ -291,11 +291,10 @@ Diagnostics print the fixed system path, never `~` — a message printed during 
 root commit names the same `/etc` path as one printed for any other user.
 
 If the host file does not exist, Docker is expected to create a **directory** at
-the bind mount's source rather than fail — unverified, and the implementation
-must confirm it. Either way the hook must treat a non-file at the spec path as a
-missing spec and fail closed, and the postStart warning must name the host path
-so a stray directory can be removed and replaced with a real checkout of
-`claude-home`.
+the bind mount's source rather than fail. Either way the hook must treat a
+non-file at the spec path as a missing spec and fail closed, and the postStart
+warning must name the host path so a stray directory can be removed and
+replaced with a real checkout of `claude-home`.
 
 ## Git Config Placement Rule
 
