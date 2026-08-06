@@ -502,11 +502,13 @@ The Feature declares `ghcr.io/devcontainers/features/node:2` in its own
 the `ccstatusline` status-line Feature; a commit gate must not inherit its
 liveness from a cosmetic Feature.
 
-The hook never consults `PATH`. Node is nvm-managed, so `node` is on `PATH`
-only for processes whose shell sourced a profile — which a hook invoked from an
-editor or a daemon may not have done. `install.sh` therefore creates
-`/usr/local/bin/node` pointing at `/usr/local/share/nvm/current/bin/node`, a
-version-independent symlink that survives node upgrades. The committed bundle's
+The hook never consults `PATH`. Before this Feature there was no
+`/usr/local/bin/node` or `/usr/bin/node`, and node is nvm-managed, so `node` was
+on `PATH` only for processes whose shell sourced a profile — which a hook
+invoked from an editor or a daemon may not have done. `install.sh` therefore
+creates `/usr/local/bin/node` pointing at
+`/usr/local/share/nvm/current/bin/node`, a version-independent symlink that
+survives node upgrades. The committed bundle's
 shebang is a fixed `#!/usr/local/bin/node`, so that symlink — not a per-container
 rewrite — is what points every commit at a working interpreter. `install.sh`
 validates the interpreter is executable and fails the install loudly if not,
