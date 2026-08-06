@@ -9,9 +9,9 @@ See the *Changelog* at the end for what has changed across revisions.
 
 Every AI-authored commit must end with a contiguous trailer block: `Harness`,
 `Harness-Version`, `Model`, `Skills`, then `Co-Authored-By` last, with no blank
-line splitting it. Today that contract exists only as prose in the host's
+line splitting it. That contract existed only as prose in the host's
 `~/.claude/CLAUDE.md`, which reaches Claude Code and Codex through bind mounts.
-Nothing checks it.
+Nothing checked it.
 
 Two open issues are the same defect seen from opposite ends.
 
@@ -36,7 +36,7 @@ is what makes a shared control possible.
 - Make trailer-block compliance a property of the commit, not of an agent's
   memory or honesty.
 - Express the contract once, in a place both agents and tooling read.
-- Work for any harness. Claude Code today; Codex and other agents next.
+- Work for any harness.
 - Propagate a contract change to every container without an image rebuild.
 - Teach the contract at the moment of violation, to agents that never read it.
 
@@ -53,7 +53,7 @@ is what makes a shared control possible.
 ## The Enforcement Point
 
 `git commit` is the one step Claude Code, Codex, and every human in this
-container pass through today. The two harnesses share no runtime, no
+container pass through. The two harnesses share no runtime, no
 configuration format, and no environment variables — but both drive git's
 porcelain, and a commit message is a harness-neutral artifact. A `commit-msg`
 hook therefore generalizes to any agent that commits the way these do,
@@ -61,9 +61,8 @@ including agents nobody has configured yet.
 
 That guarantee is scoped to hook-aware porcelain. Plumbing (`git commit-tree`),
 libgit2- or JGit-based tools, and commits created through GitHub's web UI or
-API never run local hooks. No such producer commits inside this container
-today; if one appears, the deferred per-repo CI check (see *Bypasses*) is the
-boundary that catches it, not this hook.
+API never run local hooks. The deferred per-repo CI check (see *Bypasses*) is
+the boundary that catches those, not this hook.
 
 One wrinkle arrived with `main`'s Codex inner sandbox: a `git commit` Codex
 launches as a sandboxed command runs inside that sandbox, and the gate fires
@@ -79,7 +78,7 @@ message** to decide whether a commit claims to be agent-authored.
 
 ## Contract Change: `Skills` Becomes Mandatory
 
-The contract currently omits `Skills:` when no skill contributed. That makes the
+The contract omitted `Skills:` when no skill contributed. That made the
 fabricated message from `hube/devcontainer#23` shape-valid:
 
 ```
@@ -328,10 +327,9 @@ Consequently:
 	hooksPath = /usr/local/share/git-commit-attribution/hooks
 ```
 
-`/etc/gitconfig` does not exist in the image today. Git's precedence runs system
-< global < local, so the `~/.gitconfig` laid down by `devcontainer-dotfiles` at
-container-create time does not disturb it, and a deliberate global
-`core.hooksPath` still overrides it per machine.
+Git's precedence runs system < global < local, so the `~/.gitconfig` laid down
+by `devcontainer-dotfiles` at container-create time does not disturb it, and a
+deliberate global `core.hooksPath` still overrides it per machine.
 
 This Feature has no user-facing setting and writes nothing to `~/.gitconfig`.
 The rule is recorded here, and in `NOTES.md`, so that `hube/devcontainer#32` and
@@ -500,12 +498,11 @@ The Feature is TypeScript, so every commit in the container depends on a working
 node. Three measures make that dependency safe.
 
 The Feature declares `ghcr.io/devcontainers/features/node:2` in its own
-`dependsOn`. Node currently reaches this image transitively, as a dependency of
+`dependsOn`. Node reached this image only transitively, as a dependency of
 the `ccstatusline` status-line Feature; a commit gate must not inherit its
 liveness from a cosmetic Feature.
 
-The hook never consults `PATH`. There is no `/usr/local/bin/node` or
-`/usr/bin/node` in the image, and node is nvm-managed, so `node` is on `PATH`
+The hook never consults `PATH`. Node is nvm-managed, so `node` is on `PATH`
 only for processes whose shell sourced a profile — which a hook invoked from an
 editor or a daemon may not have done. `install.sh` therefore creates
 `/usr/local/bin/node` pointing at `/usr/local/share/nvm/current/bin/node`, a
@@ -647,8 +644,8 @@ also allowed to proceed.
   existence.
 - `git commit --signoff` appends `Signed-off-by` after everything else, so it
   lands after `Co-Authored-By` and rejects. Sign-offs belong above the block.
-  No repository this gate governs uses DCO sign-offs today; if one appears,
-  that is a spec-grammar change, not a hook edit.
+  Accommodating a repository that cannot put them there is a spec-grammar
+  change, not a hook edit.
 
 The block attributes the harness that **created the commit** — the
 orchestrating agent, when subagents are involved. Other contributors, human or
@@ -732,9 +729,7 @@ effective `core.hooksPath` shadows the gate.
 
 ## Bypasses
 
-`NOTES.md` states these plainly. Pointing at CI would be dishonest: `claude-home`
-and `hube/worklog` have no workflows at all, and `hube/devcontainer` has only
-`publish.yaml`.
+`NOTES.md` states these plainly.
 
 - **A repository with its own `core.hooksPath`.** Worktree, local, and global
   config all outrank the system-scope value this Feature writes, so husky,
@@ -770,10 +765,10 @@ behavior, and end-to-end commits, matching the convention in
 `local-features/agent-skills/test/`. `.github/workflows/tests.yml` runs
 typecheck, lint, vitest, a build-diff check
 (`npm run build && git diff --exit-code -- dist/`) so a stale committed bundle
-fails CI, and the existing `local-features/*/test/*.sh` suites, which have never
-run in CI. The build-diff check is what makes the byte-identical-bundle claim
-enforceable rather than aspirational: a bundle carrying a container-specific
-path or shebang could not match a clean rebuild.
+fails CI, and the existing `local-features/*/test/*.sh` suites. The build-diff
+check is what makes the byte-identical-bundle claim enforceable rather than
+aspirational: a bundle carrying a container-specific path or shebang could not
+match a clean rebuild.
 
 Fixtures are drawn from real artifacts.
 
@@ -860,15 +855,12 @@ These were established by experiment in the container, not assumed.
   `fail to negotiate version with proc-receive hook`), so the equivalence is
   ref-level, not diagnostic.
 - `git commit --no-verify` bypasses the `commit-msg` hook.
-- `/etc/gitconfig` is absent in the image; `~/.gitconfig` is provided by
-  `hube/devcontainer-dotfiles` at container-create time.
-- `node` is nvm-managed, absent from the default `PATH`, and reaches the image as
-  a transitive dependency of `ccstatusline`. `/usr/local/share/nvm/current` is a
-  version-independent symlink. Node startup is 17–19 ms.
+- `~/.gitconfig` is provided by `hube/devcontainer-dotfiles` at
+  container-create time.
+- `node` is nvm-managed. `/usr/local/share/nvm/current` is a version-independent
+  symlink. Node startup is 17–19 ms.
 - `~/.claude/CLAUDE.md` is bind-mounted to `~/.codex/AGENTS.md` by
-  `local-features/codex`, so one host file already serves both harnesses. Still
-  true at the tip of `main` (`devcontainer-feature.json` mounts
-  `${localEnv:HOME}/.claude/CLAUDE.md` → `~/.codex/AGENTS.md`).
+  `local-features/codex`, so one host file serves both harnesses.
 - Codex (`codex-cli 0.144.5`, installed in this image) loads `AGENTS.md` as a
   whole **project doc** subject to a truncation budget, with no `@path`
   inline-import expansion: its `agents_md` loader reads the file wholesale, and
@@ -883,7 +875,7 @@ These were established by experiment in the container, not assumed.
   `security-guidance` Claude Code plugin hook sets it (together with
   `GIT_CONFIG_GLOBAL=/dev/null`) for a read-only, non-committing agentic
   security-review subprocess that runs `git diff/log/show`. That subprocess
-  never commits, so it does not bypass the gate today — but the env is present
+  never commits, so it does not bypass the gate — but the env is present
   and would disable the gate for any future committing process that inherited
   it, so the *Bypasses* entry is a real mechanism, not a hypothetical.
 - Codex's inner bwrap sandbox (`codex-cli 0.146.0`) shows a sandboxed command
@@ -927,9 +919,6 @@ These were established by experiment in the container, not assumed.
 Reviewed against the tip of `main` after the Codex unconfined-runtime work
 merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
 
-- **No CI workflow was added.** `main` still ships only
-  `.github/workflows/publish.yaml`; `local-features/*/test/*.sh` have still never
-  run in CI. The proposed `tests.yml` remains the first test workflow, unchanged.
 - **The Codex Feature now builds an inner bwrap sandbox** for the commands Codex
   launches, on a container-wide relaxed outer Docker boundary. This touches the
   enforcement premise: a `git commit` Codex runs as one of those sandboxed
