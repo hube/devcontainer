@@ -26,12 +26,6 @@ account:
 }
 ```
 
-`devcontainer.json` holds exactly one top-level `mounts` array. If yours already
-has one — another Feature's notes may have told you to add an entry to it — put
-this entry inside it rather than adding a second `"mounts"` key. A repeated key
-is not an error: the file parses, the container builds and starts, and one of
-the two arrays is silently discarded along with every mount in it.
-
 **These host paths must exist before you start the container.** Docker rejects a
 bind mount whose host source is missing, and that failure breaks container
 startup outright — before anything can report it. This Feature binds

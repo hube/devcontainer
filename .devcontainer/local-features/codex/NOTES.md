@@ -65,33 +65,27 @@ below. Bulk references that file points at are read from
 `review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
 This Feature owns only the container **target** path. The mount itself is
-**consumer-declared**. Copy this block into the top-level `mounts` array of your
-`devcontainer.json` — once for the container, not per Feature:
+**consumer-declared**: you choose the host directory it reads from. Copy this
+block into the top-level `mounts` array of your `devcontainer.json` — once for
+the container, not per Feature — with `source` set to that directory:
 
 ```json
 {
   "type": "bind,readonly",
-  "source": "${localEnv:HOME}/.claude/instructions",
+  "source": "${localEnv:HOME}/agent-instructions",
   "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
 }
 ```
 
-`devcontainer.json` holds exactly one top-level `mounts` array. If yours already
-has one — another Feature's notes may have told you to add an entry to it — put
-this entry inside it rather than adding a second `"mounts"` key. A repeated key
-is not an error: the file parses, the container builds and starts, and one of
-the two arrays is silently discarded along with every mount in it.
-
-**The host source directory must exist before you declare the mount.** Docker
-rejects a bind mount whose host source is missing, and that failure breaks
-container startup outright — before anything can report it. Create
-`~/.claude/instructions` on the host first, then add the mount. The host file
-this Feature binds as `AGENTS.md` must exist for the same reason. Docker names
-the offending path when this happens:
+**The host directory you name as `source` must exist before you start the
+container.** Docker rejects a bind mount whose host source is missing, and that
+failure breaks container startup outright — before anything can report it. The
+host file this Feature binds as `AGENTS.md` must exist for the same reason.
+Docker names the offending path when this happens:
 
 ```
 Error response from daemon: invalid mount config for type "bind":
-bind source path does not exist: /Users/you/.claude/instructions
+bind source path does not exist: /Users/you/agent-instructions
 ```
 
 To confirm the mount landed, list the target inside the container. It must

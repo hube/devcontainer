@@ -1,7 +1,7 @@
 # Rigor levels and anti-ratchet review discipline
 
-Status: Accepted (`hube/devcontainer#55`). Content implemented in
-`hube/claude-home#9`; plumbing in review on `hube/devcontainer#59`.
+Status: Accepted (`hube/devcontainer#55`).
+
 Generalizes the assurance-level conventions and PR circuit-breaker introduced
 in [`hube/fin#5`](https://github.com/hube/fin/pull/5), as since revised through
 [`hube/fin#48`](https://github.com/hube/fin/issues/48), into harness-neutral,
