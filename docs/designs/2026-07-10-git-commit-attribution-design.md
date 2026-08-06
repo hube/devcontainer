@@ -1,8 +1,6 @@
 # Git Commit Attribution Design
 
-Status: Accepted — merged via hube/devcontainer#38 (2026-07-18). Implementation:
-docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md
-and docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md.
+Status: Accepted — merged via hube/devcontainer#38 (2026-07-18).
 See the *Changelog* at the end for what has changed across revisions.
 
 ## Context

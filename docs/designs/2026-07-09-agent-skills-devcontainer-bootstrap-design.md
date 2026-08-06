@@ -4,8 +4,6 @@ Status: Implemented
 
 Issue: https://github.com/hube/devcontainer/issues/26
 
-Implementation plan: [`docs/implementation-plans/2026-07-09-agent-skills-devcontainer-bootstrap-implementation-plan.md`](../implementation-plans/2026-07-09-agent-skills-devcontainer-bootstrap-implementation-plan.md)
-
 ## Summary
 
 `hube-agent` skills load from a clone of the private `agent-skills` repository via symlinks that
