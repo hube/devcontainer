@@ -944,6 +944,18 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
+- **2026-08-06** — *The producer* reworked so its ordering constraint no longer
+  reports where the work stands. The `enforce` dependency on
+  `hube/agent-skills#9` is stated as an ordering relation — `enforce` cannot
+  precede the producer fix, which is why the rollout is warn-first — rather than
+  as a wait still pending, and the gate's warn-mode independence is stated
+  symmetrically in progress. Deleted: the producer-fix/refactor sequencing advice
+  and its collision argument, work-ordering between two `agent-skills` items this
+  design decides nothing about; and the `refactor → #9 → enforce` chain
+  restatement. `## Related`'s two producer entries and `## Context`'s producer
+  paragraph were brought to the same test — the entries now name the relations
+  the section states, and the defect description is pinned to the state that
+  motivated the gate rather than to the producer's current shape.
 - **2026-08-05** — Sentences whose truth depended on the progress of the work
   re-framed or deleted, per the owner's rulings on
   [#61](https://github.com/hube/devcontainer/pull/61) that a design document is
