@@ -4,8 +4,6 @@
 
 Supersedes
 [`2026-07-11-codex-bwrap-user-namespaces-design.md`](2026-07-11-codex-bwrap-user-namespaces-design.md)
-and
-[`2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md`](../implementation-plans/2026-07-12-codex-bwrap-user-namespaces-implementation-plan.md),
 and defines the replacement design for the remaining work in
 [`issue #36`](https://github.com/hube/devcontainer/issues/36).
 
@@ -334,10 +332,8 @@ cleanup, and retirement procedures. Feature NOTES links to it for
 discoverability. The design records the required verification boundaries but
 does not duplicate the operational commands.
 
-The previous custom-profile design and its implementation plan remain in the
-repository as historical records with prominent supersession notices linking
-to this design. The replacement implementation plan is written from this
-design alone.
+The previous custom-profile design remains in the repository as a historical
+record with a prominent supersession notice linking to this design.
 
 ## Out of scope
 

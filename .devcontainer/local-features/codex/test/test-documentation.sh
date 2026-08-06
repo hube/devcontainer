@@ -7,11 +7,10 @@ README="$ROOT/README.md"
 MANIFEST="$ROOT/.devcontainer/local-features/codex/devcontainer-feature.json"
 CONSUMER_TEST="$ROOT/.devcontainer/local-features/codex/test/test-image-consumer.sh"
 DESIGN="$ROOT/docs/designs/2026-07-14-codex-unconfined-runtime-design.md"
-PLAN="$ROOT/docs/implementation-plans/2026-07-15-codex-unconfined-runtime-implementation-plan.md"
 MAINTAINERS="$ROOT/.devcontainer/local-features/codex/MAINTAINERS.md"
 
 check_documentation() {
-  python3 - "$NOTES" "$README" "$MANIFEST" "$CONSUMER_TEST" "$DESIGN" "$PLAN" "$MAINTAINERS" <<'PY'
+  python3 - "$NOTES" "$README" "$MANIFEST" "$CONSUMER_TEST" "$DESIGN" "$MAINTAINERS" <<'PY'
 import json
 import re
 import sys
@@ -23,7 +22,6 @@ from pathlib import Path
     manifest_path,
     consumer_path,
     design_path,
-    plan_path,
     maintainers_path,
 ) = map(Path, sys.argv[1:])
 notes = notes_path.read_text(encoding="utf-8")
@@ -33,8 +31,6 @@ manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 consumer = consumer_path.read_text(encoding="utf-8")
 design = design_path.read_text(encoding="utf-8")
 normalized_design = " ".join(design.split())
-plan = plan_path.read_text(encoding="utf-8")
-normalized_plan = " ".join(plan.split())
 maintainers = (
     maintainers_path.read_text(encoding="utf-8")
     if maintainers_path.is_file()
@@ -159,15 +155,6 @@ if not maintainers_path.is_file():
 for label, text in required_maintainers.items():
     if text not in normalized_maintainers:
         failures.append(f"MAINTAINERS missing {label}: {text}")
-
-required_plan = {
-    "README list item": "README image contents list",
-    "NOTES user boundary": "NOTES is the user reference",
-    "maintainer acceptance ownership": "acceptance procedures remain in this plan and the test scripts",
-}
-for label, text in required_plan.items():
-    if text not in normalized_plan:
-        failures.append(f"implementation plan missing {label}: {text}")
 
 required_consumer = {
     "nested-container detection": "if [[ -e /.dockerenv ]]",
@@ -336,12 +323,6 @@ assert_mutation_rejected \
 assert_mutation_rejected \
   "maintainer issue closure gate" "$MAINTAINERS" \
   "Close issue #36 only after"
-assert_mutation_rejected \
-  "plan NOTES audience boundary" "$PLAN" \
-  "NOTES is the user reference"
-assert_mutation_rejected \
-  "plan maintainer acceptance ownership" "$PLAN" \
-  "acceptance procedures remain in"
 assert_mutation_rejected \
   "nested bind-source translation" "$CONSUMER_TEST" \
   "translate_bind_source() {"
