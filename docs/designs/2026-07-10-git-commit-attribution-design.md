@@ -779,7 +779,7 @@ Fixtures are drawn from real artifacts.
 | `hube/devcontainer#23`'s amended block | pass |
 | `hube/devcontainer#15`'s Codex block (`Model: gpt-5`, no `Skills:`) | reject |
 | the same, with `Skills: none` | pass |
-| `worklog-contribute`'s current message | reject |
+| `worklog-contribute`'s single-`Co-Authored-By` message | reject |
 | blank line splitting the block | reject |
 | prose line inside the block | reject |
 | `Co-Authored-By` not last | reject |
