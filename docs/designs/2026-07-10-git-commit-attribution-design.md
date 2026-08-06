@@ -192,31 +192,26 @@ display-name mapping moves to `skills/write-worklog/SKILL.md`, where the
 invoking agent already knows both values. `src/worklog/git.ts` no longer builds
 a trailer block.
 
-Three moving parts are in play — this gate, the producer fix (`#9`), and the
-fallback-safety refactor in `hube/agent-skills`'
-[`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md).
-Only one of the dependencies among them is hard, so it is worth being exact:
+The gate does not depend on that fix. In `mode warn` it observes and warns but
+rejects nothing, so it can land whether or not the producer has changed, and
+nothing in `agent-skills` blocks it. `enforce` is the other way round: the moment
+the gate rejects, a `worklog-contribute` that hardcodes its own non-compliant
+block fails every worklog commit, so `enforce` cannot precede the producer fix.
+That is the one hard ordering constraint here, and it is why the rollout is
+warn-first.
 
-- **The gate (this design) depends on neither of the others.** It ships in
-  `mode warn`, where it observes and warns but rejects nothing, so it lands
-  while `worklog-contribute` still emits its current message. Nothing in
-  `agent-skills` blocks it.
-- **The producer fix (`#9`) should follow the fallback-safety refactor —
-  for rework and collision avoidance, not correctness.** That refactor retypes
-  the worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`, and
-  both it and `#9` edit `src/worklog/git.ts`. `#9` would *function* if it landed
-  first, but it would add a Boolean-returning path the refactor then has to
-  retype, and the two would conflict in that file. Landing the refactor first
-  avoids both.
-- **The `enforce` flip depends on `#9`.** The moment the gate rejects, the
-  current hardcoded `worklog-contribute` message fails, so `enforce` must wait
-  for `#9`. This is the one hard ordering constraint, and satisfying it is why
-  the rollout is warn-first.
+The producer fix should follow the fallback-safety refactor in
+`hube/agent-skills`'
+[`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md)
+— for rework and collision avoidance, not correctness. That refactor retypes the
+worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`, and both it
+and `#9` edit `src/worklog/git.ts`. `#9` would *function* if it landed first, but
+it would add a Boolean-returning path the refactor then has to retype, and the
+two would conflict in that file. Landing the refactor first avoids both.
 
-So the chain is refactor → `#9` → `enforce`; the gate landing in warn mode sits
-outside it. This design does **not** implement the `OperationResult` boundary
-and does not depend on it — it only constrains the `--trailer` work to be
-forwards-compatible with it:
+This design does **not** implement the `OperationResult` boundary and does not
+depend on it — it only constrains the `--trailer` work to be forwards-compatible
+with it:
 
 - The `--trailer` flag is passed *through* to `git commit`; a commit that fails
   because the gate rejected it must surface as a typed `COMMIT_FAILED`
