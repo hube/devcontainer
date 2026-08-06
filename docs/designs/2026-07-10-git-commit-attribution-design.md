@@ -15,10 +15,10 @@ Nothing checked it.
 
 Two issues are the same defect seen from opposite ends.
 
-`hube/agent-skills#9` is a **producer** failure. `src/worklog/git.ts` builds a
-commit message from a hardcoded template that carries only `Co-Authored-By`, and
-pastes a model ID where the display name belongs. No agent misbehaves; the code
-predates the contract. It has shipped to production twice (`hube/worklog#33` and
+`hube/agent-skills#9` is a **producer** failure. `src/worklog/git.ts` built a
+commit message from a hardcoded template that carried only `Co-Authored-By`, and
+pasted a model ID where the display name belongs. No agent misbehaved; the code
+predated the contract. It shipped to production twice (`hube/worklog#33` and
 `#36`), and each occurrence required a hand-written history rewrite and a
 `--force-with-lease` on an open pull request.
 
@@ -192,31 +192,19 @@ display-name mapping moves to `skills/write-worklog/SKILL.md`, where the
 invoking agent already knows both values. `src/worklog/git.ts` no longer builds
 a trailer block.
 
-Three moving parts are in play — this gate, the producer fix (`#9`), and the
-fallback-safety refactor in `hube/agent-skills`'
-[`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md).
-Only one of the dependencies among them is hard, so it is worth being exact:
+The gate does not depend on that fix. In `mode warn` it observes and warns but
+rejects nothing, so it can land whether or not the producer has changed, and
+nothing in `agent-skills` blocks it. `enforce` is the other way round: the moment
+the gate rejects, a `worklog-contribute` that hardcodes its own non-compliant
+block fails every worklog commit, so `enforce` cannot precede the producer fix.
+That is the one hard ordering constraint here, and it is why the rollout is
+warn-first.
 
-- **The gate (this design) depends on neither of the others.** It ships in
-  `mode warn`, where it observes and warns but rejects nothing, so it lands
-  while `worklog-contribute` still emits its current message. Nothing in
-  `agent-skills` blocks it.
-- **The producer fix (`#9`) should follow the fallback-safety refactor —
-  for rework and collision avoidance, not correctness.** That refactor retypes
-  the worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`, and
-  both it and `#9` edit `src/worklog/git.ts`. `#9` would *function* if it landed
-  first, but it would add a Boolean-returning path the refactor then has to
-  retype, and the two would conflict in that file. Landing the refactor first
-  avoids both.
-- **The `enforce` flip depends on `#9`.** The moment the gate rejects, the
-  current hardcoded `worklog-contribute` message fails, so `enforce` must wait
-  for `#9`. This is the one hard ordering constraint, and satisfying it is why
-  the rollout is warn-first.
-
-So the chain is refactor → `#9` → `enforce`; the gate landing in warn mode sits
-outside it. This design does **not** implement the `OperationResult` boundary
-and does not depend on it — it only constrains the `--trailer` work to be
-forwards-compatible with it:
+The fallback-safety refactor in `hube/agent-skills`'
+[`docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`](https://github.com/hube/agent-skills/blob/main/docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md)
+retypes the worklog Git/GitHub helpers from `boolean` to `OperationResult<T>`.
+This design does **not** implement that boundary and does not depend on it — it
+only constrains the `--trailer` work to be forwards-compatible with it:
 
 - The `--trailer` flag is passed *through* to `git commit`; a commit that fails
   because the gate rejected it must surface as a typed `COMMIT_FAILED`
@@ -938,10 +926,10 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
 
 - `hube/devcontainer#23` — the enforcement issue this design implements.
 - `hube/devcontainer#51` — the warn-then-enforce rollout tracker.
-- `hube/agent-skills#9` — the producer fix this design depends on.
+- `hube/agent-skills#9` — the producer fix this design's `enforce` mode requires.
 - `hube/agent-skills` `docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`
-  — the fallback-safety refactor the producer fix should follow (see *The
-  producer*).
+  — the fallback-safety refactor whose `OperationResult` boundary the
+  `--trailer` work must stay forwards-compatible with (see *The producer*).
 - `hube/devcontainer#32` and `hube/devcontainer#15` — git SSH signing extraction,
   which inherits the git config placement rule, now generalized in
   `docs/feature-authoring.md`.
@@ -956,6 +944,18 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
+- **2026-08-06** — *The producer* reworked so its ordering constraint no longer
+  reports where the work stands. The `enforce` dependency on
+  `hube/agent-skills#9` is stated as an ordering relation — `enforce` cannot
+  precede the producer fix, which is why the rollout is warn-first — rather than
+  as a wait still pending, and the gate's warn-mode independence is stated
+  symmetrically in progress. Deleted: the producer-fix/refactor sequencing advice
+  and its collision argument, work-ordering between two `agent-skills` items this
+  design decides nothing about; and the `refactor → #9 → enforce` chain
+  restatement. `## Related`'s two producer entries and `## Context`'s producer
+  paragraph were brought to the same test — the entries now name the relations
+  the section states, and the defect description is pinned to the state that
+  motivated the gate rather than to the producer's current shape.
 - **2026-08-05** — Sentences whose truth depended on the progress of the work
   re-framed or deleted, per the owner's rulings on
   [#61](https://github.com/hube/devcontainer/pull/61) that a design document is
