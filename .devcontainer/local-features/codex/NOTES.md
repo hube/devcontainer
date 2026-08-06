@@ -65,48 +65,56 @@ below. Bulk references that file points at are read from
 `review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
 This Feature owns only the container **target** path. The mount itself is
-**consumer-declared**. Add it once to your `devcontainer.json` — not per
-Feature:
+**consumer-declared**. Copy this block into the top-level `mounts` array of your
+`devcontainer.json` — once for the container, not per Feature:
 
 ```json
 {
-  "mounts": [
-    {
-      "type": "bind,readonly",
-      "source": "${localEnv:HOME}/.claude/instructions",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
-    }
-  ]
+  "type": "bind,readonly",
+  "source": "${localEnv:HOME}/.claude/instructions",
+  "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
 }
 ```
 
-One mount serves every harness in the container. Where another Feature's notes
-describe this same target path, both describe one declaration: add it once, not
-once per Feature.
+`devcontainer.json` holds exactly one top-level `mounts` array. If yours already
+has one — another Feature's notes may have told you to add an entry to it — put
+this entry inside it rather than adding a second `"mounts"` key. A repeated key
+is not an error: the file parses, the container builds and starts, and one of
+the two arrays is silently discarded along with every mount in it.
 
 **The host source directory must exist before you declare the mount.** Docker
 rejects a bind mount whose host source is missing, and that failure breaks
 container startup outright — before anything can report it. Create
 `~/.claude/instructions` on the host first, then add the mount. The host file
-this Feature binds as `AGENTS.md` must exist for the same reason.
+this Feature binds as `AGENTS.md` must exist for the same reason. Docker names
+the offending path when this happens:
 
-To confirm the mount landed, list the target inside the container — it shows the
-three files named above:
-
-```bash
-ls ~/.agents/instructions
+```
+Error response from daemon: invalid mount config for type "bind":
+bind source path does not exist: /Users/you/.claude/instructions
 ```
 
-If the mount is absent, the container still starts. Codex loads `AGENTS.md`
-normally, and only the referenced bulk detail is unavailable.
+To confirm the mount landed, list the target inside the container. It must exist
+and hold the three files named above — an empty listing means the directory is
+there but nothing was mounted onto it:
+
+```bash
+ls -ld ~/.agents/instructions && ls ~/.agents/instructions
+```
+
+If you never declare the mount, the container still starts. Codex loads
+`AGENTS.md` normally, and only the referenced bulk detail is unavailable.
 
 ## Creation and health failures
 
-If container creation fails before the post-create hook runs, Docker Desktop
-could not apply the image's published runtime contract. The failed
-`devcontainer up` output is authoritative. Confirm Docker Desktop is running
-Linux containers, remove conflicting consumer `securityOpt` entries, and
-recreate the container. Preserve the complete CLI output when requesting help.
+If container creation fails before the post-create hook runs, read the failed
+`devcontainer up` output first — it is authoritative, and two different causes
+land here. If it names a bind source that does not exist, a mount is declared
+whose host path is missing; create that path and recreate the container (see
+"Shared agent instructions" above). Otherwise Docker Desktop could not apply the
+image's published runtime contract: confirm Docker Desktop is running Linux
+containers, remove conflicting consumer `securityOpt` entries, and recreate the
+container. Preserve the complete CLI output when requesting help.
 
 If the post-create health check fails, Codex could not validate the ownership
 and mode of system Bubblewrap or could not create and read a marker through

@@ -990,10 +990,11 @@ on branch `worktree-calm-napping-turtle`, already fast-forwarded to `029d6f8`.
 **Files:**
 - Modify: `.devcontainer/local-features/claude/devcontainer-feature.json`
 
-This is a **pre-existing defect on `main`**, not part of the design. It gets its
-own commit because Task B1 must edit the same file and cannot do so on top of
-invalid JSON. The three `.claude-1/2/3` mount objects added in `3f527ba` are
-missing the commas that separate them from the preceding object.
+This is a **pre-existing defect on `main`**, not part of the design, so it gets
+its own commit rather than riding along in a feature change. The three
+`.claude-1/2/3` mount objects added in `3f527ba` are missing the commas that
+separate them from the preceding object, which leaves the manifest invalid JSON
+and any test that parses it unable to run.
 
 - [ ] **Step 1: Write the failing check**
 
@@ -1079,8 +1080,6 @@ the commas. Then the trailer block.
 
 **Files:**
 - Create: `.devcontainer/local-features/claude/NOTES.md`
-- Modify: `.devcontainer/local-features/claude/devcontainer-feature.json`
-  (pre-existing malformed JSON only)
 - Modify: `README.md`
 
 **Interfaces:**
@@ -1096,9 +1095,18 @@ no rationale for why the design is what it is — all four were owner findings o
 review round 1. Where two Features describe the same target path, give conflict
 guidance rather than a pointer.
 
-Add the section below under the Feature's existing preamble:
+The file does not exist yet, so this is its entire contents — the `# Claude`
+title and preamble as well as the new section:
 
 ````markdown
+# Claude
+
+This local feature installs Claude Code and configures up to four independent
+Claude Code accounts (`~/.claude` and `~/.claude-1` through `~/.claude-3`), each
+backed by its own named volume, and each sharing the host's `CLAUDE.md` and
+`projects` directory through bind mounts this Feature declares from the host's
+`~/.claude/CLAUDE.md` and `~/.claude/projects` into every account directory.
+
 ## Shared agent instructions
 
 Bulk agent instructions shared across every harness in the container are read
@@ -1107,40 +1115,47 @@ plain text. The directory holds three files: `rigor-levels.md`,
 `review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
 This Feature owns only the container **target** path. The mount itself is
-**consumer-declared**. Add it once to your `devcontainer.json` — not per Feature
-and not per account:
+**consumer-declared**. Copy this block into the top-level `mounts` array of your
+`devcontainer.json` — once for the container, not per Feature and not per
+account:
 
 ```json
 {
-  "mounts": [
-    {
-      "type": "bind,readonly",
-      "source": "${localEnv:HOME}/.claude/instructions",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
-    }
-  ]
+  "type": "bind,readonly",
+  "source": "${localEnv:HOME}/.claude/instructions",
+  "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
 }
 ```
 
-One mount serves every harness in the container. Where another Feature's notes
-describe this same target path, both describe one declaration: add it once, not
-once per Feature.
+`devcontainer.json` holds exactly one top-level `mounts` array. If yours already
+has one — another Feature's notes may have told you to add an entry to it — put
+this entry inside it rather than adding a second `"mounts"` key. A repeated key
+is not an error: the file parses, the container builds and starts, and one of
+the two arrays is silently discarded along with every mount in it.
 
-**These host paths must exist before you start the container**, because Docker
-rejects a bind mount whose host source is missing and that breaks container
-startup outright: `~/.claude/CLAUDE.md` and `~/.claude/projects`, which this
-Feature binds into every account directory, and `~/.claude/instructions` if you
-declare the mount above.
+**These host paths must exist before you start the container.** Docker rejects a
+bind mount whose host source is missing, and that failure breaks container
+startup outright — before anything can report it. This Feature binds
+`~/.claude/CLAUDE.md` and `~/.claude/projects` into every account directory, so
+both must exist on the host even if you never declare the mount above; add
+`~/.claude/instructions` to that list once you do. A host that has never run
+Claude Code has none of them. Docker names the offending path when this happens:
 
-To confirm the mount landed, list the target inside the container — it shows the
-three files named above:
-
-```bash
-ls ~/.agents/instructions
+```
+Error response from daemon: invalid mount config for type "bind":
+bind source path does not exist: /Users/you/.claude/instructions
 ```
 
-If the mount is absent, the container still starts. Claude Code loads its
-always-on `CLAUDE.md` normally, and only the referenced bulk detail is
+To confirm the mount landed, list the target inside the container. It must exist
+and hold the three files named above — an empty listing means the directory is
+there but nothing was mounted onto it:
+
+```bash
+ls -ld ~/.agents/instructions && ls ~/.agents/instructions
+```
+
+If you never declare the mount, the container still starts. Claude Code loads
+its always-on `CLAUDE.md` normally, and only the referenced bulk detail is
 unavailable.
 ````
 
@@ -1212,40 +1227,50 @@ below. Bulk references that file points at are read from
 `review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
 
 This Feature owns only the container **target** path. The mount itself is
-**consumer-declared**. Add it once to your `devcontainer.json` — not per
-Feature:
+**consumer-declared**. Copy this block into the top-level `mounts` array of your
+`devcontainer.json` — once for the container, not per Feature:
 
 ```json
 {
-  "mounts": [
-    {
-      "type": "bind,readonly",
-      "source": "${localEnv:HOME}/.claude/instructions",
-      "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
-    }
-  ]
+  "type": "bind,readonly",
+  "source": "${localEnv:HOME}/.claude/instructions",
+  "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
 }
 ```
 
-One mount serves every harness in the container. Where another Feature's notes
-describe this same target path, both describe one declaration: add it once, not
-once per Feature.
+`devcontainer.json` holds exactly one top-level `mounts` array. If yours already
+has one — another Feature's notes may have told you to add an entry to it — put
+this entry inside it rather than adding a second `"mounts"` key. A repeated key
+is not an error: the file parses, the container builds and starts, and one of
+the two arrays is silently discarded along with every mount in it.
 
 **The host source directory must exist before you declare the mount.** Docker
 rejects a bind mount whose host source is missing, and that failure breaks
-container startup outright. Create `~/.claude/instructions` on the host first,
-then add the mount.
+container startup outright — before anything can report it. Create
+`~/.claude/instructions` on the host first, then add the mount. The host file
+this Feature binds as `AGENTS.md` must exist for the same reason. Docker names
+the offending path when this happens:
 
-To confirm the mount landed, list the target inside the container — it shows the
-three files named above:
-
-```bash
-ls ~/.agents/instructions
+```
+Error response from daemon: invalid mount config for type "bind":
+bind source path does not exist: /Users/you/.claude/instructions
 ```
 
-If the mount is absent, the container still starts. Codex loads `AGENTS.md`
-normally, and only the referenced bulk detail is unavailable.
+To confirm the mount landed, list the target inside the container. It must exist
+and hold the three files named above — an empty listing means the directory is
+there but nothing was mounted onto it:
+
+```bash
+ls -ld ~/.agents/instructions && ls ~/.agents/instructions
+```
+
+If you never declare the mount, the container still starts. Codex loads
+`AGENTS.md` normally, and only the referenced bulk detail is unavailable.
 ````
+
+The `## Creation and health failures` section below it also gains the
+missing-bind-source cause, since that failure lands in the same place as the
+runtime-contract one it already describes.
 
 - [ ] **Step 2: Run the Codex documentation test**
 

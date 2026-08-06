@@ -116,6 +116,11 @@ these — the non-fin-specific parts — to cross-project, cross-harness altitud
 
 ## Rigor levels (the vocabulary)
 
+This section is the vocabulary this design *defines*, not a declaration of this
+design's own levels. It declares none, and rests on the default floor: primary
+data must never be damaged or lost, everything else is presumed re-doable.
+Decided (owner, 2026-08-05, in session) — revisit if this design is reopened.
+
 Lives in the shared reference `instructions/rigor-levels.md`. Generalizes fin's
 "assurance levels" so the concept applies to any dimension with an
 owner-chosen rigor (durability, performance budgets, security posture,
@@ -676,6 +681,11 @@ implementation time — was closed on 2026-08-05; see the changelog.
 
 ## Changelog
 
+This section preserves the design's revision history. Decided (owner,
+2026-08-05, in session): it is the one section permitted to do so, against the
+general rule that a design records settled decisions rather than narrating how
+they were reached.
+
 - 2026-07-22: Initial draft.
 - 2026-07-22: Review round 1 (devcontainer#55). Instructions dir mounts **once**
   per harness feature (account-neutral target), not per `.claude-N` account;
@@ -803,7 +813,9 @@ implementation time — was closed on 2026-08-05; see the changelog.
 - 2026-08-05: Owner decisions (devcontainer#59, in session). The `## Changelog`
   section stays: it is the one section authorized to preserve revision history.
   This design declares no `Rigor levels` table of its own and rests on the
-  default floor; revisit if the design is reopened.
+  default floor; revisit if the design is reopened. Both are now marked inline
+  where they apply, per this document's own status-marker convention — recording
+  them only here put the settled/open boundary in the wrong place.
 - 2026-08-05: Host deployment done, closing the last open question
   (devcontainer#59, owner: https://github.com/hube/devcontainer/pull/59#issuecomment-5198627004).
   The owner deployed claude-home's `instructions/` to the host and repaired the
@@ -812,3 +824,11 @@ implementation time — was closed on 2026-08-05; see the changelog.
   differences against claude-home `859cccd`. The host `instructions/` directory
   is not checkable from inside a container — only `~/.claude/CLAUDE.md` and
   `~/.claude/projects` are mounted — and rests on the owner's confirmation.
+- 2026-08-05: Review round 3 (devcontainer#59, Claude reviewer). The
+  duplicate-`mounts`-key hazard fixed in `devcontainer.json` was still live in
+  the operator documentation: both Feature notes showed a whole JSON object with
+  its own `"mounts"` key, so an operator who had already followed another
+  Feature's notes would paste a second key and silently lose a mount. Both now
+  show a bare mount object to add to the single top-level array, matching the
+  form `git-commit-attribution/NOTES.md` already used, and state what a repeated
+  key costs.
