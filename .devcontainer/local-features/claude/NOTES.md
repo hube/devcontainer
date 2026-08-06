@@ -45,9 +45,9 @@ Error response from daemon: invalid mount config for type "bind":
 bind source path does not exist: /Users/you/.claude/instructions
 ```
 
-To confirm the mount landed, list the target inside the container. It must exist
-and hold the three files named above — an empty listing means the directory is
-there but nothing was mounted onto it:
+To confirm the mount landed, list the target inside the container. It must
+exist; an empty listing means either nothing was mounted onto it or the host
+directory is itself empty, so check the host path before changing any JSON:
 
 ```bash
 ls -ld ~/.agents/instructions && ls ~/.agents/instructions
