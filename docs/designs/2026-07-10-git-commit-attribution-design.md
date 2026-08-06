@@ -926,10 +926,10 @@ merged (`hube/devcontainer#46`, #47, #48). What changed and what it means here:
 
 - `hube/devcontainer#23` — the enforcement issue this design implements.
 - `hube/devcontainer#51` — the warn-then-enforce rollout tracker.
-- `hube/agent-skills#9` — the producer fix this design depends on.
+- `hube/agent-skills#9` — the producer fix this design's `enforce` mode requires.
 - `hube/agent-skills` `docs/designs/2026-07-16-worklog-fallback-safety-diagnostics-design.md`
-  — the fallback-safety refactor the producer fix should follow (see *The
-  producer*).
+  — the fallback-safety refactor whose `OperationResult` boundary the
+  `--trailer` work must stay forwards-compatible with (see *The producer*).
 - `hube/devcontainer#32` and `hube/devcontainer#15` — git SSH signing extraction,
   which inherits the git config placement rule, now generalized in
   `docs/feature-authoring.md`.
