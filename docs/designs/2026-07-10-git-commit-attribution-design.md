@@ -955,6 +955,21 @@ section is a deliberate exception to the general guidance against narrating a
 document's revision history, kept at the owner's request
 ([#38 review](https://github.com/hube/devcontainer/pull/38#discussion_r3606547716)).
 
+- **2026-08-05** — Sentences whose truth depended on the progress of the work
+  re-framed or deleted, per the owner's rulings on
+  [#61](https://github.com/hube/devcontainer/pull/61) that a design document is
+  not a status tracker, that its contents must be durable against
+  implementation and deployment, and that it must not memorialize earlier
+  revisions. The *Rollout* section goes: its `#51` reference, ordering
+  rationale and numbered steps were tracker content, and its mechanism
+  sentence was already carried by *The spec*, *The producer* and the
+  no-rebuild goal. Also deleted: the two "This resolves a prior open question"
+  sentences; the clause describing the validator's in-sandbox hang, which
+  states a defect in our own validator rather than a fact about the
+  environment; the aside naming a sibling Feature's script; and the baseline
+  observations this Feature has itself since changed — `/etc/gitconfig` and
+  `/usr/local/bin/node` absent, no test workflow, node arriving only as a
+  transitive dependency of `ccstatusline`.
 - **2026-08-05** — Codex inner-sandbox visibility exercised in the rebuilt
   container and recorded under *Verified Behavior*, closing the last open
   question; the *Open Questions* section goes with it. The gate is fully
