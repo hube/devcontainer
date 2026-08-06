@@ -862,9 +862,9 @@ These were established by experiment in the container, not assumed.
   symlink. Node startup is 17–19 ms.
 - `~/.claude/CLAUDE.md` is bind-mounted to `~/.codex/AGENTS.md` by
   `local-features/codex`, so one host file serves both harnesses.
-- Codex (`codex-cli 0.144.5`, installed in this image) loads `AGENTS.md` as a
-  whole **project doc** subject to a truncation budget, with no `@path`
-  inline-import expansion: its `agents_md` loader reads the file wholesale, and
+- Codex (`codex-cli 0.144.5`) loads `AGENTS.md` as a whole **project doc**
+  subject to a truncation budget, with no `@path` inline-import expansion: its
+  `agents_md` loader reads the file wholesale, and
   `~/.codex/config.toml` sets `project_doc_fallback_filenames = ["CLAUDE.md"]`.
   Claude Code, by contrast, expands `@path` in `CLAUDE.md` to the imported
   file's content. Because the **same** host bytes are read as `CLAUDE.md` by one
