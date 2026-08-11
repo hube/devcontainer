@@ -6,3 +6,8 @@ node_modules/
 # test/test-integration.sh): normally removed by its own EXIT trap; this is
 # defense-in-depth against a leftover surviving an unclean interruption.
 .gca-integration-tmp.*
+# The Superpowers writing-plans skill's default output location: plans are
+# working files, not repository content. The plans directory only, not all of
+# docs/superpowers/ — anything else the plugin writes there should surface as
+# untracked noise rather than vanish silently.
+docs/superpowers/plans/
