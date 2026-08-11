@@ -979,9 +979,10 @@ document's revision history, kept at the owner's request
   the visibility assertion, leaving host-path commit behavior to
   `test/test-integration.sh`.
 - **2026-08-04** — Implemented per
-  `docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md`
+  [`2026-08-03-git-commit-attribution-gate-implementation-plan.md`](https://github.com/hube/devcontainer/blob/daa92c4ba91e2775f03af55c4495b718fa4fddcd/docs/implementation-plans/2026-08-03-git-commit-attribution-gate-implementation-plan.md)
   and the companion
-  `docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md`:
+  [`2026-08-03-git-commit-attribution-spec-implementation-plan.md`](https://github.com/hube/devcontainer/blob/daa92c4ba91e2775f03af55c4495b718fa4fddcd/docs/implementation-plans/2026-08-03-git-commit-attribution-spec-implementation-plan.md)
+  (both since removed from the tree; the links are commit permalinks):
   the TypeScript validator, hook dispatcher, install/postStart scripts, and CI
   landed in `mode warn`. Added `test/test-codex-sandbox.sh`, the in-container
   probe that resolves the Codex-sandbox open question. `hube/agent-skills#9`
