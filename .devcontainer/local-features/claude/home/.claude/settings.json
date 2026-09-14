@@ -16,6 +16,7 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "switchModelsOnFlag": false,
   "remoteControlAtStartup": true,
   "skipAutoPermissionPrompt": true,
   "statusLine": {
