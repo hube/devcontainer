@@ -81,6 +81,20 @@ The [shared rigor discipline](https://github.com/hube/claude-home/blob/main/inst
 governs calibration. Stronger protection, audit, or verification machinery needs
 an explicit owner requirement rather than accumulation through review findings.
 
+### Mechanisms to Explore
+
+These candidates support the declared outcomes without raising provisional
+levels. Their suitability depends on the delegated feasibility check and the
+later design; they are not implementation commitments.
+
+| Outcome | Candidate mechanism | Rigor limit |
+| --- | --- | --- |
+| Autonomous execution and recovery | A canonical failure-classification and recovery branch uses supported automatic approval, checks partial effects, and bounds retries. | Concise agent guidance and existing runtime approval facilities; no custom broker or crash-preservation protocol. |
+| Working-tree isolation and shared-state protection | Reuse existing worktree creation and ownership rules, with focused checks on shared-state mutations. | Uncommitted agent content remains re-doable; registration and history protection may use mechanical verification without a new ownership registry. |
+| Evidence and handoff | Use existing commits, push-as-you-go, and a concise diagnostic handoff for terminal failures. | Actionable evidence for resumption; no per-command journal or independently reconstructable audit service. |
+| Configuration adoption | Inspect effective settings and apply only necessary, explicit changes through the feature's adoption path. | Preserve user configuration and persistent state; no replacement of the full configuration tree. |
+| Acceptance verification | Add representative desktop/delegate scenarios to delivery checks and demonstrate that each check exercises its target. | Verify the supported integration when it changes; no independent verifier on every agent task. |
+
 ## Capabilities
 
 ### New Capabilities
