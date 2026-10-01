@@ -48,6 +48,26 @@ additional Codex client support, and eliminating all upstream sandbox defects
 are outside the initial scope. Validator liveness and alias lifecycle remain
 independent work unless they block the supported workflow.
 
+## Rigor Levels
+
+These levels cap the machinery needed for this delivery. Settled scope choices
+are owner inputs; proposed tolerances require ratification before a mechanism
+exists solely to serve them. Existing data-integrity and ownership protections
+remain binding regardless of provisional levels.
+
+| Area | Required outcome and limit | Status |
+| --- | --- | --- |
+| Routine execution | Authorized desktop remote agents and delegates can use supported automatic approval and recovery without routine owner prompts. Non-elevated execution and private Git administration are not required outcomes. | Decided (owner, 2026-10-01, in session) |
+| Primary-work integrity | Protect human-authored work, committed outputs, other sessions' worktree registrations and ownership, and shared history against unauthorized changes. Approval is not permission to use another session's workspace or bypass ownership refusals. Adversarial containment of an approved command is not an added guarantee. | Governing protection floor; citing the shared instruction corpus |
+| Failure recovery | Re-doable: the agent's disposable partial work may be discarded and rerun without damaging protected state. Inspect side effects before retrying; recovery is bounded and respects rejected approvals. Crash-proof preservation of all in-progress work is not required. | provisional (author-proposed) |
+| Evidence and handoff | Record enough verified context to diagnose a terminal failure and resume the task. Per-command durable journals and independently reconstructable audit trails are not required. | provisional (author-proposed) |
+| Acceptance verification | Mechanically check representative delegated operations, concurrent work, and configuration adoption when delivering or changing the supported integration. Checks demonstrate their target was exercised. Independent verification on every task and a new standing process-enforcement service are not required. | provisional (author-proposed) |
+| Compatibility and adoption | Cover fresh and existing devcontainers for desktop remote sessions and delegates, preserving persistent user state. Standalone CLI is a diagnostic baseline; other clients and universal upstream-defect elimination are outside this delivery. | Decided (owner, 2026-10-01, in session) |
+
+The [shared rigor discipline](https://github.com/hube/claude-home/blob/main/instructions/rigor-levels.md)
+governs calibration. Stronger protection, audit, or verification machinery needs
+an explicit owner requirement rather than accumulation through review findings.
+
 ## Capabilities
 
 ### New Capabilities
@@ -87,5 +107,5 @@ independent closure criteria.
 Harness: Codex
 Harness-Version: 0.159.3
 Model: GPT-6
-Skills: superpowers:using-superpowers, superpowers:systematic-debugging, openai-docs, superpowers:brainstorming, openspec-explore
+Skills: superpowers:using-superpowers, superpowers:systematic-debugging, openai-docs, superpowers:brainstorming, openspec-explore, superpowers:receiving-code-review
 ```
