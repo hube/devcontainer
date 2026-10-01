@@ -1,15 +1,13 @@
 # Proposal
 
-Author - 01a0f4e9
-
 ## Why
 
 Codex agents performing ordinary development work in this devcontainer encounter
 sandbox denials that interrupt Git setup, SSH operations, and Node tooling;
 blanket permission-failure stop conditions prevent supported automatic recovery.
 Enable desktop remote agents and their delegates to complete routine authorized
-work with minimal human intervention while protecting human work, committed
-outputs, and other sessions' worktree ownership.
+work with minimal human intervention while protecting committed outputs,
+persistent user state, and shared repository state.
 
 ## What Changes
 
@@ -51,14 +49,29 @@ independent work unless they block the supported workflow.
 ## Rigor Levels
 
 These levels cap the machinery needed for this delivery. Settled scope choices
-are owner inputs; proposed tolerances require ratification before a mechanism
-exists solely to serve them. Existing data-integrity and ownership protections
-remain binding regardless of provisional levels.
+are owner inputs. Provisional tolerances guide mechanism exploration without
+ratifying the levels or authorizing implementation. Existing data-integrity and
+ownership protections remain binding regardless of provisional levels.
+
+Humans use separate workspaces and repositories from those mounted in this
+devcontainer; no human-authored work is present in its checkouts. Decided
+(owner, 2026-10-01: [environment scope](https://github.com/hube/devcontainer/pull/80#discussion_r4160936197)).
+The [worktree isolation design](https://github.com/hube/claude-home/blob/main/docs/designs/2026-08-25-worktree-isolation-design.md#rigor-levels)
+separates re-doable agent working-tree contents from protected shared repository
+state. That classification depends on separate human clones and push-as-you-go
+with immediate escalation of push failures; if either prerequisite fails, the
+working-tree protection level reverts to the stronger integrity floor.
+
+Recovery, evidence, and acceptance-verification tolerances remain provisional
+while their supporting mechanisms are explored. Decided (owner, 2026-10-01:
+[calibration direction](https://github.com/hube/devcontainer/pull/80#issuecomment-5941606889)).
 
 | Area | Required outcome and limit | Status |
 | --- | --- | --- |
 | Routine execution | Authorized desktop remote agents and delegates can use supported automatic approval and recovery without routine owner prompts. Non-elevated execution and private Git administration are not required outcomes. | Decided (owner, 2026-10-01, in session) |
-| Primary-work integrity | Protect human-authored work, committed outputs, other sessions' worktree registrations and ownership, and shared history against unauthorized changes. Approval is not permission to use another session's workspace or bypass ownership refusals. Adversarial containment of an approved command is not an added guarantee. | Governing protection floor; citing the shared instruction corpus |
+| Working-tree isolation | Agent uncommitted work is re-doable at the cost of rework. Machinery is capped at concise prose and checks piggybacked on existing events. Approval does not authorize using another session's worktree or a primary checkout. | Inherited owner decision; [worktree design](https://github.com/hube/claude-home/blob/main/docs/designs/2026-08-25-worktree-isolation-design.md#rigor-levels) |
+| Shared repository state | Protect committed outputs, persistent user state, other sessions' worktree registrations and ownership records, and shared history. Never remove, repoint, or rewrite shared state the agent did not create. Mechanical verification is authorized; adversarial containment of an approved command is not an added guarantee. | Governing protection floor; [worktree design](https://github.com/hube/claude-home/blob/main/docs/designs/2026-08-25-worktree-isolation-design.md#rigor-levels) |
+| Ownership and audit records | Worktree-purpose reconstruction is a cost of owner effort. Concise prose is sufficient; no standing ownership contract is required. Existing ownership records remain protected as shared state. | Inherited owner decision; [worktree design](https://github.com/hube/claude-home/blob/main/docs/designs/2026-08-25-worktree-isolation-design.md#rigor-levels) |
 | Failure recovery | Re-doable: the agent's disposable partial work may be discarded and rerun without damaging protected state. Inspect side effects before retrying; recovery is bounded and respects rejected approvals. Crash-proof preservation of all in-progress work is not required. | provisional (author-proposed) |
 | Evidence and handoff | Record enough verified context to diagnose a terminal failure and resume the task. Per-command durable journals and independently reconstructable audit trails are not required. | provisional (author-proposed) |
 | Acceptance verification | Mechanically check representative delegated operations, concurrent work, and configuration adoption when delivering or changing the supported integration. Checks demonstrate their target was exercised. Independent verification on every task and a new standing process-enforcement service are not required. | provisional (author-proposed) |
@@ -102,10 +115,3 @@ non-elevated compatibility defects remain separately assessable.
 [Validator issue #67](https://github.com/hube/devcontainer/issues/67) and
 [alias issue #77](https://github.com/hube/devcontainer/issues/77) retain
 independent closure criteria.
-
-```text
-Harness: Codex
-Harness-Version: 0.159.3
-Model: GPT-6
-Skills: superpowers:using-superpowers, superpowers:systematic-debugging, openai-docs, superpowers:brainstorming, openspec-explore, superpowers:receiving-code-review
-```
