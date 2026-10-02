@@ -8,7 +8,7 @@ increment delivers every requirement.
 
 ## 1. Deliver autonomous isolated task startup
 
-- [ ] 1.1 Establish delegated feasibility on the supported desktop remote
+- [x] 1.1 Establish delegated feasibility on the supported desktop remote
   integration using a disposable task repository: observe an eligible setup
   sandbox denial, delegated automatic approval, successful branch/worktree
   creation, and a subsequent action in that worktree without an owner prompt.
