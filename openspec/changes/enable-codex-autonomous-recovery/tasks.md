@@ -1,5 +1,3 @@
-Author - 01a0f4e9
-
 # Tasks
 
 Each numbered group is a functional delivery with its own activation,
@@ -95,10 +93,3 @@ increment delivers every requirement.
   concurrent sessions using distinct branches/worktrees. Verify effective policy,
   state preservation, and exercised approval controls; reconcile related issue
   criteria before making any issue-completion claim.
-
-```text
-Harness: Codex
-Harness-Version: 0.159.3
-Model: GPT-6
-Skills: openspec-propose
-```

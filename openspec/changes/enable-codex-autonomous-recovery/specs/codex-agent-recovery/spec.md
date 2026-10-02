@@ -1,5 +1,3 @@
-Author - 01a0f4e9
-
 # Spec Delta
 
 ## Purpose
@@ -106,10 +104,3 @@ work SHALL remain re-doable; a per-command durable journal is not required.
 - **THEN** the agent identifies the owning integration or upstream dependency,
   preserves an actionable handoff, and does not substitute manual elevation or
   blanket full access as proof of autonomous completion
-
-```text
-Harness: Codex
-Harness-Version: 0.159.3
-Model: GPT-6
-Skills: openspec-propose
-```

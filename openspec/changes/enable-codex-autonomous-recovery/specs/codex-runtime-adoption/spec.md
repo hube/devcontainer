@@ -1,5 +1,3 @@
-Author - 01a0f4e9
-
 # Spec Delta
 
 ## Purpose
@@ -59,10 +57,3 @@ proposal's environment prerequisites.
 - **WHEN** concurrent supported sessions establish separate task workspaces
 - **THEN** each continues in its own branch and worktree without removing,
   repointing, or rewriting the other session's registered state
-
-```text
-Harness: Codex
-Harness-Version: 0.159.3
-Model: GPT-6
-Skills: openspec-propose
-```
