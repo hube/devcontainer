@@ -15,7 +15,7 @@ increment delivers every requirement.
   Verify the denial and approval paths actually ran. If unavailable, capture the
   owning integration dependency and revise the minimum integration remedy before
   continuing; a manual elevation or standalone CLI result is not acceptance.
-- [ ] 1.2 In hube/claude-home, introduce one canonical failure-classification and
+- [x] 1.2 In hube/claude-home, introduce one canonical failure-classification and
   Codex recovery procedure and reconcile the worktree and orchestration stop
   conditions that bind during setup. Verify an eligible denial reaches supported
   approval, a safe success does not escalate, and rejected approval, ownership
