@@ -61,8 +61,11 @@ Codex reads its always-on guidance from `~/.codex/AGENTS.md`, which this Feature
 mounts from the host's `~/.claude/CLAUDE.md` — a single shared file under two
 names, separate from the `~/.agents/instructions` directory mount described
 below. Bulk references that file points at are read from
-`~/.agents/instructions`, which holds three files: `rigor-levels.md`,
-`review-dispatch-scope.md`, and `reader-proxy-review-dispatch.md`.
+`~/.agents/instructions`. The host must supply the canonical shared instruction
+corpus from [hube/claude-home](https://github.com/hube/claude-home), including
+`setup-recovery.md` and the worktree and orchestration consumers that reference
+it. Updating a separate clone inside the container does not update a host bind
+source.
 
 This Feature owns only the container **target** path. The mount itself is
 **consumer-declared**: you choose the host directory it reads from. Copy this
@@ -72,7 +75,7 @@ the container, not per Feature — with `source` set to that directory:
 ```json
 {
   "type": "bind,readonly",
-  "source": "${localEnv:HOME}/agent-instructions",
+  "source": "${localEnv:HOME}/.claude/instructions",
   "target": "/home/${localEnv:USERNAME:devcontainer}/.agents/instructions"
 }
 ```
@@ -98,6 +101,148 @@ ls -ld ~/.agents/instructions && ls ~/.agents/instructions
 
 If you never declare the mount, the container still starts. Codex loads
 `AGENTS.md` normally, and only the referenced bulk detail is unavailable.
+
+## Activate autonomous task startup
+
+Startup recovery lets a desktop remote agent or delegate establish an isolated
+branch and linked worktree after an eligible sandbox denial using Codex's
+supported automatic approval review. The shared instructions classify the
+failure; the running session's policy controls whether approval is available.
+This configuration covers isolated task startup. Fetch, task checks, signing,
+publication, and migration of incompatible persistent installations have separate
+acceptance requirements.
+
+The compatible subset is Docker Desktop in Linux-container mode with the
+Feature's existing runtime contract, a readable always-on guidance file and
+canonical bulk corpus, and an effective session policy exposing automatic review
+and the execution tool's supported escalation argument. Feature defaults select
+`approvals_reviewer = "auto_review"`; they do not prove the effective desktop or
+delegate policy. A managed or user policy that prevents automatic review needs
+an explicit policy decision before startup recovery can be enabled.
+
+The example bulk mount above uses the canonical host clone at `~/.claude`.
+For a new installation where that path does not exist, create its bind sources
+on the Docker Desktop host:
+
+```bash
+git clone git@github.com:hube/claude-home.git "$HOME/.claude"
+```
+
+Do not replace an existing directory to run that command. For an existing
+canonical clone, run the following on the host. Confirm that the remote names
+`hube/claude-home` and that status prints no changes before proceeding:
+
+```bash
+git -C "$HOME/.claude" remote get-url origin
+git -C "$HOME/.claude" status --short
+```
+
+Capture a rollback receipt before refreshing a clean clone:
+
+```bash
+guidance_receipt=$(mktemp "$HOME/codex-guidance-before.XXXXXX")
+git -C "$HOME/.claude" rev-parse HEAD > "$guidance_receipt"
+printf '%s\n' "$guidance_receipt"
+git -C "$HOME/.claude" pull --ff-only
+```
+
+Each command must succeed; the receipt must contain the previous commit SHA.
+Keep the printed receipt path. A dirty clone, a different remote, or a refused
+fast-forward needs its installation owner to resolve that condition; leave its
+files intact. A different consumer-selected mount source must already provide
+the same canonical corpus before following the container checks below.
+
+From the consuming project's directory on the host, recreate its container with
+the installed Dev Container CLI:
+
+```bash
+devcontainer up --workspace-folder "$PWD" --remove-existing-container
+```
+
+The command must exit successfully. It replaces the container, while the
+Feature's named Codex volume retains configuration, credentials and history.
+Check what the recreated container reads by running these commands inside it as
+its configured user:
+
+```bash
+cat ~/.codex/AGENTS.md
+cat ~/.agents/instructions/setup-recovery.md
+cat ~/.agents/instructions/worktree-isolation.md
+```
+
+All three reads must succeed. The always-on index must direct setup failures to
+`setup-recovery.md`, and the worktree instructions must reference that same
+recovery procedure. The recovery file must describe classification, inspection
+of task-owned partial effects, and the supported automatic approval path.
+
+Connect the desktop app to the recreated container using the SSH port published
+in the remote-control section. Add a concrete alias to the host machine's
+`~/.ssh/config`, substituting the configured container user if it differs:
+
+```sshconfig
+Host codex-container
+  HostName 127.0.0.1
+  Port 2222
+  User devcontainer
+```
+
+From that host, run `ssh codex-container 'command -v codex'`. It must authenticate
+and print the installed CLI path. In the desktop app, open **Settings >
+Connections > SSH**, enable that alias, and select the container's project
+folder. Start a new chat in that remote project, so it reads the refreshed
+always-on context. These connection controls follow the
+[official remote-connection guide](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host).
+Request a compatibility report from that chat covering its runtime-provided
+approval policy and execution tool, and the same values from a real delegate's
+own received context. The report must identify `auto_review` and the supported
+`require_escalated` argument in both contexts. Missing runtime policy or a
+missing escalation argument is a harness integration dependency, even when the
+config file has the right value. Maintainers establish startup availability with
+the [live startup acceptance](MAINTAINERS.md#verify-autonomous-task-startup);
+the input checks alone do not establish that outcome.
+
+If a read fails, preserve its stdout/stderr and inspect the mounts in the
+container:
+
+```bash
+findmnt -T ~/.codex/AGENTS.md
+findmnt -T ~/.agents/instructions
+```
+
+A missing bulk file means the host source does not supply the required corpus.
+Update that host source rather than a container clone. An always-on file that
+lists in the directory but fails to read can be a stale single-file bind after
+its host source was replaced. Restore the host source named by the mount and
+recreate the devcontainer through the consuming project's normal container
+lifecycle, then repeat the reads and open a fresh chat. Success means the files
+are readable through their configured mounts and the new session consumes them;
+a directory listing alone does not establish that.
+
+A terminal startup diagnostic needs the failed command and captured output,
+the effective parent/delegate policy, and the verified partial branch/worktree
+state from the task's working notes. These distinguish a sandbox denial from an
+approval rejection, ownership refusal, authorization failure, or ordinary
+command failure. Approval does not supply missing authorization or permit
+another task's worktree to be reused.
+
+To roll back a refresh, use the saved receipt path on the host. First confirm
+`git -C "$HOME/.claude" status --short` prints no changes; otherwise stop for the
+installation owner rather than overwriting edits. Replace the example receipt
+path below with the path printed before the refresh:
+
+```bash
+previous_guidance=$(cat /absolute/path/to/codex-guidance-before.XXXXXX)
+git -C "$HOME/.claude" restore --source "$previous_guidance" -- \
+  CLAUDE.md instructions
+```
+
+The restore must exit successfully and changes only the tracked guidance paths.
+Recreate the container and reconnect with a new remote chat using the same steps
+above, then repeat the guidance reads and compatibility report. The restored
+host files can appear modified relative to its current branch; keep them until
+the installation owner chooses the next guidance revision. Keep the persistent
+Codex volume, unrelated configuration, authentication, session history, and
+other tasks' worktrees intact.
 
 ## Creation and health failures
 

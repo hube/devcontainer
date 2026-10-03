@@ -8,20 +8,20 @@ increment delivers every requirement.
 
 ## 1. Deliver autonomous isolated task startup
 
-- [ ] 1.1 Establish delegated feasibility on the supported desktop remote
+- [x] 1.1 Establish delegated feasibility on the supported desktop remote
   integration using a disposable task repository: observe an eligible setup
   sandbox denial, delegated automatic approval, successful branch/worktree
   creation, and a subsequent action in that worktree without an owner prompt.
   Verify the denial and approval paths actually ran. If unavailable, capture the
   owning integration dependency and revise the minimum integration remedy before
   continuing; a manual elevation or standalone CLI result is not acceptance.
-- [ ] 1.2 In hube/claude-home, introduce one canonical failure-classification and
+- [x] 1.2 In hube/claude-home, introduce one canonical failure-classification and
   Codex recovery procedure and reconcile the worktree and orchestration stop
   conditions that bind during setup. Verify an eligible denial reaches supported
   approval, a safe success does not escalate, and rejected approval, ownership
   refusal, and ordinary command failure retain their separate outcomes. Run the
   instruction-authoring adherence and reader-proxy review owed by those edits.
-- [ ] 1.3 Supply any minimum integration wiring required by 1.1 in this repository;
+- [x] 1.3 Supply any minimum integration wiring required by 1.1 in this repository;
   reuse existing automatic review and guidance mounts where sufficient. Verify
   our configuration and inputs with focused tests that name their stubs, then
   verify effective parent/delegate policy in the supported remote session.

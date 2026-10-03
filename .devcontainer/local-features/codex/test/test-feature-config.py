@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Static contract checks for the local Codex Feature."""
 
+import copy
 import json
 import re
+import tomllib
 from pathlib import Path
 
 
@@ -11,6 +13,8 @@ FEATURE_DIR = ROOT / ".devcontainer/local-features/codex"
 MANIFEST_PATH = FEATURE_DIR / "devcontainer-feature.json"
 INSTALLER_PATH = FEATURE_DIR / "install.sh"
 RUNTIME_TEST_PATH = FEATURE_DIR / "test/test-runtime.sh"
+CONFIG_PATH = FEATURE_DIR / "home/.codex/config.toml"
+CONSUMER_PATH = ROOT / ".devcontainer/devcontainer.json"
 
 SECURITY_OPT = ["seccomp=unconfined", "apparmor=unconfined"]
 RUNTIME_CAPABILITY_CANDIDATES = (
@@ -405,6 +409,58 @@ def test_runtime_omission_contract_mutations() -> None:
     )
 
 
+def assert_recovery_inputs(config: dict, manifest: dict, consumer: dict) -> None:
+    """Check repository inputs only; no Codex, Docker, or host-mount stub."""
+    assert config.get("approvals_reviewer") == "auto_review", (
+        "feature default must select automatic review; effective policy needs a live probe"
+    )
+    home = "/home/${localEnv:USERNAME:devcontainer}"
+    mounts = manifest.get("mounts", [])
+    assert any(
+        mount.get("type") == "volume"
+        and mount.get("source") == "codex-code-config-${devcontainerId}"
+        and mount.get("target") == f"{home}/.codex"
+        for mount in mounts
+    ), "missing persistent Codex volume input"
+    assert any(
+        mount.get("type") == "bind"
+        and mount.get("source") == "${localEnv:HOME}/.claude/CLAUDE.md"
+        and mount.get("target") == f"{home}/.codex/AGENTS.md"
+        for mount in mounts
+    ), "missing shared always-on guidance mount input"
+    assert any(
+        mount.get("type") == "bind,readonly"
+        and mount.get("source")
+        and mount.get("target") == f"{home}/.agents/instructions"
+        for mount in consumer.get("mounts", [])
+    ), "missing read-only consumer bulk guidance mount input"
+
+
+def test_recovery_input_mutations(config: dict, manifest: dict, consumer: dict) -> None:
+    """Mutate actual feature/consumer inputs; runtime policy is not simulated."""
+    assert_recovery_inputs(config, manifest, consumer)
+    changed_config = dict(config, approvals_reviewer="user")
+    assert_rejects(
+        lambda value: assert_recovery_inputs(value, manifest, consumer), changed_config
+    )
+    for mount in manifest["mounts"]:
+        if mount["target"].endswith(("/.codex", "/.codex/AGENTS.md")):
+            changed = copy.deepcopy(manifest)
+            changed["mounts"].remove(mount)
+            assert_rejects(
+                lambda value: assert_recovery_inputs(config, value, consumer), changed
+            )
+    for field, value in (("type", "bind"), ("source", ""), ("target", "/wrong")):
+        changed = copy.deepcopy(consumer)
+        for mount in changed["mounts"]:
+            if mount["target"].endswith("/.agents/instructions"):
+                mount[field] = value
+        assert changed != consumer, "mutation did not change the consumer fixture"
+        assert_rejects(
+            lambda value: assert_recovery_inputs(config, manifest, value), changed
+        )
+
+
 def main() -> None:
     test_installer_rejects_uid_zero_container_user()
     test_installer_command_mutations()
@@ -419,6 +475,14 @@ def main() -> None:
     test_runtime_omission_contract_mutations()
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    config = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    # This consumer uses full-line JSONC comments; retain URLs and values intact.
+    consumer_source = "\n".join(
+        line for line in CONSUMER_PATH.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("//")
+    )
+    consumer = json.loads(consumer_source)
+    test_recovery_input_mutations(config, manifest, consumer)
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
     runtime_test = RUNTIME_TEST_PATH.read_text(encoding="utf-8")
 
