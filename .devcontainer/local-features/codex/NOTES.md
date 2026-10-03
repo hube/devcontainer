@@ -257,9 +257,9 @@ Activate the canonical corpus using the host refresh, container recreation and
 new-chat steps in "Activate autonomous task startup" above. The mounted
 `setup-recovery.md` must cover setup, fetch and required transport, and the
 always-on index must direct input-retrieval failures to it. A readable
-setup-only revision does not enable retrieval recovery. The parent and its real delegate
-must each expose `auto_review` and `require_escalated` in their own runtime
-context; this extension adds no broader permission default.
+setup-only revision does not enable retrieval recovery. The parent and its real
+delegate must each expose `auto_review` and `require_escalated` in their own
+runtime context; this extension adds no broader permission default.
 
 For SSH retrieval, the consuming image includes the SSH Feature's host-agent
 socket and known-hosts wiring. The desktop connection may supply a forwarded
@@ -287,8 +287,8 @@ configuration to work around that difference. If the approved diagnostic still
 fails, its captured output identifies the host/desktop integration to repair.
 
 The canonical procedure owns fetch destinations and bounded retries. Maintainers
-establish
-retrieval availability through the [live retrieval acceptance](MAINTAINERS.md#verify-autonomous-input-retrieval),
+establish retrieval availability through the
+[live retrieval acceptance](MAINTAINERS.md#verify-autonomous-input-retrieval),
 including regression of startup. To roll back retrieval guidance, use the saved
 receipt and rollback steps above, preserving the Codex volume and unrelated
 persistent state.
