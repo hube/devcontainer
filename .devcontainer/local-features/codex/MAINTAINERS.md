@@ -102,7 +102,9 @@ acceptance. A candidate file read from an implementation worktree is draft
 validation; it does not establish mounted activation.
 
 Authorize a read-only source repository that both seats may fetch over the
-configured SSH transport. Record its URL and source ref before the attempt. In
+configured SSH transport. Record its URL, source ref and required repository-relative file path before
+the attempt. Select an existing file that both seats must read to continue the
+authorized task. In
 the disposable acceptance repository, capture all existing refs, registrations,
 protected fixture bytes and any shared `FETCH_HEAD` before retrieval. Assign a
 fresh input destination ref to each seat so intentional additions can be
