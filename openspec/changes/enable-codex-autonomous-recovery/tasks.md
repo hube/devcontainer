@@ -28,7 +28,7 @@ increment delivers every requirement.
 - [x] 1.4 Document the compatible configuration subset, how existing compatible
   sessions activate the guidance, and terminal-failure diagnosis. Verify the
   activation steps as written and obtain the required reader-proxy review.
-- [ ] 1.5 Demonstrate consumed guidance and runtime together: parent and delegate
+- [x] 1.5 Demonstrate consumed guidance and runtime together: parent and delegate
   create separate task workspaces, recover eligible setup denials, inspect
   task-owned partial effects before retry, and continue work. Verify unrelated
   registrations, ownership records, and refs retain their intended state. Publish
