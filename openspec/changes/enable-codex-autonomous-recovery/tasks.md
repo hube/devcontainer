@@ -21,7 +21,7 @@ increment delivers every requirement.
   approval, a safe success does not escalate, and rejected approval, ownership
   refusal, and ordinary command failure retain their separate outcomes. Run the
   instruction-authoring adherence and reader-proxy review owed by those edits.
-- [ ] 1.3 Supply any minimum integration wiring required by 1.1 in this repository;
+- [x] 1.3 Supply any minimum integration wiring required by 1.1 in this repository;
   reuse existing automatic review and guidance mounts where sufficient. Verify
   our configuration and inputs with focused tests that name their stubs, then
   verify effective parent/delegate policy in the supported remote session.
