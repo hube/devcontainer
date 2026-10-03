@@ -34,6 +34,65 @@ been accepted; merging could publish an image whose Codex sandbox is unusable.
 Preserve the complete output, correct the reported build, Docker, cleanup, or
 sandbox failure, and rerun all three commands before merging.
 
+## Verify autonomous task startup
+
+This live acceptance exercises the desktop remote parent and a real delegate,
+using disposable Git state. It complements the repository-input checks; a
+standalone CLI probe does not establish desktop or delegated approval.
+
+Run the input checks from a task-linked worktree of this repository:
+
+```bash
+python3 .devcontainer/local-features/codex/test/test-feature-config.py
+bash .devcontainer/local-features/codex/test/test-documentation.sh
+```
+
+For live acceptance, connect a fresh desktop chat using the activation steps in
+`NOTES.md`. Authorize the parent to create a disposable bare repository and
+seed commit, a protected fixture worktree, and separate parent/delegate branches
+and linked worktrees. Choose a new acceptance directory outside both seats'
+effective writable roots that the configured container user can write when
+approved; use no production repository. Record that directory in working notes
+outside repositories. Include an ignored `.worktrees/` root in the fixture seed.
+The parent prepares the fixture through supported approval, then captures its
+refs and worktree registrations with these commands, substituting the bare
+repository path for `REPO`:
+
+```bash
+git --git-dir="$REPO" show-ref
+git --git-dir="$REPO" worktree list --porcelain
+```
+
+Give the delegate its own authorized branch/destination and the mounted recovery
+procedure's path. Each seat attempts `git worktree add` with its default policy,
+reads `~/.agents/instructions/setup-recovery.md` after failure, inspects the
+partial refs/registrations/destination, and follows that canonical procedure.
+The source branch and intended destination must be recorded before the attempt.
+Require each seat to read its own effective permissions and tool schema, rather
+than inheriting the parent's policy report. After setup, each performs a write
+and Git status in its own worktree, with separate supported approval if the
+continuation command also needs it. Record each command's actual status/output;
+seeded partial branches must be identified as fixtures rather than failed-attempt
+effects.
+
+Acceptance requires a real default sandbox denial and one successful supported
+automatic-review setup retry for each seat, subsequent actions in distinct
+worktrees, and readback of their written files. Compare the protected fixture's
+refs, registration and any ownership-record fixture against the captured
+baseline; intentional parent/delegate additions are the only allowed changes.
+Prove the preservation comparison rejects a deliberately changed baseline.
+Exercise safe setup and ordinary command failure separately; refused approval
+and ownership-refusal classification controls must retain their stop outcomes.
+Label hypothetical controls as hypothetical. A tool that supplies no independent
+reviewer-decision record cannot establish that provenance.
+
+Retain the raw outputs and final comparison in task working notes, and publish
+only verified outcomes on the review artifact. A passed input suite alone, a
+manually approved retry, or a setup without a captured denial is insufficient.
+Keep the disposable worktrees for diagnosis; removal requires the owner's
+specific direction. Startup availability also requires the activation procedure
+and its reader-proxy dispositions to be verified before the unit is complete.
+
 ## Publication
 
 Merging to `main` triggers
