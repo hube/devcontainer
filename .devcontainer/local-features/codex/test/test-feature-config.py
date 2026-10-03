@@ -496,6 +496,14 @@ def assert_retrieval_inputs(consumer: dict, ssh_manifest: dict, hook: str) -> No
             "The hook cannot receive the host trust input. "
             "Restore the host known_hosts bind at the hook's configured source path."
         )
+    if ssh_manifest.get("postStartCommand") != (
+        "~/bin/devcontainer-feature/ssh/postStartScript.sh"
+    ):
+        failures.append(
+            "SSH Feature does not invoke its configured startup hook. "
+            "The checked known-hosts copy would not run at container startup. "
+            "Restore postStartCommand for the SSH postStartScript.sh."
+        )
     if "cp ~/host-readonly/home/.ssh/known_hosts ~/.ssh/known_hosts" not in (
         executable_shell_lines(hook)
     ):
@@ -517,6 +525,12 @@ def test_retrieval_input_mutations(consumer: dict, manifest: dict, hook: str) ->
     )
     changed_manifest = copy.deepcopy(manifest)
     changed_manifest["containerEnv"]["SSH_AUTH_SOCK"] = "/wrong/socket"
+    assert changed_manifest != manifest
+    assert_rejects(
+        lambda value: assert_retrieval_inputs(consumer, value, hook), changed_manifest
+    )
+    changed_manifest = copy.deepcopy(manifest)
+    del changed_manifest["postStartCommand"]
     assert changed_manifest != manifest
     assert_rejects(
         lambda value: assert_retrieval_inputs(consumer, value, hook), changed_manifest
