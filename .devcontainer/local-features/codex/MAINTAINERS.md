@@ -93,6 +93,48 @@ Keep the disposable worktrees for diagnosis; removal requires the owner's
 specific direction. Startup availability also requires the activation procedure
 and its reader-proxy dispositions to be verified before the unit is complete.
 
+## Verify autonomous input retrieval
+
+Retrieval acceptance extends the live startup scenario above. First activate the
+retrieval-capable mounted corpus through `NOTES.md`, then rerun the repository
+input and documentation commands and the affected parent/delegate startup
+acceptance. A candidate file read from an implementation worktree is draft
+validation; it does not establish mounted activation.
+
+Authorize a read-only source repository that both seats may fetch over the
+configured SSH transport. Record its URL and source ref before the attempt. In
+the disposable acceptance repository, capture all existing refs, registrations,
+protected fixture bytes and any shared `FETCH_HEAD` before retrieval. Assign a
+fresh input destination ref to each seat so intentional additions can be
+identified. Each seat follows the mounted canonical recovery procedure from its
+own linked worktree, attempts the authorized fetch with default policy, and
+inspects partial effects before any supported retry. Record each actual command,
+exit status and captured output, plus the effective policy from that seat's own
+context. No transport, Codex or Git runtime is stubbed in this live scenario.
+
+Each seat must read the fetched object's intended file and perform a subsequent
+action in its own workspace. Compare the fetched source against the authorized
+remote ref, and re-read both continuation results. Compare every original ref,
+registration, protected fixture byte and shared fetch receipt against baseline;
+only the declared task-owned input refs and startup additions may differ. Prove
+the same preservation comparator rejects a deliberately changed baseline.
+
+Acceptance requires exercised default sandbox denial, bounded supported
+approval and successful authorized SSH retrieval for the parent and actual
+delegate. Distinguish a sandbox-restricted agent/configuration from an
+unreachable agent, an empty agent, rejected credentials and network failure;
+use isolated diagnostic controls without replacing real credentials or system
+SSH configuration. Label hypothetical authorization/rejected-approval cases
+explicitly and retain their stop outcomes. Exercise a safe successful case and
+an ordinary failed command without classifying either as a recovered denial.
+
+Retain evidence in the task's external working notes. Publish the verified
+supported subset, the activation and startup-regression results, and any
+remaining integration dependency. Input checks, a standalone CLI run, draft
+validation or an unobserved approval path alone do not establish retrieval
+availability. Reader-proxy review and its dispositions are required for changed
+operator guidance before this delivery is complete.
+
 ## Publication
 
 Merging to `main` triggers

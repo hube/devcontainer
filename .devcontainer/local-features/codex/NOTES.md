@@ -108,9 +108,10 @@ Startup recovery lets a desktop remote agent or delegate establish an isolated
 branch and linked worktree after an eligible sandbox denial using Codex's
 supported automatic approval review. The shared instructions classify the
 failure; the running session's policy controls whether approval is available.
-This configuration covers isolated task startup. Fetch, task checks, signing,
-publication, and migration of incompatible persistent installations have separate
-acceptance requirements.
+This configuration covers isolated task startup. Input retrieval also needs the
+canonical retrieval guidance described below. Task checks, signing, publication
+and migration of incompatible persistent installations have separate acceptance
+requirements.
 
 The compatible subset is Docker Desktop in Linux-container mode with the
 Feature's existing runtime contract, a readable always-on guidance file and
@@ -243,6 +244,54 @@ host files can appear modified relative to its current branch; keep them until
 the installation owner chooses the next guidance revision. Keep the persistent
 Codex volume, unrelated configuration, authentication, session history, and
 other tasks' worktrees intact.
+
+## Retrieve authorized task inputs
+
+Input retrieval uses the same automatic-review policy and shared guidance as
+startup recovery, together with credentials for the requested repository. The
+agent classifies a failed fetch or SSH transport operation, uses supported
+approval for an eligible sandbox denial, then continues with the obtained input.
+Approval cannot supply repository access or a missing host identity.
+
+Activate the canonical corpus using the host refresh, container recreation and
+new-chat steps in "Activate autonomous task startup" above. The mounted
+`setup-recovery.md` must cover setup, fetch and required transport, and the
+always-on index must direct input-retrieval failures to it. A readable
+setup-only revision does not enable retrieval recovery. The parent and its real delegate
+must each expose `auto_review` and `require_escalated` in their own runtime
+context; this extension adds no broader permission default.
+
+For SSH retrieval, the consuming image includes the SSH Feature's host-agent
+socket and known-hosts wiring. The desktop connection may supply a forwarded
+agent socket instead; inspect the running session rather than assuming that the
+Feature's socket path is effective. From the container, inspect the selected
+socket and its loaded public identities:
+
+```bash
+printf '%s\n' "$SSH_AUTH_SOCK"
+ssh-add -l
+```
+
+An unreachable agent prevents authentication; restore the reported socket's
+host/desktop forwarding. An agent with no identities needs an identity loaded
+on the host with `ssh-add`. A remote credential rejection needs access for that
+identity to the named repository. A DNS or connection failure outside the
+sandbox needs connectivity to the named host. Preserve the failed command's
+output in each case; repeated approval requests cannot repair those causes.
+
+A chat can see an SSH configuration ownership error or agent access denial that
+an ordinary container shell does not see. Request a diagnostic report comparing
+the captured failure, the chat's effective restrictions and supported approved
+transport diagnostics. Do not change system SSH ownership or replace SSH
+configuration to work around that difference. If the approved diagnostic still
+fails, its captured output identifies the host/desktop integration to repair.
+
+The canonical procedure owns fetch destinations and bounded retries. Maintainers
+establish
+retrieval availability through the [live retrieval acceptance](MAINTAINERS.md#verify-autonomous-input-retrieval),
+including regression of startup. To roll back retrieval guidance, use the saved
+receipt and rollback steps above, preserving the Codex volume and unrelated
+persistent state.
 
 ## Creation and health failures
 

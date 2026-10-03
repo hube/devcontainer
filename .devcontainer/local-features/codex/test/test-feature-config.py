@@ -461,6 +461,81 @@ def test_recovery_input_mutations(config: dict, manifest: dict, consumer: dict) 
         )
 
 
+def assert_retrieval_inputs(consumer: dict, ssh_manifest: dict, hook: str) -> None:
+    """Check our selected SSH wiring; no transport, agent, or Docker stub."""
+    failures: list[str] = []
+    if "./local-features/ssh" not in consumer.get("features", {}):
+        failures.append(
+            "Consumer omits its SSH transport Feature. "
+            "Input acceptance cannot establish host-agent wiring. "
+            "Restore ./local-features/ssh in the consumer features."
+        )
+    socket = ssh_manifest.get("containerEnv", {}).get("SSH_AUTH_SOCK")
+    if not socket or not any(
+        mount.get("type") == "bind"
+        and mount.get("source") == socket
+        and mount.get("target") == socket
+        for mount in ssh_manifest.get("mounts", [])
+    ):
+        failures.append(
+            "SSH_AUTH_SOCK does not name the declared host-agent socket mount. "
+            "SSH retrieval would select an unmounted socket. "
+            "Make containerEnv.SSH_AUTH_SOCK match the socket bind source and target."
+        )
+    known_hosts = (
+        "/home/${localEnv:USERNAME:devcontainer}/host-readonly/home/.ssh/known_hosts"
+    )
+    if not any(
+        mount.get("type") == "bind,readonly"
+        and mount.get("source") == "${localEnv:HOME}/.ssh/known_hosts"
+        and mount.get("target") == known_hosts
+        for mount in ssh_manifest.get("mounts", [])
+    ):
+        failures.append(
+            "SSH known-hosts input lacks its configured read-only mount. "
+            "The hook cannot receive the host trust input. "
+            "Restore the host known_hosts bind at the hook's configured source path."
+        )
+    if "cp ~/host-readonly/home/.ssh/known_hosts ~/.ssh/known_hosts" not in (
+        executable_shell_lines(hook)
+    ):
+        failures.append(
+            "SSH hook lacks the executable known-hosts copy. "
+            "A client without known_hosts cannot receive the configured host trust input. "
+            "Restore the copy from ~/host-readonly/home/.ssh/known_hosts."
+        )
+    assert not failures, "\n".join(failures)
+
+
+def test_retrieval_input_mutations(consumer: dict, manifest: dict, hook: str) -> None:
+    assert_retrieval_inputs(consumer, manifest, hook)
+    changed_consumer = copy.deepcopy(consumer)
+    del changed_consumer["features"]["./local-features/ssh"]
+    assert changed_consumer != consumer
+    assert_rejects(
+        lambda value: assert_retrieval_inputs(value, manifest, hook), changed_consumer
+    )
+    changed_manifest = copy.deepcopy(manifest)
+    changed_manifest["containerEnv"]["SSH_AUTH_SOCK"] = "/wrong/socket"
+    assert changed_manifest != manifest
+    assert_rejects(
+        lambda value: assert_retrieval_inputs(consumer, value, hook), changed_manifest
+    )
+    for mount in manifest["mounts"]:
+        changed_manifest = copy.deepcopy(manifest)
+        changed_manifest["mounts"].remove(mount)
+        assert changed_manifest != manifest
+        assert_rejects(
+            lambda value: assert_retrieval_inputs(consumer, value, hook), changed_manifest
+        )
+    copy_command = "cp ~/host-readonly/home/.ssh/known_hosts ~/.ssh/known_hosts"
+    changed_hook = hook.replace(copy_command, "# " + copy_command)
+    assert changed_hook != hook
+    assert_rejects(
+        lambda value: assert_retrieval_inputs(consumer, manifest, value), changed_hook
+    )
+
+
 def main() -> None:
     test_installer_rejects_uid_zero_container_user()
     test_installer_command_mutations()
@@ -483,6 +558,14 @@ def main() -> None:
     )
     consumer = json.loads(consumer_source)
     test_recovery_input_mutations(config, manifest, consumer)
+    ssh_dir = ROOT / ".devcontainer/local-features/ssh"
+    ssh_source = "\n".join(
+        line for line in (ssh_dir / "devcontainer-feature.json").read_text().splitlines()
+        if not line.lstrip().startswith("//")
+    )
+    ssh_manifest = json.loads(ssh_source)
+    ssh_hook = (ssh_dir / "bin/devcontainer-feature/ssh/postStartScript.sh").read_text()
+    test_retrieval_input_mutations(consumer, ssh_manifest, ssh_hook)
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
     runtime_test = RUNTIME_TEST_PATH.read_text(encoding="utf-8")
 
