@@ -25,7 +25,7 @@ increment delivers every requirement.
   reuse existing automatic review and guidance mounts where sufficient. Verify
   our configuration and inputs with focused tests that name their stubs, then
   verify effective parent/delegate policy in the supported remote session.
-- [ ] 1.4 Document the compatible configuration subset, how existing compatible
+- [x] 1.4 Document the compatible configuration subset, how existing compatible
   sessions activate the guidance, and terminal-failure diagnosis. Verify the
   activation steps as written and obtain the required reader-proxy review.
 - [ ] 1.5 Demonstrate consumed guidance and runtime together: parent and delegate
