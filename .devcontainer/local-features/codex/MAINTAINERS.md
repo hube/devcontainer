@@ -139,13 +139,15 @@ operator guidance before this delivery is complete.
 
 ## Verify autonomous task checks
 
-Extend the live startup and retrieval scenario with a Node-based check in each
-seat's own disposable linked worktree. Run the input and documentation commands
-above before live acceptance. Read the candidate canonical procedure for draft
-validation; completion requires the merged check-capable corpus to be mounted
-and consumed through the `NOTES.md` activation path by both the desktop parent
-and an actual delegate. Record each seat's own effective policy and tool
-schema.
+Extend the live startup and retrieval scenario with a representative tool or
+check in each seat's own disposable linked worktree. The concrete fixture below
+uses Node, supplied by this consumer's commit-attribution Feature dependency;
+the recovery procedure applies independently of the tool or programming
+language. Run the input and documentation commands above before live
+acceptance. Read the candidate canonical procedure for draft validation;
+completion requires the merged check-capable corpus to be mounted and consumed
+through the `NOTES.md` activation path by both the desktop parent and an actual
+delegate. Record each seat's own effective policy and tool schema.
 
 Authorize fixture preparation and its outputs before execution. Save this as
 `node-check.cjs` in each seat's own disposable linked worktree, using supported
