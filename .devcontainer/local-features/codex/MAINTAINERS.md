@@ -137,6 +137,94 @@ validation or an unobserved approval path alone do not establish retrieval
 availability. Reader-proxy review and its dispositions are required for changed
 operator guidance before this delivery is complete.
 
+## Verify autonomous task checks
+
+Extend the live startup and retrieval scenario with a representative tool or
+check in each seat's own disposable linked worktree. The concrete fixture below
+uses Node, supplied by this consumer's commit-attribution Feature dependency;
+the recovery procedure applies independently of the tool or programming
+language. Run the input and documentation commands above before live
+acceptance. Read the candidate canonical procedure for draft validation;
+completion requires the merged check-capable corpus to be mounted and consumed
+through the `NOTES.md` activation path by both the desktop parent and an actual
+delegate. Record each seat's own effective policy and tool schema.
+
+Authorize fixture preparation and its outputs before execution. Save this as
+`node-check.cjs` in each seat's own disposable linked worktree, using supported
+approval for preparation if needed:
+
+```javascript
+const { spawnSync } = require('node:child_process');
+const cases = {
+  good: ['node', ['-e', 'process.stdout.write("fixture child ran\\n")']],
+  broken: ['node', ['-e', 'process.exit(7)']],
+  missing: ['acceptance-missing-command', []],
+};
+const mode = process.argv[2];
+if (!Object.hasOwn(cases, mode)) {
+  throw new Error('Unknown fixture mode; no check selected; use good, broken or missing.');
+}
+const [command, args] = cases[mode];
+const result = spawnSync(command, args, { encoding: 'utf8' });
+console.log(JSON.stringify({
+  mode, command, args, node: process.version,
+  status: result.status, signal: result.signal,
+  error: result.error ? { code: result.error.code, message: result.error.message } : null,
+  stdout: result.stdout ?? null, stderr: result.stderr ?? null,
+}));
+process.exitCode = result.error ? 1 : (result.status ?? 1);
+```
+
+From that same worktree, run `node node-check.cjs good` with default policy.
+Run `node node-check.cjs broken` and `node node-check.cjs missing` separately,
+retaining each invocation's exit status and complete output. The fixture
+retains attached errors instead of normalizing them away. Only an eligible
+sandbox denial reaches an approved retry of the identical invocation; an
+ordinary missing executable does not. After recovery, require the good
+invocation to complete successfully and the broken invocation to remain
+nonzero.
+
+Retain the complete Node child result (`status`, `signal`, `error`, `stdout`,
+`stderr`) and the invoking command's status/output. Classify the observed
+failure through the canonical procedure and inspect outputs before any
+supported approved retry. Keep an attached permission error even if the child
+supplies output or a status. Do not infer sandbox denial from a pending check
+or an ordinary test failure alone. No Node, OS utility or Codex runtime is
+stubbed by this live scenario.
+
+Each seat must exercise a real eligible denial, a bounded supported automatic
+approval retry and a completed successful check invocation. Keep independent
+reviewer-decision records for the operations; executor success alone cannot
+establish approval provenance. In this Codex integration, inspect reviewer
+rollout files under the effective Codex home's `sessions/` directory (the
+runtime's `CODEX_HOME`, or `~/.codex` when unset). Select the acceptance's
+records by matching its authorized command and fixture path in the reviewer
+user message's `Planned action JSON:`. Pair that action with the subsequent
+reviewer assistant JSON decision containing `outcome`; retain the source file,
+action and decision outside repositories. Executor tool-output records are not
+reviewer decisions. If the harness does not expose these independent reviewer
+records, report that integration dependency and leave approval provenance
+unverified. The deliberately broken check must remain a failure through
+approval, and a missing executable must retain its ordinary failure
+classification. Record hypothetical rejection/authorization controls as
+hypothetical. Then perform and re-read an authorized continuation in each
+seat's own worktree.
+
+Rerun the earlier startup and SSH-retrieval acceptance in both seats against
+the same mounted corpus. Compare every original ref, registration, protected
+file, shared fetch receipt and retained output against baseline, allowing only
+the declared task additions. Prove the preservation comparator rejects changed
+baseline entries. Retain commands, raw outputs and comparisons outside
+repositories; publish verified supported-subset and activation results together
+with remaining dependencies. A standalone CLI probe, input suite or candidate
+worktree read does not establish desktop/delegate availability. Changed
+operator guidance requires reader-proxy review before this delivery is
+complete. If no reviewer is designated, request an owner-designated reviewer in
+an owner-addressed comment on the open PR. Follow
+`~/.agents/instructions/review-protocol.md` ("Reader-proxy: operational half")
+to obtain the relayed report and discharge each finding; the author does not
+dispatch a reviewer of their own work.
+
 ## Publication
 
 Merging to `main` triggers
