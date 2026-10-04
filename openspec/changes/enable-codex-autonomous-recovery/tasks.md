@@ -36,14 +36,14 @@ increment delivers every requirement.
 
 ## 2. Deliver autonomous retrieval of task inputs
 
-- [ ] 2.1 Extend the canonical recovery contract to authorized fetch and the
+- [x] 2.1 Extend the canonical recovery contract to authorized fetch and the
   transport required by the selected supported path. Verify sandbox denial is
   recoverable while credential, network, and genuine authorization failures are
   diagnosed as their own causes; do not duplicate the recovery procedure.
-- [ ] 2.2 Add any required fetch/transport wiring, focused input tests, and
+- [x] 2.2 Add any required fetch/transport wiring, focused input tests, and
   operator diagnosis to this repository. Verify only our wiring in the test
   suite, name stubs, and demonstrate the actual transport in a live remote probe.
-- [ ] 2.3 Starting from the delivered isolated workspace, demonstrate a parent and
+- [x] 2.3 Starting from the delivered isolated workspace, demonstrate a parent and
   delegate obtain authorized inputs and continue without an owner prompt. Verify
   shared-state preservation and rerun the startup acceptance affected by this
   change before publishing the retrieval outcome.
