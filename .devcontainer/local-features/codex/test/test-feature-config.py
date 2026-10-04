@@ -592,6 +592,83 @@ def test_task_check_input_mutations(consumer: dict, node_provider: dict) -> None
         raise AssertionError("combined missing-input mutation was accepted")
 
 
+def assert_publication_inputs(consumer: dict, github_manifest: dict) -> None:
+    """Check our CLI/auth wiring; no GitHub, SSH, credentials or Docker stub."""
+    failures: list[str] = []
+    if "./local-features/github-cli-config" not in consumer.get("features", {}):
+        failures.append(
+            "Consumer omits its GitHub CLI configuration Feature. "
+            "Processes without remoteEnv cannot receive the configured authentication. "
+            "Restore ./local-features/github-cli-config in the consumer features."
+        )
+    if "ghcr.io/devcontainers/features/github-cli:1" not in github_manifest.get(
+        "dependsOn", {}
+    ):
+        failures.append(
+            "GitHub CLI configuration Feature omits its executable dependency. "
+            "Its authentication hook cannot rely on an installed CLI. "
+            "Restore the github-cli dependsOn entry."
+        )
+    target = "/home/${localEnv:USERNAME:devcontainer}/.config/gh"
+    if not any(
+        mount.get("type") == "volume"
+        and mount.get("source") == "github-cli-config-${devcontainerId}"
+        and mount.get("target") == target
+        for mount in github_manifest.get("mounts", [])
+    ):
+        failures.append(
+            "GitHub CLI configuration lacks its selected persistent volume. "
+            "Stored authentication would not use the declared persistent target. "
+            "Restore the github-cli-config volume at the configured gh home."
+        )
+    if github_manifest.get("postStartCommand") != (
+        "~/bin/devcontainer-feature/github-cli-config/postStartScript.sh"
+    ):
+        failures.append(
+            "GitHub CLI configuration does not invoke its authentication hook. "
+            "The configured token bootstrap would not run at startup. "
+            "Restore the github-cli-config postStartCommand."
+        )
+    assert not failures, "\n".join(failures)
+
+
+def test_publication_input_mutations(consumer: dict, manifest: dict) -> None:
+    assert_publication_inputs(consumer, manifest)
+    changed_consumer = copy.deepcopy(consumer)
+    del changed_consumer["features"]["./local-features/github-cli-config"]
+    assert changed_consumer != consumer
+    assert_rejects(
+        lambda value: assert_publication_inputs(value, manifest), changed_consumer
+    )
+    for field in ("dependsOn", "mounts", "postStartCommand"):
+        changed_manifest = copy.deepcopy(manifest)
+        del changed_manifest[field]
+        assert changed_manifest != manifest
+        assert_rejects(
+            lambda value: assert_publication_inputs(consumer, value), changed_manifest
+        )
+    for field, value in (("type", "bind"), ("source", "wrong"), ("target", "/wrong")):
+        changed_manifest = copy.deepcopy(manifest)
+        changed_manifest["mounts"][0][field] = value
+        assert changed_manifest != manifest
+        assert_rejects(
+            lambda value: assert_publication_inputs(consumer, value), changed_manifest
+        )
+    changed_manifest = {}
+    try:
+        assert_publication_inputs(changed_consumer, changed_manifest)
+    except AssertionError as error:
+        for problem in (
+            "Consumer omits",
+            "executable dependency",
+            "persistent volume",
+            "authentication hook",
+        ):
+            assert problem in str(error), problem
+    else:
+        raise AssertionError("combined missing publication inputs were accepted")
+
+
 def main() -> None:
     test_installer_rejects_uid_zero_container_user()
     test_installer_command_mutations()
@@ -630,6 +707,11 @@ def main() -> None:
         if not line.lstrip().startswith("//")
     )
     test_task_check_input_mutations(consumer, json.loads(provider_source))
+    github_manifest = json.loads(
+        (ROOT / ".devcontainer/local-features/github-cli-config/devcontainer-feature.json")
+        .read_text(encoding="utf-8")
+    )
+    test_publication_input_mutations(consumer, github_manifest)
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
     runtime_test = RUNTIME_TEST_PATH.read_text(encoding="utf-8")
 
