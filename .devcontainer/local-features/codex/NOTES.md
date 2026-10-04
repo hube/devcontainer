@@ -109,9 +109,10 @@ branch and linked worktree after an eligible sandbox denial using Codex's
 supported automatic approval review. The shared instructions classify the
 failure; the running session's policy controls whether approval is available.
 This configuration covers isolated task startup. Input retrieval also needs the
-canonical retrieval guidance described below. Task checks, signing, publication
-and migration of incompatible persistent installations have separate acceptance
-requirements.
+canonical retrieval guidance described below. Node tooling and task checks need
+the check-capable guidance described in "Run authorized task checks". Signing,
+publication and migration of incompatible persistent installations have separate
+acceptance requirements.
 
 The compatible subset is Docker Desktop in Linux-container mode with the
 Feature's existing runtime contract, a readable always-on guidance file and
@@ -292,6 +293,38 @@ establish retrieval availability through the
 including regression of startup. To roll back retrieval guidance, use the saved
 receipt and rollback steps above, preserving the Codex volume and unrelated
 persistent state.
+
+## Run authorized task checks
+
+Task-check recovery lets the agent run authorized Node tooling and project
+checks through automatic approval after an eligible sandbox denial. It uses the
+same session policy and canonical recovery procedure as startup and retrieval.
+Approval permits an operation; it does not repair a missing dependency or turn
+an ordinary failing test into a passing one.
+
+Use the host refresh, container recreation and new-chat activation above. The
+mounted `setup-recovery.md` and always-on index must cover task checks as well as
+setup and retrieval. Confirm both the parent and a real delegate expose the
+supported approval path in their own runtime context. This repository's consumer
+includes Node through the commit-attribution Feature's declared dependency;
+other consumers must provide the interpreter and dependencies their task needs.
+This extension adds no broader permission or runtime-security default.
+
+A Node subprocess can return output and an exit status alongside a permission
+error. Request a diagnostic report retaining the complete command result and
+comparing the default invocation with an eligible supported approved invocation.
+A diagnostic child succeeding does not prove the project check succeeded. A
+missing executable or dependency needs the named project prerequisite restored;
+a failing assertion needs the reported project defect corrected. A pending or
+interrupted check needs diagnosis and a completed run before it supplies a
+result. Preserve the captured output when requesting help.
+
+Maintainers establish the supported subset with
+[live task-check acceptance](MAINTAINERS.md#verify-autonomous-task-checks),
+including startup and retrieval regression in both seats. Input checks and draft
+guidance alone do not establish consumed availability. To roll back guidance,
+use the saved host receipt and rollback steps above, preserving the Codex volume,
+credentials, history and unrelated task state.
 
 ## Creation and health failures
 

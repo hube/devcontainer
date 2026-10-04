@@ -550,6 +550,48 @@ def test_retrieval_input_mutations(consumer: dict, manifest: dict, hook: str) ->
     )
 
 
+def assert_task_check_inputs(consumer: dict, node_provider: dict) -> None:
+    """Check this consumer's interpreter dependency; no Node or Docker stub."""
+    failures: list[str] = []
+    if "./local-features/git-commit-attribution" not in consumer.get("features", {}):
+        failures.append(
+            "Consumer omits the Feature supplying its declared Node dependency. "
+            "Task-check input acceptance cannot establish an interpreter provider. "
+            "Restore ./local-features/git-commit-attribution or revise the checked provider."
+        )
+    if "ghcr.io/devcontainers/features/node:2" not in node_provider.get("dependsOn", {}):
+        failures.append(
+            "The selected interpreter provider omits its Node dependency. "
+            "Node task checks cannot rely on this consumer's dependency graph. "
+            "Restore the Node dependsOn entry in git-commit-attribution."
+        )
+    assert not failures, "\n".join(failures)
+
+
+def test_task_check_input_mutations(consumer: dict, node_provider: dict) -> None:
+    assert_task_check_inputs(consumer, node_provider)
+    changed_consumer = copy.deepcopy(consumer)
+    del changed_consumer["features"]["./local-features/git-commit-attribution"]
+    assert changed_consumer != consumer
+    assert_rejects(
+        lambda value: assert_task_check_inputs(value, node_provider), changed_consumer
+    )
+    changed_provider = copy.deepcopy(node_provider)
+    del changed_provider["dependsOn"]["ghcr.io/devcontainers/features/node:2"]
+    assert changed_provider != node_provider
+    assert_rejects(
+        lambda value: assert_task_check_inputs(consumer, value), changed_provider
+    )
+    try:
+        assert_task_check_inputs(changed_consumer, changed_provider)
+    except AssertionError as error:
+        assert "Consumer omits" in str(error) and "provider omits" in str(error), (
+            "input validation must report both missing interpreter inputs"
+        )
+    else:
+        raise AssertionError("combined missing-input mutation was accepted")
+
+
 def main() -> None:
     test_installer_rejects_uid_zero_container_user()
     test_installer_command_mutations()
@@ -580,6 +622,14 @@ def main() -> None:
     ssh_manifest = json.loads(ssh_source)
     ssh_hook = (ssh_dir / "bin/devcontainer-feature/ssh/postStartScript.sh").read_text()
     test_retrieval_input_mutations(consumer, ssh_manifest, ssh_hook)
+    provider_path = (
+        ROOT / ".devcontainer/local-features/git-commit-attribution/devcontainer-feature.json"
+    )
+    provider_source = "\n".join(
+        line for line in provider_path.read_text().splitlines()
+        if not line.lstrip().startswith("//")
+    )
+    test_task_check_input_mutations(consumer, json.loads(provider_source))
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
     runtime_test = RUNTIME_TEST_PATH.read_text(encoding="utf-8")
 

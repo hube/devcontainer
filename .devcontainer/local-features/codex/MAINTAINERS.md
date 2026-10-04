@@ -137,6 +137,45 @@ validation or an unobserved approval path alone do not establish retrieval
 availability. Reader-proxy review and its dispositions are required for changed
 operator guidance before this delivery is complete.
 
+## Verify autonomous task checks
+
+Extend the live startup and retrieval scenario with a Node-based check in each
+seat's own disposable linked worktree. Run the input and documentation commands
+above before live acceptance. Read the candidate canonical procedure for draft
+validation; completion requires the merged check-capable corpus to be mounted
+and consumed through the `NOTES.md` activation path by both the desktop parent
+and an actual delegate. Record each seat's own effective policy and tool schema.
+
+Authorize the fixture check and its outputs before execution. Include a child
+that succeeds, a child that deliberately returns a nonzero status, and a missing
+executable control. Retain the complete Node child result (`status`, `signal`,
+`error`, `stdout`, `stderr`) and the invoking command's status/output. Attempt the
+check with default policy, classify the observed failure through the canonical
+procedure, and inspect outputs before any supported approved retry. Keep an
+attached permission error even if the child supplies output or a status. Do not
+infer sandbox denial from a pending check or an ordinary test failure alone.
+No Node, OS utility or Codex runtime is stubbed by this live scenario.
+
+Each seat must exercise a real eligible denial, a bounded supported automatic
+approval retry and a completed successful check invocation. Keep independent
+reviewer-decision records for the operations; executor success alone cannot
+establish approval provenance. The deliberately broken check must remain a
+failure through approval, and a missing executable must retain its ordinary
+failure classification. Record hypothetical rejection/authorization controls
+as hypothetical. Then perform and re-read an authorized continuation in each
+seat's own worktree.
+
+Rerun the earlier startup and SSH-retrieval acceptance in both seats against the
+same mounted corpus. Compare every original ref, registration, protected file,
+shared fetch receipt and retained output against baseline, allowing only the
+declared task additions. Prove the preservation comparator rejects changed
+baseline entries. Retain commands, raw outputs and comparisons outside
+repositories; publish verified supported-subset and activation results together
+with remaining dependencies. A standalone CLI probe, input suite or candidate
+worktree read does not establish desktop/delegate availability. Changed operator
+guidance requires the designated reviewer's reader-proxy review and dispositions
+before this delivery is complete.
+
 ## Publication
 
 Merging to `main` triggers
