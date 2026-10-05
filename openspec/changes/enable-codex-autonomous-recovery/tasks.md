@@ -71,7 +71,7 @@ increment delivers every requirement.
 - [x] 4.2 Add required wiring, focused tests, and publication/diagnosis guidance.
   Verify our signing/publication inputs with named stubs and demonstrate the real
   integration using disposable task work and an authorized test destination.
-- [ ] 4.3 Demonstrate the full task flow through an attributed signed commit,
+- [x] 4.3 Demonstrate the full task flow through an attributed signed commit,
   successful push, and the intended review artifact without routine owner
   intervention. Verify the commit signature and published artifact by readback,
   and rerun earlier acceptance affected by the publication changes.
