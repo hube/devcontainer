@@ -64,11 +64,11 @@ increment delivers every requirement.
 
 ## 4. Deliver autonomous publication of reviewable output
 
-- [ ] 4.1 Extend recovery for SSH signing and authorized Git/GitHub publication,
+- [x] 4.1 Extend recovery for SSH signing and authorized Git/GitHub publication,
   retaining the existing signing, attribution, and owner-only merge rules. Verify
   a sandbox denial, missing signing identity, unreachable agent, and rejected
   destination authorization are distinguished with captured primary failures.
-- [ ] 4.2 Add required wiring, focused tests, and publication/diagnosis guidance.
+- [x] 4.2 Add required wiring, focused tests, and publication/diagnosis guidance.
   Verify our signing/publication inputs with named stubs and demonstrate the real
   integration using disposable task work and an authorized test destination.
 - [ ] 4.3 Demonstrate the full task flow through an attributed signed commit,
