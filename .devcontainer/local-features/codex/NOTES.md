@@ -325,6 +325,64 @@ do not establish consumed availability. To roll back guidance, use the saved
 host receipt and rollback steps above, preserving the Codex volume,
 credentials, history and unrelated task state.
 
+## Publish authorized task output
+
+Publication recovery lets a compatible desktop remote session use automatic
+review after a sandbox denial while creating a signed commit, pushing it to an
+authorized destination, or publishing its intended GitHub review artifact. The
+configured signing identity, repository access, attribution requirements and
+owner-only merge rule remain prerequisites. The process is to activate the
+publication-capable corpus, verify the session's policy and credentials, then
+have the authorized task verify its signature and published result by readback.
+
+Use the host refresh, container recreation and new-chat activation in
+"Activate autonomous task startup". The mounted recovery procedure must cover
+SSH signing and Git/GitHub publication, and each seat must expose automatic
+review and supported escalation in its own runtime context. This extension
+changes no permission default or persistent credential. Existing compatible
+sessions use their configured Git signing identity and forwarded SSH agent;
+this Feature does not configure a signing identity or grant repository access.
+
+Inspect the effective signing inputs inside the container:
+
+```bash
+git config --get gpg.format
+git config --get commit.gpgsign
+git config --get user.signingkey
+ssh-add -l
+```
+
+The supported signing path uses SSH format, enabled commit signing, and a valid
+configured public identity whose matching private identity is loaded in the
+selected host agent. Missing signing settings need the installation owner to
+restore that configuration. An unreachable agent needs its named forwarding
+restored; an agent without the required identity needs that identity loaded on
+the host. A sandbox-restricted diagnostic needs comparison through the supported
+approval path before it can establish an identity failure.
+
+The consumer supplies GitHub CLI and its persistent authentication volume
+through the GitHub CLI configuration Feature. Inspect authentication without
+printing a token:
+
+```bash
+gh auth status --hostname github.com
+```
+
+A rejected identity needs access to the requested repository and operation. An
+unresolved destination needs an authorization decision before publication can
+continue. A hook rejection needs the reported commit defect corrected. Preserve
+the failing command's output when requesting a diagnostic report; repeated
+approval cannot supply those prerequisites.
+
+Request a publication report that verifies the commit signature, the remote
+branch's intended commit, and the GitHub artifact's head and body. An ambiguous
+failure can follow a completed push or artifact creation, so the report must
+inspect existing results before retrying. Maintainers establish availability
+with [publication acceptance](MAINTAINERS.md#verify-autonomous-publication),
+including the earlier task flow in both seats. To roll back the guidance, use
+the saved host receipt and rollback steps above, preserving authentication,
+history, configuration and unrelated task state.
+
 ## Creation and health failures
 
 If container creation fails before the post-create hook runs, read the failed

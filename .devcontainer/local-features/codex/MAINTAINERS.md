@@ -225,6 +225,139 @@ an owner-addressed comment on the open PR. Follow
 to obtain the relayed report and discharge each finding; the author does not
 dispatch a reviewer of their own work.
 
+## Verify autonomous publication
+
+Extend consumed startup, retrieval and task-check acceptance with SSH signing,
+authorized push and the intended GitHub review artifact. Run the input and
+documentation suites above. Draft validation reads the candidate canonical
+procedure; completion requires the merged publication-capable corpus to be
+mounted and consumed by the actual desktop parent and delegate through the
+`NOTES.md` activation path. Record each seat's effective policy and supported
+escalation argument.
+
+Authorize a disposable task repository and specific publication destinations
+before execution. For a push probe, create a new bare destination outside the
+seats' writable roots through supported approval; record its absolute path in
+external working notes. Give each seat a distinct destination branch and leave
+all existing refs and protected fixtures intact. A local bare destination tests
+Git publication under filesystem restrictions; record it separately from an SSH
+remote push. A full delivery also needs the configured SSH transport and the
+intended artifact in an authorized GitHub repository. A fixture commit intended
+for a PR must descend from that repository's selected base so its diff can be
+reviewed.
+
+In each seat's own disposable linked worktree, prepare an authorized file and
+commit message using the attribution and co-author requirements in
+`~/.agents/instructions/committing.md`. Record the configured signing identity
+and inspect its selected agent through authorized diagnostics. Do not replace
+real credentials or change global Git/SSH configuration. Stage only the fixture
+file, attempt the signed commit with default policy, and capture its complete
+result. After a failure, read the worktree, index and HEAD before following the
+canonical bounded recovery procedure. Retain any completed signed commit.
+
+Verify the created commit through Git's signature verifier and read its message
+trailers:
+
+```bash
+git verify-commit HEAD
+git log -1 --pretty=%B | git interpret-trailers --parse
+```
+
+From that worktree, push the intended commit to the pre-authorized destination
+branch, using default policy first. Capture failures and inspect the destination
+ref before retrying; if it already contains the intended commit, continue from
+that result. Otherwise classify the failure and recover only an eligible denial.
+Read back the destination with `git ls-remote <destination> <full-ref>` and
+compare it with `git rev-parse HEAD`. Record the actual source, destination,
+command, output and status outside repositories.
+
+For GitHub publication, record the authorized repository, base, head branch and
+intended artifact before attempting creation or update. Use a file-backed body
+with the required identity and metadata. Inspect the artifact after an ambiguous
+failure instead of creating a duplicate. Verify its remote head and complete
+body through the GitHub interface after success. Only the authorized agent role
+publishes: a delegate's signed commit and push probes do not grant it an author's
+communication mandate. The parent publishes the review artifact when that role
+owns it.
+
+For a pull request, set the values below from the authorized task: the repository
+as `OWNER/REPO`, its selected base and published task branch, and a complete body
+file. Replace the example values before running commands; the body file must
+already contain the required attribution. List existing artifacts before
+creation, including closed ones:
+
+```bash
+publication_repo='OWNER/REPO'
+publication_base='main'
+publication_branch='TASK_BRANCH'
+publication_title='Reviewable task output'
+publication_body='/absolute/path/to/pr-body.md'
+gh pr list --repo "$publication_repo" --state all \
+  --head "$publication_branch" --json number,url,baseRefName,headRefOid,body
+```
+
+If no intended artifact exists, create it and retain the URL printed by the
+command. If one already exists, retain its URL and inspect it instead:
+
+```bash
+gh pr create --repo "$publication_repo" --base "$publication_base" \
+  --head "$publication_branch" --title "$publication_title" \
+  --body-file "$publication_body" --reviewer hube
+```
+
+Set `publication_pr` to that returned or listed URL. Read the complete artifact
+and the local intended commit; compare the base, head and body with the recorded
+inputs. An authorized body update uses the same file, followed by another read:
+
+```bash
+publication_pr='https://github.com/OWNER/REPO/pull/NUMBER'
+gh pr view "$publication_pr" --repo "$publication_repo" \
+  --json url,baseRefName,headRefName,headRefOid,title,body
+git rev-parse HEAD
+gh pr edit "$publication_pr" --repo "$publication_repo" \
+  --body-file "$publication_body"
+gh pr view "$publication_pr" --repo "$publication_repo" \
+  --json url,baseRefName,headRefName,headRefOid,title,body
+```
+
+Capture each invocation's complete result and apply the canonical failure
+classification before any retry. After an ambiguous creation result, repeat the
+list/read step; do not repeat creation until the artifact's absence is verified.
+A successful edit still requires complete body and head readback.
+
+Keep independent automatic-review action/decision records as described in
+"Verify autonomous task checks"; a successful command does not establish
+approval provenance. Exercise a real signing/publication sandbox denial and
+bounded approved continuation, a safe successful operation, and an ordinary
+hook or command failure that remains failed. Use isolated absent/empty agent
+sockets or a disposable signing configuration for identity-failure diagnostics;
+keep the real signing configuration and host credentials intact. Label rejected
+approval, rejected destination and credential-rejection classification controls
+hypothetical unless actually exercised. No Git, SSH or Codex runtime is stubbed
+in these live scenarios.
+
+Re-read each seat's continuation and compare all protected baseline state and
+retained outputs after the complete flow. Prove that changed-baseline controls
+are rejected. Rerun startup, SSH retrieval and check acceptance against the same
+consumed corpus in both seats. Publish the supported subset and any unverified
+integration dependency. Candidate probes, a local push alone or an unsigned
+commit do not establish the full delivery. Changed operator guidance owes the
+owner's designated reviewer and the canonical reader-proxy/disposition process;
+the author does not dispatch their own review. Leave OpenSpec publication marks
+unchecked until reviewed implementation and consumed acceptance are complete.
+For `enable-codex-autonomous-recovery`, these are delivery 4 checkboxes in
+[`tasks.md`](../../../openspec/changes/enable-codex-autonomous-recovery/tasks.md).
+From this repository root, locate their current source paths and lines with:
+
+```bash
+openspec instructions apply --change enable-codex-autonomous-recovery --json
+```
+
+Read each returned source location before changing its checkbox; rerun the
+command after a completed task mark to verify the tracking result. The tracking
+file is maintained by the OpenSpec change workflow, not generated by a
+publication command.
+
 ## Publication
 
 Merging to `main` triggers
