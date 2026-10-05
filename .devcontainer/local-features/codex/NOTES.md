@@ -406,10 +406,23 @@ sandbox_mode = "workspace-write"
 
 These are a compatible subset, not a replacement configuration. Preserve all
 unrelated entries. If an existing value differs, the installation owner chooses
-whether to change it; the Feature does not silently override that choice. Save a
-copy of the configuration outside the volume before editing it. If the file does
-not exist, create it with these settings; otherwise edit only these entries in
-their existing top-level locations, before any table header.
+whether to change it; the Feature does not silently override that choice. Before
+editing an existing file, save it on the Docker Desktop host, using the SSH alias
+configured in "Activate autonomous task startup":
+
+```bash
+umask 077
+config_backup=$(mktemp -d "$HOME/codex-config-before.XXXXXX")
+ssh codex-container 'cat ~/.codex/config.toml' > "$config_backup/config.toml"
+printf '%s\n' "$config_backup"
+```
+
+The SSH command must succeed before editing. Keep the printed host directory;
+it survives container recreation. A copy elsewhere in the container's disposable
+filesystem cannot supply rollback. If the configuration file does not exist,
+record that fact on the host instead of saving an empty backup, then create it
+with these settings. Otherwise edit only these entries in their existing
+top-level locations, before any table header.
 
 Configuration defaults can be overridden by a profile, project configuration or
 the running client. Managed requirements can prohibit an approval reviewer,
@@ -420,20 +433,34 @@ managed restriction; changing user defaults cannot override it. Keep the policy
 intact and report the rejected setting and its source when requesting that
 decision.
 
-In the desktop remote chat, select the permission mode that routes eligible
-requests to automatic review while retaining the workspace sandbox. Refresh the
-guidance and start a new chat using "Activate autonomous task startup". Verify
-the runtime-provided policy and escalation argument in that chat and its real
+In the desktop remote chat, choose **Approve for me** from the permissions
+control below the message composer. If it is absent, enable **Auto-review** under
+**Settings > General > Permissions**, then select the mode in the chat. Enabling
+it in settings alone does not change an existing chat. These controls follow the
+[official permissions guide](https://learn.chatgpt.com/docs/permission-modes).
+If organization policy disables the mode, have its administrator resolve that
+restriction. Refresh the guidance and start a new chat using "Activate autonomous
+task startup". Verify the runtime-provided policy and escalation argument in that
+chat and its real
 delegate. A config-file read or standalone CLI diagnostic cannot establish the
 active desktop policy. If either context lacks automatic review or supported
 escalation, leave activation unverified and request the named client or policy
 integration to be repaired.
 
-To roll back configuration edits, restore the saved copy of that file; if adoption
-created the file, remove only that newly created file after confirming it contains
-no subsequent user changes. Restore guidance using the separate saved guidance
-receipt above, recreate the container with the same volume, and open a new remote
-chat. Preserve credentials, history, other configuration and task worktrees.
+To roll back edits to an existing file, first confirm that restoring it will not
+overwrite subsequent user changes. From the Docker Desktop host, set
+`config_backup` to the saved host directory and restore through the same SSH
+alias, including after container recreation:
+
+```bash
+ssh codex-container 'cat > ~/.codex/config.toml' < "$config_backup/config.toml"
+```
+
+The SSH command must succeed. If adoption created the file, remove only that
+newly created file after confirming it contains no subsequent user changes.
+Restore guidance using the separate saved guidance receipt above, recreate the
+container with the same volume, and open a new remote chat. Preserve credentials,
+history, other configuration and task worktrees.
 
 ## Creation and health failures
 

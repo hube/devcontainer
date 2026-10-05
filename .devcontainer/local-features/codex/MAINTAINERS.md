@@ -373,9 +373,10 @@ and all unrelated fixture files remain byte-identical, and a repeated invocation
 does not replace them. Verify the comparator rejects a deliberately altered
 baseline. Record these as copy-wiring probes, not desktop installation acceptance.
 
-Follow the persistent adoption steps in `NOTES.md` on both supported installation
-paths. Record the selected user configuration and applicable managed requirements
-without copying credentials. Verify a compatible configuration and deliberately
+The two supported installation paths are a fresh container with new Codex state
+and an existing installation retaining its persistent Codex volume. Follow the
+adoption steps in `NOTES.md` on each path. Record the selected user configuration
+and applicable managed requirements without copying credentials. Verify a compatible configuration and deliberately
 incompatible reviewer, approval-policy and sandbox settings are distinguished;
 verify a managed restriction remains binding. A native configuration diagnostic
 is invocation evidence only, not the policy of an active chat.
