@@ -1,4 +1,6 @@
 approvals_reviewer = "auto_review"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
 project_doc_fallback_filenames = ["CLAUDE.md"]
 service_tier = "default"
 

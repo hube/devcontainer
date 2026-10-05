@@ -58,7 +58,7 @@ then
 
   # Copy files over while setting ownership and permissions
   copy_output="$({
-    rsync -rp \
+    rsync -rp --ignore-existing \
       --chown=${_CONTAINER_USER}:${_CONTAINER_USER} \
       --chmod=D755,F644 \
       home/. /home/${_CONTAINER_USER} &&

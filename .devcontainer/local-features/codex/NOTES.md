@@ -383,6 +383,58 @@ including the earlier task flow in both seats. To roll back the guidance, use
 the saved host receipt and rollback steps above, preserving authentication,
 history, configuration and unrelated task state.
 
+## Adopt recovery in a persistent installation
+
+Adoption keeps the Codex volume and changes only the recovery settings you
+choose. The process is to inspect existing settings and policy, select compatible
+permissions, refresh the shared guidance, and verify a new remote chat and its
+delegate. Reinstalling defaults does not activate recovery in an existing chat.
+
+The Feature seeds missing configuration files and preserves files already present
+in the target home. It does not merge new defaults into an existing `config.toml`.
+Keep the named Codex volume when recreating the container; removing it would also
+remove authentication and history.
+
+Inspect the existing `~/.codex/config.toml` and any selected profile or trusted
+project override before changing settings. The compatible recovery values are:
+
+```toml
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+```
+
+These are a compatible subset, not a replacement configuration. Preserve all
+unrelated entries. If an existing value differs, the installation owner chooses
+whether to change it; the Feature does not silently override that choice. Save a
+copy of the configuration outside the volume before editing it. If the file does
+not exist, create it with these settings; otherwise edit only these entries in
+their existing top-level locations, before any table header.
+
+Configuration defaults can be overridden by a profile, project configuration or
+the running client. Managed requirements can prohibit an approval reviewer,
+approval policy or sandbox mode. Follow the [official configuration precedence
+reference](https://learn.chatgpt.com/docs/config-file/config-basic#configuration-precedence)
+to locate the layer responsible for a conflict. An administrator must resolve a
+managed restriction; changing user defaults cannot override it. Keep the policy
+intact and report the rejected setting and its source when requesting that
+decision.
+
+In the desktop remote chat, select the permission mode that routes eligible
+requests to automatic review while retaining the workspace sandbox. Refresh the
+guidance and start a new chat using "Activate autonomous task startup". Verify
+the runtime-provided policy and escalation argument in that chat and its real
+delegate. A config-file read or standalone CLI diagnostic cannot establish the
+active desktop policy. If either context lacks automatic review or supported
+escalation, leave activation unverified and request the named client or policy
+integration to be repaired.
+
+To roll back configuration edits, restore the saved copy of that file; if adoption
+created the file, remove only that newly created file after confirming it contains
+no subsequent user changes. Restore guidance using the separate saved guidance
+receipt above, recreate the container with the same volume, and open a new remote
+chat. Preserve credentials, history, other configuration and task worktrees.
+
 ## Creation and health failures
 
 If container creation fails before the post-create hook runs, read the failed
