@@ -50,15 +50,15 @@ increment delivers every requirement.
 
 ## 3. Deliver autonomous execution and verification
 
-- [ ] 3.1 Extend the canonical contract and any required integration settings for
+- [x] 3.1 Extend the canonical contract and any required integration settings for
   representative Node subprocess tooling and task checks. Verify an eligible
   execution denial enters supported approval and an ordinary failed task check
   remains a failed check rather than being reported as a recovery success.
-- [ ] 3.2 Add focused tests for our configuration/wiring, representative live
+- [x] 3.2 Add focused tests for our configuration/wiring, representative live
   Node/check scenarios, and operator guidance. Verify known-broken controls fail
   and the actual supported parent/delegate commands run; do not unit-test Codex
   or OS subprocess behavior as if this repository owns it.
-- [ ] 3.3 Demonstrate the startup-to-inputs-to-checks flow without routine owner
+- [x] 3.3 Demonstrate the startup-to-inputs-to-checks flow without routine owner
   intervention, rerun earlier acceptance affected by these changes, and publish
   the new executable/checkable task outcome with its supported subset.
 
