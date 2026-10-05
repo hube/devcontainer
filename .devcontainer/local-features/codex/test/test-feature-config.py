@@ -202,6 +202,27 @@ def assert_equal(actual: object, expected: object) -> None:
     assert actual == expected, f"expected {expected!r}, got {actual!r}"
 
 
+def assert_configuration_copy_preserves_existing(source: str) -> None:
+    """Check our copy arguments, not rsync's runtime behavior."""
+    copies = [
+        line for line in executable_shell_lines(source)
+        if re.search(r"rsync\s+-rp\s", line) and "home/." in line
+    ]
+    assert len(copies) == 1, "expected one configuration seeding invocation"
+    assert "--ignore-existing" in copies[0].split(), (
+        "configuration seeding must preserve files already present"
+    )
+
+
+def test_configuration_copy_mutations(source: str) -> None:
+    assert_configuration_copy_preserves_existing(source)
+    changed = source.replace("rsync -rp --ignore-existing", "rsync -rp", 1)
+    assert changed != source, "preservation mutation did not change the invocation"
+    assert_rejects(assert_configuration_copy_preserves_existing, changed)
+    misplaced = changed + "\n# rsync -rp --ignore-existing home/. /somewhere\n"
+    assert_rejects(assert_configuration_copy_preserves_existing, misplaced)
+
+
 def test_installer_rejects_uid_zero_container_user() -> None:
     lines = executable_shell_lines(INSTALLER_PATH.read_text(encoding="utf-8"))
     uid_zero_guard = 'if [[ "$container_user_id" -eq 0 ]]'
@@ -414,6 +435,12 @@ def assert_recovery_inputs(config: dict, manifest: dict, consumer: dict) -> None
     assert config.get("approvals_reviewer") == "auto_review", (
         "feature default must select automatic review; effective policy needs a live probe"
     )
+    assert config.get("approval_policy") == "on-request", (
+        "feature default must permit requests for eligible approval"
+    )
+    assert config.get("sandbox_mode") == "workspace-write", (
+        "feature default must retain the workspace sandbox"
+    )
     home = "/home/${localEnv:USERNAME:devcontainer}"
     mounts = manifest.get("mounts", [])
     assert any(
@@ -443,6 +470,12 @@ def test_recovery_input_mutations(config: dict, manifest: dict, consumer: dict) 
     assert_rejects(
         lambda value: assert_recovery_inputs(value, manifest, consumer), changed_config
     )
+    for key, value in (("approval_policy", "never"), ("sandbox_mode", "danger-full-access")):
+        changed_config = dict(config, **{key: value})
+        assert changed_config != config
+        assert_rejects(
+            lambda value: assert_recovery_inputs(value, manifest, consumer), changed_config
+        )
     for mount in manifest["mounts"]:
         if mount["target"].endswith(("/.codex", "/.codex/AGENTS.md")):
             changed = copy.deepcopy(manifest)
@@ -713,6 +746,7 @@ def main() -> None:
     )
     test_publication_input_mutations(consumer, github_manifest)
     installer = INSTALLER_PATH.read_text(encoding="utf-8")
+    test_configuration_copy_mutations(installer)
     runtime_test = RUNTIME_TEST_PATH.read_text(encoding="utf-8")
 
     failures: list[str] = []
