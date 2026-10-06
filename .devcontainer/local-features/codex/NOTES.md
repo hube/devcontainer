@@ -188,11 +188,17 @@ Host codex-container
   User devcontainer
 ```
 
-From that host, run `ssh codex-container 'command -v codex'`. It must authenticate
-and print the installed CLI path. In the desktop app, open **Settings >
-Connections > SSH**, enable that alias, and select the container's project
-folder. Start a new chat in that remote project, so it reads the refreshed
-always-on context. These connection controls follow the
+From that host, check the CLI through the container's login shell so it loads the
+installation's PATH:
+
+```bash
+ssh codex-container 'zsh -lc "command -v codex && codex --version"'
+```
+
+It must authenticate and print the installed CLI path and version. In the desktop
+app, open **Settings > Connections > SSH**, enable that alias, and select the
+container's project folder. Start a new chat in that remote project, so it reads
+the refreshed always-on context. These connection controls follow the
 [official remote-connection guide](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host).
 Request a compatibility report from that chat covering its runtime-provided
 approval policy and execution tool, and the same values from a real delegate's
