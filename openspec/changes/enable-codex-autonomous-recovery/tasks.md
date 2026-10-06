@@ -89,7 +89,7 @@ increment delivers every requirement.
 - [x] 5.3 Document activation, supported conflicts, rollback, and persistent-state
   preservation. Verify the documented path on fresh and persistent installations
   and obtain the required reader-proxy review.
-- [ ] 5.4 Demonstrate the delivered task flow on both installation paths, including
+- [x] 5.4 Demonstrate the delivered task flow on both installation paths, including
   concurrent sessions using distinct branches/worktrees. Verify effective policy,
   state preservation, and exercised approval controls; reconcile related issue
   criteria before making any issue-completion claim.
