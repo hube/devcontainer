@@ -82,7 +82,7 @@ increment delivers every requirement.
   the delivered flows. Verify fresh and existing-install policy inspection finds
   both a compatible case and an intentionally incompatible case, including
   delegate settings rather than relying on feature defaults.
-- [ ] 5.2 Implement the necessary incremental adoption path with explicit handling
+- [x] 5.2 Implement the necessary incremental adoption path with explicit handling
   of managed-policy and user-setting conflicts. Verify fixtures preserve unrelated
   configuration, authentication, and history and expose each incompatible input;
   tests cover our migration and inputs rather than third-party runtime behavior.
