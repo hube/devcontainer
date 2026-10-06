@@ -78,7 +78,7 @@ increment delivers every requirement.
 
 ## 5. Extend adoption across persistent installations
 
-- [ ] 5.1 Identify the exact effective settings and guidance wiring required by
+- [x] 5.1 Identify the exact effective settings and guidance wiring required by
   the delivered flows. Verify fresh and existing-install policy inspection finds
   both a compatible case and an intentionally incompatible case, including
   delegate settings rather than relying on feature defaults.
