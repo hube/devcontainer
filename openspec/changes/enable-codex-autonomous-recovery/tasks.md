@@ -86,7 +86,7 @@ increment delivers every requirement.
   of managed-policy and user-setting conflicts. Verify fixtures preserve unrelated
   configuration, authentication, and history and expose each incompatible input;
   tests cover our migration and inputs rather than third-party runtime behavior.
-- [ ] 5.3 Document activation, supported conflicts, rollback, and persistent-state
+- [x] 5.3 Document activation, supported conflicts, rollback, and persistent-state
   preservation. Verify the documented path on fresh and persistent installations
   and obtain the required reader-proxy review.
 - [ ] 5.4 Demonstrate the delivered task flow on both installation paths, including
