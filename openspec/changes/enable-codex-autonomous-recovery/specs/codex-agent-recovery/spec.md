@@ -1,3 +1,5 @@
+Plan author - 01a11f37
+
 # Spec Delta
 
 ## Purpose
@@ -104,3 +106,42 @@ work SHALL remain re-doable; a per-command durable journal is not required.
 - **THEN** the agent identifies the owning integration or upstream dependency,
   preserves an actionable handoff, and does not substitute manual elevation or
   blanket full access as proof of autonomous completion
+
+### Requirement: Recovery prerequisites and acceptance are reproducible
+The recovery documentation SHALL identify supported socket-restoration routes
+and remote authentication prerequisites, and supply the disposable fixture,
+protected baseline, comparison and diagnostic inputs needed to reproduce startup,
+retrieval, checks and publication acceptance. Canonical recovery, repository-check
+discovery and attribution producers SHALL retain their owning corpus home.
+
+#### Scenario: Maintainer reproduces preservation acceptance
+- **WHEN** a maintainer follows the documented disposable recovery recipe
+- **THEN** the fixture and comparison inputs are obtainable, intentional task
+  additions are distinguished, and the same comparator rejects an altered
+  protected baseline while accepting preserved state
+
+#### Scenario: Representative check exercises recovery
+- **WHEN** a parent and delegate verify the documented Node recovery case
+- **THEN** the actual check encounters a restriction established from each
+  actor's effective policy, its denied invocation and approved retry are retained,
+  and ordinary broken or missing-command cases remain failed checks
+
+#### Scenario: Prerequisite requires host or canonical input
+- **WHEN** the recovery path requires restored forwarding, remote authentication,
+  repository checks or publication attribution
+- **THEN** documentation identifies the supported provider or canonical producer
+  and its completion check, or the concrete unavailable-input diagnosis, without
+  copying canonical procedures into the feature guide
+
+#### Scenario: Publication outcome is selected
+- **WHEN** a maintainer observes publication for a selected merge
+- **THEN** the selected run matches that merge SHA, named workflow and main branch,
+  and absent or ambiguous matches are diagnosed rather than replaced by the latest
+  unrelated run
+
+```text
+Harness: Codex
+Harness-Version: 0.162.0
+Model: GPT-6
+Skills: openspec-update-change
+```

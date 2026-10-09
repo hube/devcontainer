@@ -1,3 +1,5 @@
+Plan author - 01a11f37
+
 # Spec Delta
 
 ## Purpose
@@ -57,3 +59,30 @@ proposal's environment prerequisites.
 - **WHEN** concurrent supported sessions establish separate task workspaces
 - **THEN** each continues in its own branch and worktree without removing,
   repointing, or rewriting the other session's registered state
+
+### Requirement: Adoption verification separates fixtures from live state
+The adoption documentation SHALL provide disposable configuration-copy inputs,
+synthetic protected-state baseline/readback and a separate supported live-state
+capture boundary. Verification SHALL exclude credential contents from published
+evidence and account for active session writes. Synthetic copy-wiring probes
+SHALL NOT be presented as fresh or persistent desktop integration acceptance.
+
+#### Scenario: Maintainer verifies configuration copying
+- **WHEN** the documented copy recipe is run against fresh, persistent and
+  repeated-copy disposable fixtures
+- **THEN** unrelated synthetic configuration, authentication and history bytes are
+  compared with their baseline, and the same comparator rejects an actually
+  altered protected entry
+
+#### Scenario: Live adoption or rollback is claimed
+- **WHEN** fresh or persistent desktop adoption or rollback is reported complete
+- **THEN** the supported host/client procedure and live-state readback have been
+  exercised separately from synthetic fixtures, and any unavailable host/client
+  verification remains explicitly unmet
+
+```text
+Harness: Codex
+Harness-Version: 0.162.0
+Model: GPT-6
+Skills: openspec-update-change
+```
