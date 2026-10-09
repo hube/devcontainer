@@ -1,3 +1,5 @@
+Plan author - 01a11f37
+
 # Incremental Codex autonomous recovery
 
 ## Context
@@ -15,6 +17,9 @@ phases. Each delivery includes the wiring and verification its outcome needs.
   outcomes usable and regression-checked.
 - Deliver changes to canonical guidance in hube/claude-home and integration
   acceptance here without maintaining a second instruction corpus.
+- Supply executable acceptance recipes and discoverable prerequisites for the
+  selected recovery flows, preserving the distinction between disposable probes
+  and supported desktop integration acceptance.
 
 ## Non-goals
 
@@ -94,6 +99,41 @@ The order follows task execution so each extension consumes the preceding
 outcome. Independent validator liveness and alias lifecycle work remain outside
 this chain unless a concrete dependency blocks an outcome.
 
+### Reproducible documentation and acceptance
+
+The [proposal's selected documentation scope](proposal.md#selected-documentation-scope)
+sets the repair boundary. Recovery prerequisites, fixture producers, capture and
+comparison inputs, and diagnostic cases belong in this repository's Codex feature
+documentation. Repository-check discovery and attribution producers belong in
+hube/claude-home, reached by references rather than copied procedures.
+Decided (owner, 2026-10-08:
+[recovery and canonical selection](https://github.com/hube/devcontainer/issues/96#issuecomment-6074448366)).
+
+Acceptance recipes define the protected subset and intentional task additions.
+Their comparison rejects a changed protected baseline while accepting preserved
+state and permitted additions. SSH and signing diagnostics select disposable
+inputs per invocation; real credentials and global configuration remain protected.
+The representative Node check uses a resource restricted by each actor's actual
+policy, and retains the actual denial, approved retry and ordinary failed-check
+results separately.
+
+Operator prerequisites identify the feature-provided and desktop-provided socket
+routes and the official remote authentication authority. A route without a
+restoration control names its diagnostic/escalation destination. Adoption recipes
+separate synthetic copy-wiring fixtures from live installation state capture;
+capture excludes credential contents and accounts for concurrent session writes.
+
+The publication selector binds the named workflow on main to the selected merge
+SHA and checks the returned identity before observing its outcome. A missing or
+ambiguous match requires diagnosis rather than substituting another run.
+Decided (owner, 2026-10-08:
+[selector selection](https://github.com/hube/devcontainer/issues/96#issuecomment-6074521646)).
+
+These recipes implement the existing acceptance goals. They do not introduce
+standing enforcement, an ownership registry, or a broader supported runtime.
+Any net always-on guidance growth requires a concrete owner decision; canonical
+producer detail uses an on-demand home where sufficient.
+
 ### Alternatives
 
 **Change all configuration first.** Rejected: the feature already selects an
@@ -135,6 +175,21 @@ Every later unit repeats the earlier supported scenarios and adds its new one.
 It must identify its supported configuration subset and any remaining limitation;
 it must not claim closure of issues whose full acceptance criteria are unmet.
 
+The selected documentation repairs use the
+[disposition inventory's verification obligations](https://github.com/hube/devcontainer/issues/96#issuecomment-6044021452),
+implemented by [tasks 6–9](tasks.md#6-deliver-reproducible-recovery-documentation).
+Run the revised disposable recipes with their failure controls and separately
+exercise the specified supported host/client and parent/delegate paths. A static
+review or prior receipt does not discharge a newly documented live procedure.
+Unavailable host/client verification remains an explicit unmet criterion.
+
+Canonical guidance and its consumers land through their owning repository gates.
+Instruction-authoring adherence and the required reader-proxy reviews apply to
+the repaired guidance. Related-criteria navigation follows the proposal's stated
+owner overrides for issues 74–76; their original non-elevated outcomes are not
+additional repair requirements. Spec synchronization and archiving follow repair
+verification and reconciliation as separately authorized finalization work.
+
 ## Risks / Trade-offs
 
 - Effective policy or delegate approval may differ from feature defaults. The
@@ -159,5 +214,15 @@ that the desktop or a delegate uses the required approval path.
 
 ## Changelog
 
+- 2026-10-08: Added the owner-selected recovery documentation, canonical
+  prerequisite and publication-selector scope, with reproducibility and live
+  verification boundaries.
 - 2026-10-01: Initial design for incremental delivery following the approved
   proposal and the owner's request for useful end-to-end work units.
+
+```text
+Harness: Codex
+Harness-Version: 0.162.0
+Model: GPT-6
+Skills: openspec-update-change
+```

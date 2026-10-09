@@ -1,3 +1,5 @@
+Plan author - 01a11f37
+
 # Proposal
 
 ## Why
@@ -40,6 +42,40 @@ persistent user state, and shared repository state.
   probe alone does not establish delegated autonomous completion. If the remote
   runtime cannot provide the supported approval path, identify the owning
   integration or upstream dependency before committing to a workaround.
+- Make the selected operator prerequisites and acceptance recipes reproducible,
+  including disposable fixtures, protected-state comparisons, actual denial
+  inputs, and adoption readback. Keep canonical check and attribution producers
+  in hube/claude-home, and select publication runs by the intended merge.
+
+### Selected documentation scope
+
+The [disposition author's inventory](https://github.com/hube/devcontainer/issues/96#issuecomment-6044021452)
+defines the bounded repairs and verification for the
+[owner-selected recovery and canonical scope](https://github.com/hube/devcontainer/issues/96#issuecomment-6074448366).
+Decided (owner, 2026-10-08:
+[selection](https://github.com/hube/devcontainer/issues/96#issuecomment-6074448366)).
+
+- In this repository's Codex NOTES.md: forwarding restoration routes and the
+  remote Codex authentication prerequisite.
+- In Codex MAINTAINERS.md: fixture preparation and protected baseline;
+  preservation comparator and changed-baseline control; startup classification
+  inputs; OpenSpec prerequisite; isolated transport/signing diagnostics; real
+  Node-check denial; disposable configuration copying; adoption capture/readback;
+  and related-criteria navigation.
+- In hube/claude-home's canonical check and attribution guidance: repository-check
+  discovery, Codex session identifier production, and model display-name
+  resolution, using harness-specific branches where their mechanisms differ.
+
+The publication-run correction in Codex MAINTAINERS.md selects the intended
+merge's workflow run rather than the latest unrelated run. Decided (owner,
+2026-10-08:
+[separate selector selection](https://github.com/hube/devcontainer/issues/96#issuecomment-6074521646)).
+
+Host workspace selection, the host projects directory, runtime matrix terminology,
+token environment wiring, and credential-volume selection are outside this
+selected scope. Their accepted defects remain recorded in the inventory.
+Canonical procedures retain one home; proposed net always-on growth requires a
+concrete owner decision. These repairs add no runtime guarantee or new service.
 
 Private Git administration, a custom command broker, blanket full access,
 additional Codex client support, and eliminating all upstream sandbox defects
@@ -119,13 +155,23 @@ changes belong to hube/claude-home and require coordinated delivery there;
 this proposal changes no instructions or runtime behavior itself. No new
 service or runtime dependency is proposed.
 
-[Git-state issue #74](https://github.com/hube/devcontainer/issues/74) requires
-explicit reconciliation of its normal-sandbox and elevation-removal criteria
-with the owner-selected execution scope; the issue is not closed by this
-proposal. The supported workflow must address the consumer impact of
-[Node subprocess issue #75](https://github.com/hube/devcontainer/issues/75) and
-[SSH issue #76](https://github.com/hube/devcontainer/issues/76), while their
-non-elevated compatibility defects remain separately assessable.
+For [Git-state issue #74](https://github.com/hube/devcontainer/issues/74),
+[Node subprocess issue #75](https://github.com/hube/devcontainer/issues/75), and
+[SSH issue #76](https://github.com/hube/devcontainer/issues/76), issue maintainer
+01a11490 records owner-directed not-planned dispositions:
+[Git state](https://github.com/hube/devcontainer/issues/74#issuecomment-6030966274),
+[Node](https://github.com/hube/devcontainer/issues/75#issuecomment-6030967807), and
+[SSH](https://github.com/hube/devcontainer/issues/76#issuecomment-6030968321).
+Citing those recorded dispositions: the owner's rulings override the issues'
+original non-elevated closure criteria. Automatic recovery acceptance does not
+establish those original criteria as implemented.
 [Validator issue #67](https://github.com/hube/devcontainer/issues/67) and
 [alias issue #77](https://github.com/hube/devcontainer/issues/77) retain
 independent closure criteria.
+
+```text
+Harness: Codex
+Harness-Version: 0.162.0
+Model: GPT-6
+Skills: openspec-update-change
+```
