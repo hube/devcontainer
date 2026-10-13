@@ -1,5 +1,3 @@
-Plan author - 01a11f37
-
 # Spec Delta
 
 ## Purpose
@@ -79,10 +77,3 @@ SHALL NOT be presented as fresh or persistent desktop integration acceptance.
 - **THEN** the supported host/client procedure and live-state readback have been
   exercised separately from synthetic fixtures, and any unavailable host/client
   verification remains explicitly unmet
-
-```text
-Harness: Codex
-Harness-Version: 0.162.0
-Model: GPT-6
-Skills: openspec-update-change
-```

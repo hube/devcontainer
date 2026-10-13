@@ -1,5 +1,3 @@
-Plan author - 01a11f37
-
 # Incremental Codex autonomous recovery
 
 ## Context
@@ -219,10 +217,3 @@ that the desktop or a delegate uses the required approval path.
   verification boundaries.
 - 2026-10-01: Initial design for incremental delivery following the approved
   proposal and the owner's request for useful end-to-end work units.
-
-```text
-Harness: Codex
-Harness-Version: 0.162.0
-Model: GPT-6
-Skills: openspec-update-change
-```

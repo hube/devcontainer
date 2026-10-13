@@ -1,5 +1,3 @@
-Plan author - 01a11f37
-
 # Tasks
 
 Each numbered group is a functional delivery with its own activation,
@@ -202,10 +200,3 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
 
 Spec synchronization and archiving follow repair completion as separately
 authorized finalization work.
-
-```text
-Harness: Codex
-Harness-Version: 0.162.0
-Model: GPT-6
-Skills: openspec-update-change
-```

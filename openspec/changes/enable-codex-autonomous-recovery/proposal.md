@@ -1,5 +1,3 @@
-Plan author - 01a11f37
-
 # Proposal
 
 ## Why
@@ -168,10 +166,3 @@ establish those original criteria as implemented.
 [Validator issue #67](https://github.com/hube/devcontainer/issues/67) and
 [alias issue #77](https://github.com/hube/devcontainer/issues/77) retain
 independent closure criteria.
-
-```text
-Harness: Codex
-Harness-Version: 0.162.0
-Model: GPT-6
-Skills: openspec-update-change
-```

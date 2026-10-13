@@ -1,5 +1,3 @@
-Plan author - 01a11f37
-
 # Spec Delta
 
 ## Purpose
@@ -138,10 +136,3 @@ discovery and attribution producers SHALL retain their owning corpus home.
 - **THEN** the selected run matches that merge SHA, named workflow and main branch,
   and absent or ambiguous matches are diagnosed rather than replaced by the latest
   unrelated run
-
-```text
-Harness: Codex
-Harness-Version: 0.162.0
-Model: GPT-6
-Skills: openspec-update-change
-```
