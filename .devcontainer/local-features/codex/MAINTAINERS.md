@@ -47,7 +47,8 @@ its absence. Parent/delegate branches and paths are declared additions, not part
 of that protected subset. `ownership.txt` is synthetic protected data, not a new
 ownership protocol.
 
-From this repository's task worktree, set the paths below. Run preparation with
+From this repository's task worktree inside the Linux devcontainer, set the
+paths below. Run preparation with
 supported approval when the selected directory requires it:
 
 ```bash
@@ -241,6 +242,79 @@ validation or an unobserved approval path alone do not establish retrieval
 availability. Reader-proxy review and its dispositions are required for changed
 operator guidance before this delivery is complete.
 
+### Diagnose transport and signing with isolated inputs
+
+Use invocation-scoped socket selection for these diagnostic probes. They do not
+alter the real agent, credentials or global Git/SSH settings. If the execution
+sandbox prevents even the diagnostic, classify that failure and use the
+canonical supported approval route; a sandbox-restricted socket is not evidence
+that the corresponding agent is absent or empty.
+
+```bash
+transport_root=$(mktemp -d)
+if SSH_AUTH_SOCK="$transport_root/absent.sock" ssh-add -l \
+  > "$transport_root/absent.log" 2>&1; then
+  absent_status=0
+else
+  absent_status=$?
+fi
+cat "$transport_root/absent.log"
+printf 'Absent-socket status: %s\n' "$absent_status"
+ssh-agent -a "$transport_root/empty.sock" -s > "$transport_root/agent.env"
+empty_pid=$(sed -n 's/^SSH_AGENT_PID=\([0-9]*\);.*/\1/p' \
+  "$transport_root/agent.env")
+if SSH_AUTH_SOCK="$transport_root/empty.sock" ssh-add -l \
+  > "$transport_root/empty.log" 2>&1; then
+  empty_status=0
+else
+  empty_status=$?
+fi
+cat "$transport_root/empty.log"
+printf 'Empty-agent status: %s\n' "$empty_status"
+```
+
+The nonexistent socket must report that the agent cannot be reached. The
+created, reachable empty agent must instead report no identities. An unexpected
+result leaves the diagnostic case unestablished; retain it, inspect the selected
+socket and agent process, and repeat only after correcting that fixture.
+
+Generate a disposable required identity, then remove its private key before the
+missing-identity probe. The retained public key cannot be supplied by the empty
+agent:
+
+```bash
+ssh-keygen -q -t ed25519 -N '' -f "$transport_root/required-key"
+rm "$transport_root/required-key"
+printf 'synthetic signing input\n' > "$transport_root/message"
+if SSH_AUTH_SOCK="$transport_root/empty.sock" ssh-keygen -Y sign \
+  -f "$transport_root/required-key.pub" -n git "$transport_root/message" \
+  > "$transport_root/signing.log" 2>&1; then
+  signing_status=0
+else
+  signing_status=$?
+fi
+cat "$transport_root/signing.log"
+printf 'Missing-identity signing status: %s\n' "$signing_status"
+```
+
+This failure must identify the unavailable signing identity separately from an
+unreachable socket or empty-agent inspection. Retain the actual primary failure;
+it does not establish rejection by a remote repository. Exercise genuine remote
+credential rejection only at a separately authorized destination; otherwise
+label that case hypothetical.
+
+After recording the diagnostics, stop only this fixture's agent and remove its
+remaining synthetic signing inputs, keeping the captured logs:
+
+```bash
+SSH_AUTH_SOCK="$transport_root/empty.sock" SSH_AGENT_PID="$empty_pid" ssh-agent -k
+rm "$transport_root/required-key.pub" "$transport_root/message"
+```
+
+Confirm the real `SSH_AUTH_SOCK`, signing configuration and public identities
+still match their pre-probe readings. Do not use these fixtures as a substitute
+for the real configured identity in publication acceptance.
+
 ## Verify autonomous task checks
 
 Extend the live startup and retrieval scenario with a representative tool or
@@ -259,8 +333,14 @@ approval for preparation if needed:
 
 ```javascript
 const { spawnSync } = require('node:child_process');
+const output = process.argv[3];
+if (!output || !require('node:path').isAbsolute(output)) {
+  throw new Error('An authorized absolute output path is required.');
+}
 const cases = {
-  good: ['node', ['-e', 'process.stdout.write("fixture child ran\\n")']],
+  good: ['node', ['-e',
+    'require("node:fs").writeFileSync(process.argv[1], "fixture child ran\\n")',
+    output]],
   broken: ['node', ['-e', 'process.exit(7)']],
   missing: ['acceptance-missing-command', []],
 };
@@ -279,12 +359,21 @@ console.log(JSON.stringify({
 process.exitCode = result.error ? 1 : (result.status ?? 1);
 ```
 
-From that same worktree, run `node node-check.cjs good` with default policy.
-Run `node node-check.cjs broken` and `node node-check.cjs missing` separately,
-retaining each invocation's exit status and complete output. The fixture
+Prepare a separate output directory outside each actor's effective writable
+roots, writable by the container user through supported approval. Set
+`check_output` to that directory's `parent.out` or `delegate.out` for the relevant
+actor; authorize those exact files before execution. Each actor reads its own
+runtime writable roots and confirms the output parent is excluded. The good
+child must create the selected file, so stdout-only execution cannot substitute
+for the restricted operation. Do not target credentials or production files.
+
+From that same worktree, run `node node-check.cjs good "$check_output"` with
+default policy. Run `node node-check.cjs broken "$check_output"` and
+`node node-check.cjs missing "$check_output"` separately, retaining each
+invocation's exit status and complete output. The fixture
 retains attached errors instead of normalizing them away. Only an eligible
 sandbox denial reaches an approved retry of the identical invocation; an
-ordinary missing executable does not. After recovery, require the good
+ordinary missing executable does not. After recovery, read back the selected output file and require the good
 invocation to complete successfully and the broken invocation to remain
 nonzero.
 
@@ -451,7 +540,23 @@ the author does not dispatch their own review. Leave OpenSpec publication marks
 unchecked until reviewed implementation and consumed acceptance are complete.
 For `enable-codex-autonomous-recovery`, these are delivery 4 checkboxes in
 [`tasks.md`](../../../openspec/changes/enable-codex-autonomous-recovery/tasks.md).
-From this repository root, locate their current source paths and lines with:
+OpenSpec is a contributor prerequisite, not installed by the Codex Feature.
+Use the [OpenSpec setup authority](https://github.com/Fission-AI/OpenSpec#quick-start)
+for installation. From this repository root, preflight the executable before
+locating the current task source paths and lines:
+
+```bash
+if command -v openspec; then
+  openspec --version
+else
+  printf '%s\n' 'OpenSpec is absent from PATH.' \
+    'Change tracking cannot run in this shell.' \
+    'Install OpenSpec using its linked setup authority, then repeat this preflight.' >&2
+  false
+fi
+```
+
+Continue only when availability and version inspection succeed. Then run:
 
 ```bash
 openspec instructions apply --change enable-codex-autonomous-recovery --json
@@ -468,14 +573,171 @@ Run the input and documentation suites from "Verify autonomous task startup".
 The configuration-copy check examines our installer arguments and rejects removal
 of the preservation option; it does not stub or unit-test rsync or Codex behavior.
 
-Probe the configuration-seeding invocation from `install.sh` against disposable
-fresh and persistent home directories. Use the committed `home/` tree as its
-source. Seed the persistent fixture with a different reviewer setting, unrelated
-TOML entries, synthetic authentication and history bytes. Record original bytes
-before the copy. Verify fresh configuration is seeded, existing configuration
-and all unrelated fixture files remain byte-identical, and a repeated invocation
-does not replace them. Verify the comparator rejects a deliberately altered
-baseline. Record these as copy-wiring probes, not desktop installation acceptance.
+### Prepare and verify configuration-copy fixtures
+
+Translate only the installer's home-copy invocation to disposable targets. The
+source is this task worktree's committed `home/`; the production target is
+`/home/${_CONTAINER_USER}`. In the probe, the target is a new directory beneath
+`copy_root`, owned by the current non-root user. The ownership arguments select
+that user and group, and the preservation and mode arguments stay those of
+[`install.sh`](install.sh). Do not run the complete installer against a fixture,
+change `HOME` or `CODEX_HOME`, or read real authentication into it.
+
+From this repository root inside the Linux devcontainer:
+
+```bash
+copy_root=$(mktemp -d)
+copy_source="$PWD/.devcontainer/local-features/codex/home"
+copy_user=$(id -un)
+copy_group=$(id -gn)
+mkdir -p "$copy_root/fresh/.codex" "$copy_root/persistent/.codex"
+for copy_target in "$copy_root/fresh" "$copy_root/persistent"; do
+  printf '{"synthetic":"not-a-credential"}\n' > "$copy_target/.codex/auth.json"
+  printf 'synthetic closed history\n' > "$copy_target/.codex/history.jsonl"
+  printf 'unrelated = "retain me"\n' > "$copy_target/.codex/unrelated.toml"
+done
+printf 'approvals_reviewer = "user"\nunrelated = "retain me"\n' \
+  > "$copy_root/persistent/.codex/config.toml"
+```
+
+The named synthetic files are the protected subset; fresh configuration is an
+intentional new output. Capture their baseline with the same helper:
+
+```bash
+copy_files=()
+for copy_target in "$copy_root/fresh" "$copy_root/persistent"; do
+  for copy_name in auth.json history.jsonl unrelated.toml; do
+    copy_files+=(--file "$copy_target/.codex/$copy_name")
+  done
+done
+copy_files+=(--file "$copy_root/persistent/.codex/config.toml")
+python3 "$acceptance_state" capture --repo "$acceptance_repo" \
+  "${copy_files[@]}" > "$copy_root/copy-before.json"
+```
+
+Run the mapped invocation for both targets, preserving failures in the aggregate:
+
+```bash
+copy_failed=0
+for copy_target in "$copy_root/fresh" "$copy_root/persistent"; do
+  if rsync -rp --ignore-existing --chown="$copy_user:$copy_group" \
+    --chmod=D755,F644 "$copy_source/." "$copy_target/"; then
+    :
+  else
+    copy_failed=1
+  fi
+done
+test "$copy_failed" -eq 0
+```
+
+Continue only after each invocation succeeds. Verify the fresh configuration
+against the committed source, then repeat the same capture command into
+`copy-after.json` and compare it with `copy-before.json` with no allowed additions:
+
+```bash
+cmp "$copy_source/.codex/config.toml" "$copy_root/fresh/.codex/config.toml"
+python3 "$acceptance_state" capture --repo "$acceptance_repo" \
+  "${copy_files[@]}" > "$copy_root/copy-after.json"
+python3 "$acceptance_state" compare \
+  "$copy_root/copy-before.json" "$copy_root/copy-after.json"
+stat -c '%U:%G %a %n' "$copy_root/fresh/.codex" \
+  "$copy_root/fresh/.codex/config.toml"
+```
+
+The readback must identify the selected user/group, directory mode `755` and
+configuration mode `644`. Add the newly seeded fresh `config.toml` to the
+repeated-copy baseline using `copy_files+=(--file "$copy_root/fresh/.codex/config.toml")`
+and capture `repeat-before.json` with that list. Repeat the same copy invocations and
+capture/compare that full named subset. Append a line to the synthetic persistent
+`auth.json`, recapture, and demonstrate that the same comparator rejects the
+changed bytes; restore its original synthetic bytes and compare again. Retain
+these as copy-wiring probes, with source revision and rsync version. They do not
+establish desktop installation or third-party rsync guarantees.
+
+### Capture live adoption separately
+
+Use the actual remote user's effective Codex home, not the synthetic targets.
+Before adoption, keep the configuration backup required by `NOTES.md`; record
+its digest and the applicable managed-policy path without credential contents.
+For authentication, retain `codex login status` and, where a file cache exists,
+a local digest of that cache. If credentials use a keychain, record that storage
+boundary and status instead of inventing a file baseline.
+
+Record a history boundary before changing anything: select completed session
+files for exact digest comparison, and for any append-only history file retain
+its byte length and a digest of that prefix. After adoption or rollback, hash
+that same prefix and confirm the current length is not shorter. Treat newly
+created sessions and verified appended history as activity, not preserved
+whole-file bytes. A rewrite inside the protected prefix is a failure; stop other
+writers or diagnose it rather than allowlisting an arbitrary change. Retain the
+selected paths, lengths and digests privately outside repositories, never the
+credential or transcript contents.
+
+Run this capture as the remote user inside the selected Linux devcontainer
+before adoption or rollback;
+`adoption_before` is private scratch outside repositories. Do not send its
+configuration backup to a public artifact:
+
+```bash
+adoption_home="${CODEX_HOME:-$HOME/.codex}"
+adoption_before=$(mktemp -d)
+cp "$adoption_home/config.toml" "$adoption_before/config-before.toml"
+sha256sum "$adoption_home/config.toml" > "$adoption_before/config.sha256"
+codex login status > "$adoption_before/auth-status.txt" 2>&1
+if [[ -f "$adoption_home/auth.json" ]]; then
+  sha256sum "$adoption_home/auth.json" > "$adoption_before/auth.sha256"
+fi
+adoption_history="$adoption_home/history.jsonl"
+if [[ -f "$adoption_history" ]]; then
+  stat -c %s "$adoption_history" > "$adoption_before/history.size"
+  head -c "$(cat "$adoption_before/history.size")" "$adoption_history" \
+    | sha256sum > "$adoption_before/history-prefix.sha256"
+else
+  printf 'absent\n' > "$adoption_before/history.absent"
+fi
+```
+
+Capture a selected completed session similarly with `sha256sum`, after checking
+its exact session identity and completed status. Do not treat an active rollout
+as completed. Record keychain or managed-policy paths separately when applicable.
+Every capture command must succeed; a missing required configuration or failed
+status command leaves that capture incomplete and requires diagnosis.
+
+After adoption or rollback, retain the new authentication status and digest,
+compare unrelated configuration values with the saved TOML, and verify the
+history prefix where it existed:
+
+```bash
+codex login status > "$adoption_before/auth-status-after.txt" 2>&1
+if [[ -f "$adoption_before/auth.sha256" ]]; then
+  sha256sum "$adoption_home/auth.json" > "$adoption_before/auth-after.sha256"
+  cmp "$adoption_before/auth.sha256" "$adoption_before/auth-after.sha256"
+fi
+if [[ -f "$adoption_before/history.size" ]]; then
+  test "$(stat -c %s "$adoption_history")" \
+    -ge "$(cat "$adoption_before/history.size")"
+  head -c "$(cat "$adoption_before/history.size")" "$adoption_history" \
+    | sha256sum > "$adoption_before/history-prefix-after.sha256"
+  cmp "$adoption_before/history-prefix.sha256" \
+    "$adoption_before/history-prefix-after.sha256"
+fi
+```
+
+Run prefix pipelines in a shell with `set -o pipefail`, so a failed read cannot
+become a digest of empty input. Recheck the selected completed-session digests
+with the same file list. If authentication bytes changed, retain that mismatch
+and diagnose credential refresh versus loss using the authentication status;
+do not claim byte preservation merely because login still works. When history
+was absent, record any newly created history as activity rather than a matching
+prior file. This live readback is separate from synthetic copy acceptance.
+
+After each installation's adoption and rollback, compare the unrelated
+configuration values against the saved configuration, repeat authentication
+status and credential-storage readback, and check the selected history boundary.
+Record intended policy/guidance changes separately. Verify effective policy in a
+new desktop chat and real delegate after reconnection. A fixture comparison or
+an authenticated shell does not establish that a desktop session consumed the
+adopted policy.
 
 The two supported installation paths are a fresh container with new Codex state
 and an existing installation retaining its persistent Codex volume. Follow the
@@ -496,9 +758,16 @@ their respective specified implementation, installation, policy and review
 evidence is complete; name any host/client-only verification still owed.
 
 Changed operator guidance requires the owner's designated reviewer and the
-reader-proxy/disposition process. Re-read related issue criteria before claiming
-closure; adopting automatic recovery alone does not establish normal-sandbox
-compatibility or remove the independently tracked defects.
+reader-proxy/disposition process. Before claiming any issue complete, follow
+[proposal Impact](../../../openspec/changes/enable-codex-autonomous-recovery/proposal.md#impact)
+and read the specific issue's current body and ruling. Issue maintainer 01a11490
+records the owner-directed dispositions for [Git state](https://github.com/hube/devcontainer/issues/74#issuecomment-6030966274),
+[Node](https://github.com/hube/devcontainer/issues/75#issuecomment-6030967807), and
+[SSH](https://github.com/hube/devcontainer/issues/76#issuecomment-6030968321).
+Those recorded dispositions override their original non-elevated closure criteria with not-planned outcomes.
+Automatic recovery does not establish those original criteria as implemented.
+Independent [validator](https://github.com/hube/devcontainer/issues/67) and
+[alias](https://github.com/hube/devcontainer/issues/77) criteria remain their own.
 
 ## Publication
 

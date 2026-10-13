@@ -111,11 +111,11 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
   where the client exposes no restoration control. Verify both socket-source
   routes and retain distinct unreachable versus sandbox-restricted failures;
   verify restoration on the supported host/client integration.
-- [ ] 6.2 In NOTES.md, link the official remote Codex authentication authority
+- [x] 6.2 In NOTES.md, link the official remote Codex authentication authority
   and identify its read-only completion check. Recheck the supported client and
   authentication flow, then verify remote status and desktop connection without
   publishing credentials or reauthenticating an already authenticated user.
-- [ ] 6.3 In MAINTAINERS.md, provide disposable fixture preparation and define
+- [x] 6.3 In MAINTAINERS.md, provide disposable fixture preparation and define
   the protected refs, registrations and bytes at first use. Run the recipe to
   prepare the seed, ignored worktree root and protected baseline; verify distinct
   parent/delegate additions preserve that baseline.
@@ -129,23 +129,23 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
   safe/ordinary/ownership cases and verify their outcomes without a bypass;
   label rejection hypothetical unless independent approval records establish an
   observed rejection. Retain canonical failure classification by reference.
-- [ ] 6.6 Identify the OpenSpec contributor prerequisite and setup authority,
+- [x] 6.6 Identify the OpenSpec contributor prerequisite and setup authority,
   with an availability/version preflight. Verify missing-executable diagnosis
   and the apply-instructions command against this change. Link related-criteria
   navigation to proposal Impact and the issue actually claimed; verify those
   links and current owner dispositions without asserting the original
   non-elevated criteria of issues 74–76 were implemented.
-- [ ] 6.7 Provide invocation-scoped absent/empty-agent and disposable signing
+- [x] 6.7 Provide invocation-scoped absent/empty-agent and disposable signing
   inputs, including cleanup. Verify unreachable, reachable-empty and missing
   required identity diagnoses separately, preserving real configuration and
   credentials. Exercise genuine credential rejection only at a separately
   authorized destination; retain the actual primary failure.
-- [ ] 6.8 Specify a restricted-resource input/output for the representative Node
+- [x] 6.8 Specify a restricted-resource input/output for the representative Node
   check and how each seat confirms its effective restriction. Run that actual
   check in parent and delegate under default and supported approved policy;
   retain denial, status, attached errors, output and matching approval decisions.
   Verify the broken check stays nonzero and the missing command stays a failure.
-- [ ] 6.9 Supply a disposable configuration-copy recipe derived from the actual
+- [x] 6.9 Supply a disposable configuration-copy recipe derived from the actual
   installer, with source/target and user/ownership inputs. Verify fresh,
   persistent and repeated-copy fixtures preserve unrelated synthetic TOML,
   authentication and history bytes; show their comparator rejecting an altered
@@ -161,17 +161,17 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
 
 ## 7. Deliver canonical check and attribution prerequisites
 
-- [ ] 7.1 In hube/claude-home instructions/committing.md, provide discovery of
+- [x] 7.1 In hube/claude-home instructions/committing.md, provide discovery of
   repository-required checks through the repository's governing configuration.
   Derive this repository's commands from its scripts and verify discovery in a
   second target with different commands. Explicitly surface checks a disposable
   fixture cannot supply instead of inventing commands or claiming unrun passes.
-- [ ] 7.2 In the canonical attribution home, document the supported Codex session
+- [x] 7.2 In the canonical attribution home, document the supported Codex session
   identifier producer and the unavailable-source outcome. Verify the actual
   serving session identity in desktop remote and CLI contexts, or state an
   unsupported harness branch. Reach the procedure by concise canonical reference;
   obtain a concrete owner decision before any proposed net always-on growth.
-- [ ] 7.3 In the canonical attribution home, supply model display-name resolution
+- [x] 7.3 In the canonical attribution home, supply model display-name resolution
   from the actual exposed serving model and official authority, retaining the
   exposed-label fallback and noreply address. Verify identifier-only and
   label-only cases; avoid an exhaustive copied model table or inferred defaults.
