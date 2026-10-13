@@ -34,6 +34,120 @@ been accepted; merging could publish an image whose Codex sandbox is unusable.
 Preserve the complete output, correct the reported build, Docker, cleanup, or
 sandbox failure, and rerun all three commands before merging.
 
+## Prepare disposable recovery inputs
+
+Use one new acceptance directory, outside both actors' effective writable roots
+for denial acceptance. Its parent must be writable by the container user through
+supported approval. For a recipe-only probe, `/tmp` is sufficient; that probe
+cannot establish a denial. Record the selected absolute directory externally.
+The seed and protected worktrees below are linked worktrees of a disposable bare
+repository. The protected subset consists of every pre-existing ref and complete
+worktree registration, the named fixture bytes, and shared `FETCH_HEAD` including
+its absence. Parent/delegate branches and paths are declared additions, not part
+of that protected subset. `ownership.txt` is synthetic protected data, not a new
+ownership protocol.
+
+From this repository's task worktree, set the paths below. Run preparation with
+supported approval when the selected directory requires it:
+
+```bash
+acceptance_root='/absolute/new/acceptance-directory'
+mkdir "$acceptance_root"
+acceptance_repo="$acceptance_root/repo.git"
+acceptance_seed="$acceptance_root/seed"
+acceptance_protected="$acceptance_root/protected"
+git init --bare "$acceptance_repo"
+git --git-dir="$acceptance_repo" worktree add --orphan \
+  -b fixture-seed "$acceptance_seed"
+printf '.worktrees/\n' > "$acceptance_seed/.gitignore"
+printf 'protected fixture bytes\n' > "$acceptance_seed/protected.txt"
+printf 'synthetic ownership fixture\n' > "$acceptance_seed/ownership.txt"
+```
+
+Prepare a signed, attributed seed message using the canonical
+[`committing.md`](https://github.com/hube/claude-home/blob/main/instructions/committing.md)
+procedure. Keep the message in external working notes and set `acceptance_message`
+to its absolute path. The fixture has no lint/typecheck/build configuration;
+record those unavailable checks rather than claiming they ran. Then create the
+seed and its protected worktree:
+
+```bash
+git -C "$acceptance_seed" add .gitignore protected.txt ownership.txt
+git -C "$acceptance_seed" commit -F "$acceptance_message"
+git -C "$acceptance_seed" verify-commit HEAD
+git --git-dir="$acceptance_repo" worktree add \
+  -b fixture-protected "$acceptance_protected" fixture-seed
+git -C "$acceptance_protected" check-ignore .worktrees/.probe
+```
+
+The ignore check must identify `.worktrees/.probe`. Preserve this fixture if
+preparation fails and classify the captured failure through the canonical
+recovery procedure before retrying.
+
+### Compare the protected subset
+
+The acceptance-specific [state helper](test/recovery-state.py) captures refs,
+complete registrations, SHA-256 digests of explicitly named synthetic files,
+and shared fetch-receipt state. It runs real Git reads and does not stub Git,
+Codex or SSH. Keep its JSON outputs outside the disposable repository. The
+maintained [control catalogue](https://github.com/hube-ai/agent-tools/blob/main/general/README.md)
+is the discovery authority for existing verification tools; this helper handles
+the feature's protected-subset comparison rather than published-body readback.
+
+```bash
+acceptance_state='.devcontainer/local-features/codex/test/recovery-state.py'
+python3 "$acceptance_state" capture --repo "$acceptance_repo" \
+  --file "$acceptance_protected/.gitignore" \
+  --file "$acceptance_protected/protected.txt" \
+  --file "$acceptance_protected/ownership.txt" \
+  > "$acceptance_root/before.json"
+```
+
+Assign each actor a distinct branch and worktree beneath the ignored root:
+`parent-task` at `$acceptance_protected/.worktrees/parent`, and `delegate-task`
+at `$acceptance_protected/.worktrees/delegate`. Each actor follows canonical
+worktree setup in its own context. After their authorized additions, repeat the
+same capture invocation with output `after.json`, then compare:
+
+```bash
+python3 "$acceptance_state" compare "$acceptance_root/before.json" \
+  "$acceptance_root/after.json" \
+  --allow-ref refs/heads/parent-task --allow-ref refs/heads/delegate-task \
+  --allow-worktree "$acceptance_protected/.worktrees/parent" \
+  --allow-worktree "$acceptance_protected/.worktrees/delegate"
+```
+
+A permitted addition never permits changing a baseline entry. For retrieval,
+add each actor's predeclared input ref to the allowlist; for publication, declare
+its destination repo and capture/compare that repo separately. Use the identical
+protected file list for each before/after capture. Preserve raw command results.
+
+Prove the comparator on an actual changed protected file: append a line to
+`protected.txt`, capture `changed.json` with the same invocation, and run the
+same compare command with `changed.json` in place of `after.json`. It must reject
+the altered digest. Restore only that task-created file using its seed blob,
+recapture, and confirm preservation again. Similarly change a copy of a captured
+ref or registration entry and confirm it is rejected; label those JSON controls
+as synthetic. Never mutate a production baseline or another task's worktree.
+
+### Exercise startup classifications
+
+Use a separate copy of this disposable topology in `/tmp` for safe cases. Keep
+these results separate from the outside-root denial acceptance:
+
+| Case | Input and operation | Retained evidence |
+| --- | --- | --- |
+| Safe setup | Create a new branch/worktree from `fixture-seed` in the writable fixture. | Actual setup result and a subsequent file write/status in that actor's worktree. |
+| Ordinary failure | Run `git worktree add` with a new task path and nonexistent source ref `acceptance-missing-ref`. | Captured Git failure, absent task branch/path after inspection, and ordinary-failure classification. |
+| Ownership refusal | Attempt to add `fixture-protected` at a different new path while that branch is registered in the protected worktree. | Captured refusal, unchanged protected registration/ref and no force or ownership bypass. |
+| Rejected approval | Use an independently observed automatic-review rejection if available; otherwise describe a hypothetical rejected request. | Matched planned action/decision for an observed rejection, or an explicit hypothetical label; no retry bypass. |
+
+Classify each result using
+[`setup-recovery.md`](https://github.com/hube/claude-home/blob/main/instructions/setup-recovery.md).
+A safe result and ordinary failure do not demonstrate escalation. The ownership
+case probes the already-registered branch refusal in our synthetic fixture; it
+does not grant permission to operate on another task's real branch.
+
 ## Verify autonomous task startup
 
 This live acceptance exercises the desktop remote parent and a real delegate,
@@ -48,20 +162,10 @@ bash .devcontainer/local-features/codex/test/test-documentation.sh
 ```
 
 For live acceptance, connect a fresh desktop chat using the activation steps in
-`NOTES.md`. Authorize the parent to create a disposable bare repository and
-seed commit, a protected fixture worktree, and separate parent/delegate branches
-and linked worktrees. Choose a new acceptance directory outside both seats'
-effective writable roots that the configured container user can write when
-approved; use no production repository. Record that directory in working notes
-outside repositories. Include an ignored `.worktrees/` root in the fixture seed.
-The parent prepares the fixture through supported approval, then captures its
-refs and worktree registrations with these commands, substituting the bare
-repository path for `REPO`:
-
-```bash
-git --git-dir="$REPO" show-ref
-git --git-dir="$REPO" worktree list --porcelain
-```
+`NOTES.md`. Authorize and run "Prepare disposable recovery inputs" above, choosing
+the acceptance directory outside both seats' effective writable roots. Capture
+`before.json` before either seat's task additions. Keep the seed and protected
+worktrees intact throughout the scenario.
 
 Give the delegate its own authorized branch/destination and the mounted recovery
 procedure's path. Each seat attempts `git worktree add` with its default policy,

@@ -119,12 +119,12 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
   the protected refs, registrations and bytes at first use. Run the recipe to
   prepare the seed, ignored worktree root and protected baseline; verify distinct
   parent/delegate additions preserve that baseline.
-- [ ] 6.4 Supply the baseline representation, comparator invocation, allowed
+- [x] 6.4 Supply the baseline representation, comparator invocation, allowed
   additions and changed-baseline input. Consult the maintained control catalogue
   before choosing a helper. Show the same comparator accepting preserved state,
   rejecting an actually altered protected entry and handling permitted additions;
   retain raw results for the acceptance sections that consume it.
-- [ ] 6.5 Supply startup classification case inputs and evidence for safe setup,
+- [x] 6.5 Supply startup classification case inputs and evidence for safe setup,
   ordinary failure, ownership refusal and rejected approval. Run the isolated
   safe/ordinary/ownership cases and verify their outcomes without a bypass;
   label rejection hypothetical unless independent approval records establish an
