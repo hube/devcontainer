@@ -67,7 +67,7 @@ mkdir "$acceptance_root"
 acceptance_repo="$acceptance_root/repo.git"
 acceptance_seed="$acceptance_root/seed"
 acceptance_protected="$acceptance_seed/.worktrees/protected-<task>-<id8>"
-git init --bare "$acceptance_repo"
+git init --bare --ref-format=files "$acceptance_repo"
 git --git-dir="$acceptance_repo" worktree add --orphan \
   -b fixture-seed "$acceptance_seed"
 printf '.worktrees/\n' > "$acceptance_seed/.gitignore"
@@ -100,8 +100,14 @@ recovery procedure before retrying.
 
 The acceptance-specific [state helper](test/recovery-state.py) captures refs,
 complete registrations, SHA-256 digests of explicitly named synthetic files,
-and shared fetch-receipt state. It runs real Git reads and does not stub Git,
-Codex or SSH. Keep its JSON outputs outside the disposable repository. The
+and shared fetch-receipt state. The recipe selects Git's files ref backend;
+the helper rejects other backends and legacy symbolic-link ref storage rather
+than returning a preservation result. It records immediate stored symbolic
+targets, including unborn targets, and
+direct objects from packed and loose refs. Symbolic refs have `oid: null`;
+their target refs are protected independently. It runs real Git reads and does
+not stub Git, Codex or SSH. Keep its JSON outputs outside the disposable
+repository. The
 maintained [control catalogue](https://github.com/hube-ai/agent-tools/blob/main/general/README.md)
 is the discovery authority for existing verification tools; this helper handles
 the feature's protected-subset comparison rather than published-body readback.

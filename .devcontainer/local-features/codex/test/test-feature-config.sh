@@ -2,4 +2,5 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec python3 "$SCRIPT_DIR/test-feature-config.py"
+python3 "$SCRIPT_DIR/test-feature-config.py"
+exec python3 "$SCRIPT_DIR/test-recovery-state.py"

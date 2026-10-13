@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -18,6 +19,43 @@ def git(repo, *args):
     return result.stdout
 
 
+def stored_ref(path):
+    if path.is_symlink():
+        raise RuntimeError(f"symbolic-link ref storage is unsupported: {path}")
+    value = path.read_text().strip()
+    if value.startswith("ref: "):
+        return {"oid": None, "symbolic_target": value.removeprefix("ref: ")}
+    return {"oid": value, "symbolic_target": None}
+
+
+def references(repo):
+    if git(repo, "rev-parse", "--show-ref-format").strip() != "files":
+        raise RuntimeError("acceptance repository must use files ref storage")
+    refs = {}
+    packed = repo / "packed-refs"
+    if packed.exists():
+        for line in packed.read_text().splitlines():
+            if line and not line.startswith(("#", "^")):
+                oid, name = line.split(" ", 1)
+                refs[name] = {"oid": oid, "symbolic_target": None}
+    # Loose refs include unborn targets and override packed entries of the same name.
+    def scan_error(error):
+        raise error
+
+    for directory, directories, filenames in os.walk(repo / "refs", onerror=scan_error):
+        for name in directories:
+            if (Path(directory) / name).is_symlink():
+                raise RuntimeError(f"symbolic-link ref directory is unsupported: {name}")
+        for filename in filenames:
+            path = Path(directory) / filename
+            if path.name.endswith(".lock"):
+                continue
+            name = path.relative_to(repo).as_posix()
+            git(repo, "check-ref-format", name)
+            refs[name] = stored_ref(path)
+    return refs, stored_ref(repo / "HEAD")
+
+
 def capture(args):
     repo = Path(args.repo).resolve()
     files = [Path(item).resolve() for item in args.file]
@@ -29,23 +67,7 @@ def capture(args):
             failures.append(f"protected file missing: {path}")
     if failures:
         raise RuntimeError("\n".join(failures))
-    refs = {}
-    for line in git(
-        repo, "for-each-ref", "--format=%(refname) %(objectname) %(symref)"
-    ).splitlines():
-        name, oid, target = line.split(" ", 2)
-        refs[name] = {"oid": oid, "symbolic_target": target or None}
-    head = subprocess.run(
-        ["git", f"--git-dir={repo}", "symbolic-ref", "-q", "HEAD"],
-        capture_output=True, text=True,
-    )
-    if head.returncode not in (0, 1):
-        raise RuntimeError(head.stdout + head.stderr)
-    head_state = (
-        {"symbolic_target": head.stdout.strip()}
-        if head.returncode == 0
-        else {"oid": git(repo, "rev-parse", "--verify", "HEAD").strip()}
-    )
+    refs, head_state = references(repo)
     registrations = {}
     for block in git(repo, "worktree", "list", "--porcelain").strip().split("\n\n"):
         path = block.splitlines()[0].removeprefix("worktree ")
