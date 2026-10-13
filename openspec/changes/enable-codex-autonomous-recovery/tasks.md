@@ -106,7 +106,7 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
 
 ## 6. Deliver reproducible recovery documentation
 
-- [ ] 6.1 In NOTES.md, identify the feature and desktop socket providers and
+- [x] 6.1 In NOTES.md, identify the feature and desktop socket providers and
   their supported restoration routes, with a concrete escalation destination
   where the client exposes no restoration control. Verify both socket-source
   routes and retain distinct unreachable versus sandbox-restricted failures;
