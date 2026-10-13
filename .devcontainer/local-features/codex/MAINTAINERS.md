@@ -41,8 +41,9 @@ for denial acceptance. Its parent must be writable by the container user through
 supported approval. For a recipe-only probe, `/tmp` is sufficient; that probe
 cannot establish a denial. Record the selected absolute directory externally.
 The seed and protected worktrees below are linked worktrees of a disposable bare
-repository. The protected subset consists of every pre-existing ref and complete
-worktree registration, the named fixture bytes, and shared `FETCH_HEAD` including
+repository. The protected subset consists of every pre-existing ref's object
+and symbolic target, the bare `HEAD`, complete worktree registrations, the named
+fixture bytes, and shared `FETCH_HEAD` including
 its absence. Parent/delegate branches and paths are declared additions, not part
 of that protected subset. `ownership.txt` is synthetic protected data, not a new
 ownership protocol.
@@ -114,18 +115,31 @@ python3 "$acceptance_state" capture --repo "$acceptance_repo" \
   > "$acceptance_root/before.json"
 ```
 
-Assign each actor a distinct branch and worktree beneath the ignored root:
-`parent-task` at `$acceptance_protected/.worktrees/parent`, and `delegate-task`
-at `$acceptance_protected/.worktrees/delegate`. Each actor follows canonical
-worktree setup in its own context. After their authorized additions, repeat the
-same capture invocation with output `after.json`, then compare:
+Each actor obtains its own session identifier through the canonical committing
+procedure. Before setup, record its task name and first eight session characters
+in external notes. Set the following to those actual values, then assign distinct
+branches and paths beneath the ignored root:
+
+```bash
+parent_task='actual-parent-task'
+parent_id8='actual-parent-id8'
+delegate_task='actual-delegate-task'
+delegate_id8='actual-delegate-id8'
+parent_branch="$parent_task-$parent_id8"
+delegate_branch="$delegate_task-$delegate_id8"
+parent_path="$acceptance_protected/.worktrees/$parent_task-$parent_id8"
+delegate_path="$acceptance_protected/.worktrees/$delegate_task-$delegate_id8"
+```
+
+Each actor follows canonical worktree setup using its recorded branch/path,
+including the pre-creation ignore check. After their authorized additions,
+repeat the same capture invocation with output `after.json`, then compare:
 
 ```bash
 python3 "$acceptance_state" compare "$acceptance_root/before.json" \
   "$acceptance_root/after.json" \
-  --allow-ref refs/heads/parent-task --allow-ref refs/heads/delegate-task \
-  --allow-worktree "$acceptance_protected/.worktrees/parent" \
-  --allow-worktree "$acceptance_protected/.worktrees/delegate"
+  --allow-ref "refs/heads/$parent_branch" --allow-ref "refs/heads/$delegate_branch" \
+  --allow-worktree "$parent_path" --allow-worktree "$delegate_path"
 ```
 
 A permitted addition never permits changing a baseline entry. For retrieval,
@@ -136,10 +150,39 @@ protected file list for each before/after capture. Preserve raw command results.
 Prove the comparator on an actual changed protected file: append a line to
 `protected.txt`, capture `changed.json` with the same invocation, and run the
 same compare command with `changed.json` in place of `after.json`. It must reject
-the altered digest. Restore only that task-created file using its seed blob,
-recapture, and confirm preservation again. Similarly change a copy of a captured
-ref or registration entry and confirm it is rejected; label those JSON controls
-as synthetic. Never mutate a production baseline or another task's worktree.
+the altered digest. Restore only that task-created file using its seed blob:
+
+```bash
+git --git-dir="$acceptance_repo" show fixture-seed:protected.txt \
+  > "$acceptance_protected/protected.txt"
+```
+
+Recapture with the original file list and confirm preservation again. The
+snapshot's `refs` map holds each ref's `oid` and `symbolic_target`; `head` holds
+the bare symbolic target or detached object. Its `worktrees` map holds the
+complete porcelain block keyed by path. Produce synthetic controls from the
+captured actual snapshot, changing an entry selected from the original baseline:
+
+```bash
+python3 - "$acceptance_root" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+baseline = json.loads((root / "before.json").read_text())
+for field in ("refs", "worktrees"):
+    changed = json.loads((root / "after.json").read_text())
+    key = next(iter(baseline[field]))
+    if field == "refs":
+        changed[field][key]["oid"] = "deliberately-altered"
+    else:
+        changed[field][key] += "\nsynthetic-alteration"
+    assert changed[field][key] != baseline[field][key]
+    (root / ("changed-" + field + ".json")).write_text(json.dumps(changed))
+PY
+```
+
+Run the same allowlisted compare invocation with each changed JSON in place of
+`after.json`; both must fail. These are synthetic JSON controls. Never mutate a
+production baseline or another task's worktree.
 
 ### Exercise startup classifications
 
@@ -711,8 +754,14 @@ fi
 ```
 
 Capture a selected completed session similarly with `sha256sum`, after checking
-its exact session identity and completed status. Do not treat an active rollout
-as completed. Record keychain or managed-policy paths separately when applicable.
+its exact session identity and completed status. For Codex desktop, ask an agent
+with the exposed `read_thread` tool to read that exact chat and host. Require its
+latest turn's `status` to be `completed` and no active turn; record that readback
+privately and keep the selected chat inactive during exact-file comparison.
+Match the rollout's `session_meta.id` to the selected chat ID. If the tool is
+unavailable or the chat resumes, use a recorded length/prefix boundary instead;
+do not infer completion from file age or a final-looking transcript line.
+Record keychain or managed-policy paths separately when applicable.
 Every capture command must succeed; a missing required configuration or failed
 status command leaves that capture incomplete and requires diagnosis.
 
@@ -754,7 +803,40 @@ adopted policy.
 
 The two supported installation paths are a fresh container with new Codex state
 and an existing installation retaining its persistent Codex volume. Follow the
-adoption steps in `NOTES.md` on each path. Record the selected user configuration
+adoption steps in `NOTES.md` on each path. To prepare the fresh path on the
+Docker Desktop host, use a new disposable consumer directory outside Git
+repositories. Complete the CLI and host-mount prerequisites in `NOTES.md` first.
+Choose an unused local SSH port in place of `UNUSED_LOCAL_PORT`:
+
+```bash
+fresh_root=$(mktemp -d "$HOME/codex-recovery-fresh.XXXXXX")
+mkdir "$fresh_root/.devcontainer"
+cat > "$fresh_root/.devcontainer/devcontainer.json" <<'JSON'
+{
+  "image": "ghcr.io/hube/devcontainer:latest",
+  "appPort": ["127.0.0.1:UNUSED_LOCAL_PORT:2222"]
+}
+JSON
+printf '%s\n' "$fresh_root"
+```
+
+Replace the port placeholder in that task-created file, then run
+`devcontainer up --workspace-folder "$fresh_root"`. Retain its successful
+`containerId` as `fresh_container`. On the host, read the attached Codex volume:
+
+```bash
+docker inspect "$fresh_container" --format \
+  '{{range .Mounts}}{{if eq .Destination "/home/devcontainer/.codex"}}{{.Type}} {{.Name}}{{end}}{{end}}'
+```
+
+Require `volume` and a newly created volume name distinct from the existing
+installation's corresponding inspect result; a reused volume is not the fresh
+path. Retain both names privately. Authenticate only if the fresh login-status
+check requires it, then connect a separate desktop SSH alias using `NOTES.md`.
+Recreation of that same consumer supplies the retained-volume path; do not
+remove either volume as a substitute for rollback.
+
+Record the selected user configuration
 and applicable managed requirements without copying credentials. Verify a compatible configuration and deliberately
 incompatible reviewer, approval-policy and sandbox settings are distinguished;
 verify a managed restriction remains binding. A native configuration diagnostic
@@ -788,7 +870,17 @@ Merging to `main` triggers
 [`.github/workflows/publish.yaml`](../../../.github/workflows/publish.yaml),
 which builds and pushes `ghcr.io/hube/devcontainer:latest`. Select the full
 merge commit SHA from the intended merged PR's `mergeCommit.oid` before watching
-publication. Substitute that SHA below; an older merge must select its own run,
+publication. Set `publication_pr` to that PR number and retrieve the value:
+
+```bash
+publication_pr='INTENDED_PR_NUMBER'
+gh pr view "$publication_pr" --repo hube/devcontainer \
+  --json state,mergeCommit \
+  --jq 'if .state == "MERGED" and .mergeCommit.oid != null then .mergeCommit.oid else error("Selected PR has no merged commit") end'
+```
+
+The command must succeed and print the full SHA. Substitute that SHA below;
+an older merge must select its own run,
 even when newer main runs exist. This observes a run, without triggering one.
 
 ```bash

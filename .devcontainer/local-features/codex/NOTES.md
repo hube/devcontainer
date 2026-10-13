@@ -172,7 +172,10 @@ files intact. A different consumer-selected mount source must already provide
 the same canonical corpus before following the container checks below.
 
 From the consuming project's directory on the host, recreate its container with
-the installed Dev Container CLI:
+the installed Dev Container CLI. First run `devcontainer --version` on that
+host. If unavailable, install it using the
+[upstream CLI installation procedure](https://github.com/devcontainers/cli#try-it-out)
+and repeat the version check before recreating:
 
 ```bash
 devcontainer up --workspace-folder "$PWD" --remove-existing-container

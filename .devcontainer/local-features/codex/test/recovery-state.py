@@ -29,9 +29,22 @@ def capture(args):
             failures.append(f"protected file missing: {path}")
     if failures:
         raise RuntimeError("\n".join(failures))
-    refs = dict(
-        line.split(" ", 1)
-        for line in git(repo, "for-each-ref", "--format=%(refname) %(objectname)").splitlines()
+    refs = {}
+    for line in git(
+        repo, "for-each-ref", "--format=%(refname) %(objectname) %(symref)"
+    ).splitlines():
+        name, oid, target = line.split(" ", 2)
+        refs[name] = {"oid": oid, "symbolic_target": target or None}
+    head = subprocess.run(
+        ["git", f"--git-dir={repo}", "symbolic-ref", "-q", "HEAD"],
+        capture_output=True, text=True,
+    )
+    if head.returncode not in (0, 1):
+        raise RuntimeError(head.stdout + head.stderr)
+    head_state = (
+        {"symbolic_target": head.stdout.strip()}
+        if head.returncode == 0
+        else {"oid": git(repo, "rev-parse", "--verify", "HEAD").strip()}
     )
     registrations = {}
     for block in git(repo, "worktree", "list", "--porcelain").strip().split("\n\n"):
@@ -41,6 +54,7 @@ def capture(args):
     return {
         "repo": str(repo),
         "refs": refs,
+        "head": head_state,
         "worktrees": registrations,
         "files": {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in files},
         "fetch_head": hashlib.sha256(receipt.read_bytes()).hexdigest() if receipt.exists() else None,
@@ -51,7 +65,7 @@ def compare(args):
     baseline = json.loads(Path(args.baseline).read_text())
     actual = json.loads(Path(args.actual).read_text())
     failures = []
-    for name in ("repo", "files", "fetch_head"):
+    for name in ("repo", "head", "files", "fetch_head"):
         if baseline[name] != actual[name]:
             failures.append(f"protected {name} changed")
     for name, allowed in (("refs", args.allow_ref), ("worktrees", args.allow_worktree)):
