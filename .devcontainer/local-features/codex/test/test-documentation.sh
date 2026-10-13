@@ -144,7 +144,10 @@ required_maintainers = {
     "local unrelated consumer": "test-image-consumer.sh codex-runtime-test:acceptance",
     "install-order acceptance": "bash .devcontainer/local-features/agent-skills/test/test-install-order.sh",
     "publication workflow": ".github/workflows/publish.yaml",
-    "publication monitoring": "gh run list --workflow publish.yaml --branch main --limit 1",
+    "publication monitoring": "gh run list --repo hube/devcontainer --workflow publish.yaml --branch main",
+    "publication merge filter": '--commit "$publication_merge" --limit 2',
+    "publication ambiguity rejection": 'elif length != 1 then error(',
+    "publication workflow readback": '.path == ".github/workflows/publish.yaml"',
     "published image pull": "docker pull ghcr.io/hube/devcontainer:latest",
     "post-publication consumer": "test-image-consumer.sh ghcr.io/hube/devcontainer:latest",
     "issue closure gate": "Close issue #36 only after",
@@ -316,7 +319,13 @@ assert_mutation_rejected \
   "bash .devcontainer/local-features/codex/test/test-runtime.sh"
 assert_mutation_rejected \
   "maintainer publication workflow" "$MAINTAINERS" \
-  "gh run list --workflow publish.yaml --branch main --limit 1"
+  "gh run list --repo hube/devcontainer --workflow publish.yaml --branch main"
+assert_mutation_rejected \
+  "publication merge filter" "$MAINTAINERS" \
+  '--commit "$publication_merge" --limit 2'
+assert_mutation_rejected \
+  "publication workflow readback" "$MAINTAINERS" \
+  '.path == ".github/workflows/publish.yaml"'
 assert_mutation_rejected \
   "maintainer post-publication acceptance" "$MAINTAINERS" \
   "test-image-consumer.sh ghcr.io/hube/devcontainer:latest"

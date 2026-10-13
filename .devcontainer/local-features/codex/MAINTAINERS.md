@@ -400,12 +400,63 @@ compatibility or remove the independently tracked defects.
 
 Merging to `main` triggers
 [`.github/workflows/publish.yaml`](../../../.github/workflows/publish.yaml),
-which builds and pushes `ghcr.io/hube/devcontainer:latest`. Identify the run
-created by the merge and wait for it to finish:
+which builds and pushes `ghcr.io/hube/devcontainer:latest`. Select the full
+merge commit SHA from the intended merged PR's `mergeCommit.oid` before watching
+publication. Substitute that SHA below; an older merge must select its own run,
+even when newer main runs exist. This observes a run, without triggering one.
 
 ```bash
-gh run list --workflow publish.yaml --branch main --limit 1
-gh run watch <run-id> --exit-status
+publication_merge='FULL_MERGE_COMMIT_SHA'
+publication_runs=$(mktemp)
+gh run list --repo hube/devcontainer --workflow publish.yaml --branch main \
+  --commit "$publication_merge" --limit 2 \
+  --json databaseId,headSha,headBranch,url > "$publication_runs"
+cat "$publication_runs"
+```
+
+If the command fails, retain its stdout/stderr; the intended run has not been
+selected. Restore the reported GitHub access and repeat the same selection.
+Continue only after it succeeds. Validate cardinality and the returned commit
+and branch before selecting the run identifier:
+
+```bash
+publication_run=$(jq -er --arg sha "$publication_merge" '
+  if length == 0 then error("No publication run for the selected merge")
+  elif length != 1 then error("Ambiguous publication runs for the selected merge")
+  elif .[0].headSha != $sha or .[0].headBranch != "main"
+    then error("Publication run commit or branch does not match")
+  else .[0].databaseId end
+' "$publication_runs")
+```
+
+An absent match leaves publication for this merge unobserved: confirm the merge
+SHA and inspect the workflow's push trigger and Actions access, then repeat the
+selection. Ambiguous matches leave the run choice unresolved: inspect the
+returned run URLs and establish which run belongs to the intended publication.
+Do not watch a run until the selection is unambiguous.
+
+Read back that run through Actions and verify the workflow path as well as the
+commit and branch before watching it:
+
+```bash
+publication_identity=$(mktemp)
+gh api "repos/hube/devcontainer/actions/runs/$publication_run" \
+  > "$publication_identity"
+cat "$publication_identity"
+jq -e --arg sha "$publication_merge" --argjson run "$publication_run" '
+  .id == $run and .head_sha == $sha and .head_branch == "main" and
+  .path == ".github/workflows/publish.yaml"
+' "$publication_identity"
+```
+
+A failed read or a false identity check leaves the run unverified. Retain the
+output, correct the selected repository, SHA or workflow from the intended PR
+and workflow configuration, and repeat selection and readback. Only after both
+commands succeed, watch the verified run:
+
+```bash
+gh run watch "$publication_run" --repo hube/devcontainer --exit-status
+rm "$publication_runs" "$publication_identity"
 ```
 
 Do not begin post-publication acceptance unless the workflow exits zero. A
