@@ -47,6 +47,15 @@ its absence. Parent/delegate branches and paths are declared additions, not part
 of that protected subset. `ownership.txt` is synthetic protected data, not a new
 ownership protocol.
 
+Decided (owner, 2026-10-12: [bounded bootstrap exception](https://github.com/hube/devcontainer/pull/98#issuecomment-6139134484)):
+for this acceptance recipe only, the first linked seed may be created in a new
+disposable bare repository before its ignore file exists. This overrides the
+canonical manual worktree path and pre-creation ignore check for that first seed
+only. Confirm the selected directory is new and contains no pre-existing refs,
+worktrees or protected state. Commit the seed's ignore/protected fixtures before
+creating subsequent worktrees under checked ignored roots. Production
+repositories and other tasks retain the canonical procedure.
+
 From this repository's task worktree inside the Linux devcontainer, set the
 paths below. Run preparation with
 supported approval when the selected directory requires it:
@@ -56,7 +65,7 @@ acceptance_root='/absolute/new/acceptance-directory'
 mkdir "$acceptance_root"
 acceptance_repo="$acceptance_root/repo.git"
 acceptance_seed="$acceptance_root/seed"
-acceptance_protected="$acceptance_root/protected"
+acceptance_protected="$acceptance_seed/.worktrees/protected-<task>-<id8>"
 git init --bare "$acceptance_repo"
 git --git-dir="$acceptance_repo" worktree add --orphan \
   -b fixture-seed "$acceptance_seed"
@@ -76,6 +85,7 @@ seed and its protected worktree:
 git -C "$acceptance_seed" add .gitignore protected.txt ownership.txt
 git -C "$acceptance_seed" commit -F "$acceptance_message"
 git -C "$acceptance_seed" verify-commit HEAD
+git -C "$acceptance_seed" check-ignore .worktrees/.probe
 git --git-dir="$acceptance_repo" worktree add \
   -b fixture-protected "$acceptance_protected" fixture-seed
 git -C "$acceptance_protected" check-ignore .worktrees/.probe
