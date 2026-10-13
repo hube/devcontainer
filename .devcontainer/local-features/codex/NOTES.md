@@ -15,6 +15,23 @@ reach the container's ssh server, e.g. by adding the following to the
 
 See the [devcontainer documentation][2] for details
 
+Before connecting a new remote installation, follow the official
+[remote/headless authentication guide](https://learn.chatgpt.com/docs/auth#login-on-headless-devices)
+in the container's remote user environment. Keep the upstream login procedure
+there. First run its read-only completion check:
+
+```bash
+codex login status
+```
+
+An authenticated result identifies the active authentication method; preserve
+that state and continue with the
+[desktop SSH connection steps](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host).
+If authentication is absent, complete the upstream flow for that remote user,
+then repeat the status check. Do not publish credential files or one-time codes.
+The status check establishes remote authentication; successfully opening a
+remote chat separately establishes the desktop connection.
+
 ## Supported Codex runtime
 
 Docker Desktop in Linux-container mode is the sole supported runtime for the
@@ -155,7 +172,10 @@ files intact. A different consumer-selected mount source must already provide
 the same canonical corpus before following the container checks below.
 
 From the consuming project's directory on the host, recreate its container with
-the installed Dev Container CLI:
+the installed Dev Container CLI. First run `devcontainer --version` on that
+host. If unavailable, install it using the
+[upstream CLI installation procedure](https://github.com/devcontainers/cli#try-it-out)
+and repeat the version check before recreating:
 
 ```bash
 devcontainer up --workspace-folder "$PWD" --remove-existing-container
@@ -279,12 +299,36 @@ printf '%s\n' "$SSH_AUTH_SOCK"
 ssh-add -l
 ```
 
-An unreachable agent prevents authentication; restore the reported socket's
-host/desktop forwarding. An agent with no identities needs an identity loaded
-on the host with `ssh-add`. A remote credential rejection needs access for that
-identity to the named repository. A DNS or connection failure outside the
-sandbox needs connectivity to the named host. Preserve the failed command's
-output in each case; repeated approval requests cannot repair those causes.
+An unreachable agent prevents SSH authentication. Identify the provider before
+restoring forwarding:
+
+- The consuming image's [SSH Feature](../ssh/devcontainer-feature.json) selects
+  `/run/host-services/ssh-auth.sock`, supplied by Docker Desktop and bind-mounted
+  into the container. Confirm the host agent is reachable with `ssh-add -l` in a
+  host terminal, then verify the consuming container retains the Feature's
+  socket mount and environment selection using the
+  [Docker Desktop forwarding configuration](https://docs.docker.com/desktop/features/networking/networking-how-tos/#ssh-agent-forwarding).
+  Restore missing consumer wiring and recreate that consumer through the
+  activation steps above, retaining its persistent volumes. Repeat the
+  container's socket/identity check. If the declared route remains unreachable,
+  send the captured host/container diagnostics to
+  [Docker Desktop support](https://docs.docker.com/desktop/troubleshoot-and-support/troubleshoot/).
+- For a socket supplied by the desktop connection, compare the remote chat's
+  selected socket with the ordinary container shell's Feature socket and retain
+  both diagnostics. Reconnect the intended SSH host/project through the
+  [desktop connection flow](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host),
+  open a new remote chat and repeat the check there. If the installed client
+  exposes no socket-restoration control or reconnection leaves it unreachable,
+  submit the client version, socket path and captured diagnostics through
+  the app's [`/feedback` report](https://learn.chatgpt.com/docs/reference/slash-commands),
+  identifying the desktop SSH forwarding integration. Do not change the
+  container's system SSH configuration to repair a client-owned socket.
+
+A reachable agent with no identities needs an identity loaded on the host with
+`ssh-add`. A remote credential rejection needs access for that identity to the
+named repository. A DNS or connection failure outside the sandbox needs
+connectivity to the named host. Preserve the failed command's output in each
+case; repeated approval requests cannot repair those causes.
 
 A chat can see an SSH configuration ownership error or agent access denial that
 an ordinary container shell does not see. Request a diagnostic report comparing
