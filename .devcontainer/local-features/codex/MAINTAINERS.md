@@ -673,14 +673,17 @@ writers or diagnose it rather than allowlisting an arbitrary change. Retain the
 selected paths, lengths and digests privately outside repositories, never the
 credential or transcript contents.
 
-Run this capture as the remote user inside the selected Linux devcontainer
-before adoption or rollback;
-`adoption_before` is private scratch outside repositories. Do not send its
-configuration backup to a public artifact:
+Run this capture in the remote user's login shell inside the selected Linux
+devcontainer before adoption or rollback. Select a new private notes directory
+on a host bind mount or separately retained storage, outside repositories. It must survive the
+container recreation; ephemeral container `/tmp` is unsuitable for that boundary.
+Do not send its configuration backup to a public artifact:
 
 ```bash
 adoption_home="${CODEX_HOME:-$HOME/.codex}"
-adoption_before=$(mktemp -d)
+adoption_before='/absolute/private/persistent/notes/adoption-before'
+umask 077
+mkdir "$adoption_before"
 cp "$adoption_home/config.toml" "$adoption_before/config-before.toml"
 sha256sum "$adoption_home/config.toml" > "$adoption_before/config.sha256"
 codex login status > "$adoption_before/auth-status.txt" 2>&1

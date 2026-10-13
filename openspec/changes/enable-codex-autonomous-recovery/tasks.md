@@ -115,7 +115,7 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
   and identify its read-only completion check. Recheck the supported client and
   authentication flow, then verify remote status and desktop connection without
   publishing credentials or reauthenticating an already authenticated user.
-- [x] 6.3 In MAINTAINERS.md, provide disposable fixture preparation and define
+- [ ] 6.3 In MAINTAINERS.md, provide disposable fixture preparation and define
   the protected refs, registrations and bytes at first use. Run the recipe to
   prepare the seed, ignored worktree root and protected baseline; verify distinct
   parent/delegate additions preserve that baseline.
