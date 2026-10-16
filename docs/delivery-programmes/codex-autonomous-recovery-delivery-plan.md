@@ -22,6 +22,8 @@ delivers three child work issues in one independently reviewed PR; its own
 acceptance criteria reference only those children. No child commit order is
 ruled. Native blocking edges represent dispatch prerequisites, not commit order.
 
+Programme ledger: [hube/devcontainer#101](https://github.com/hube/devcontainer/issues/101).
+
 - **Ledger-to-units hierarchy:** the programme ledger's native sub-issue graph.
 - **Acceptance criteria per unit:** the unit or vehicle issue body, mapped to
   the OpenSpec tasks and capability requirements below.
@@ -152,15 +154,15 @@ establishes integration behavior. Neither replaces the other.
 
 | Unit | Work issue / boundary | OpenSpec tasks | Outcome |
 | --- | --- | --- | --- |
-| Restoration verification | New no-PR unit | 10.1 | Owner-restored guidance is readable and consumed, with persistent-state readback. |
+| Restoration verification | [#102](https://github.com/hube/devcontainer/issues/102); no PR | 10.1 | Owner-restored guidance is readable and consumed, with persistent-state readback. |
 | Publication integrity | Existing #72; separate PR | 13.1–13.3 | Corrected effective jq input preserves the complete Unicode payload. |
 | Skills startup | Existing #84; separate PR | 11.1–11.3 | Both harnesses are configured independently, preserving unrelated state. |
 | Validator liveness | Existing #67; separate PR | 12.1–12.3 | Parsing terminates within its bound and failure remains actionable. |
 | Automatic SSH setup | Existing #43; separate PR | 14.1–14.4 | Native allocation and stable aliases reach the intended consumer across recreation. |
-| Host onboarding | New vehicle: workspace selection, projects-directory preparation and existing #30 | 15.1–15.3 | One coherent entry path describes prerequisites and actual persistence. |
-| GitHub authentication | New documentation unit | 16.1–16.3 | Token wiring, remote status and exact credential-volume selection are reproducible. |
-| Runtime terminology | New documentation unit | 17.1–17.2 | Matrix labels and instrumentation evidence are interpretable. |
-| Combined reconciliation | New no-PR unit | 18.1–18.2 | Selected outcomes are consumed together and every issue criterion is reconciled. |
+| Host onboarding | [#105](https://github.com/hube/devcontainer/issues/105) vehicle: [workspace selection #103](https://github.com/hube/devcontainer/issues/103), [projects-directory preparation #104](https://github.com/hube/devcontainer/issues/104) and existing #30 | 15.1–15.3 | One coherent entry path describes prerequisites and actual persistence. |
+| GitHub authentication | [#106](https://github.com/hube/devcontainer/issues/106); documentation PR | 16.1–16.3 | Token wiring, remote status and exact credential-volume selection are reproducible. |
+| Runtime terminology | [#107](https://github.com/hube/devcontainer/issues/107); documentation PR | 17.1–17.2 | Matrix labels and instrumentation evidence are interpretable. |
+| Combined reconciliation | [#108](https://github.com/hube/devcontainer/issues/108); no PR | 18.1–18.2 | Selected outcomes are consumed together and every issue criterion is reconciled. |
 
 The onboarding vehicle's workspace and projects-directory child issues cover
 task 15.1; #30 covers task 15.2. Task 15.3 is their shared entry-path and reader
