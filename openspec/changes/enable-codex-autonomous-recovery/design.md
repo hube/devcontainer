@@ -6,9 +6,9 @@ The [approved proposal](proposal.md)
 defines the execution scope and rigor. This design divides that scope into
 usable deliveries rather than separate configuration, instruction, and testing
 phases. Each delivery includes the wiring and verification its outcome needs.
-The original 35 tasks are complete. The owner's subsequent scope review adds
-the [selected integration follow-ups](proposal.md#selected-integration-follow-ups)
-without treating their new acceptance as already performed.
+The [selected integration outcomes](proposal.md#selected-integration-follow-ups)
+cover restoration, skills startup, validator liveness, publication integrity,
+SSH connection setup and reproducible owning documentation.
 
 ## Goals
 
@@ -98,9 +98,9 @@ that outcome's unit; it is not postponed to the adoption unit. Adoption expands
 coverage beyond already-compatible installations rather than making earlier
 units deployable for the first time.
 
-The original delivery order follows task execution so each extension consumes
-the preceding outcome. Validator liveness is now explicitly selected as a new
-delivery below; alias lifecycle remains separate under the proposal's boundary.
+The runtime delivery order follows task execution so each extension consumes
+the preceding outcome. Validator liveness has its own delivery below; alias
+lifecycle is outside the proposal's selected boundary.
 
 ### Reproducible documentation and acceptance
 
@@ -163,9 +163,9 @@ registration to force success.
 Focused tests check our argument and failure-aggregation wiring against the
 actual installer contract, naming any CLI stubs. Normal fresh, existing and
 repeated installations supply separate installed-state readback for both harnesses.
-The programme's payload repair #156 is a prerequisite already delivered at its
-own boundary, not another implementation of this caller fix. Feature NOTES owns
-the changed startup behavior; agent-skills #114/#39 links that source.
+The installer payload contract is owned by agent-skills #156. This delivery
+owns the caller's harness selection and independent attempts. Feature NOTES owns
+the startup behavior; agent-skills #114/#39 links that source.
 
 ### Bound attribution validation without weakening it
 
@@ -286,13 +286,13 @@ functional delivery.
 Rejected: the first useful improvement then depends on every operation class.
 A startup slice provides value while the remaining integrations are delivered.
 
-**Archive the original scope before its selected follow-ups.** Not selected: the
-owner keeps one change open for the expanded recovery outcome. Preserve the
-completed tasks and add pending deliveries, then finalize after their acceptance.
+**Finalize runtime recovery separately from the selected integration outcomes.**
+Rejected: the owner selects one change for their combined consumption. Its
+finalization requires acceptance of every selected outcome.
 
-**Document manual port choice only.** Superseded by the owner's automatic-
-allocation decision. Docker already supplies allocation; reliable discovery and
-the SSH configuration lifecycle are the additional integration work.
+**Document manual port choice only.** Rejected: manual choice leaves collision
+avoidance and recreation refresh to the operator, while the selected outcome
+requires automatic allocation and a usable stable consumer alias.
 
 ## Acceptance and Rollout
 
@@ -315,7 +315,7 @@ compatible sessions may need to refresh their instruction context; the unit's
 operator guidance must describe that activation step. Rollback restores the
 changed guidance/configuration without clearing user state or other worktrees.
 
-Each original runtime extension repeats the earlier supported scenarios and adds
+Each runtime extension repeats the preceding supported scenarios and adds
 its new one.
 It must identify its supported configuration subset and any remaining limitation;
 it must not claim closure of issues whose full acceptance criteria are unmet.
@@ -328,14 +328,13 @@ exercise the specified supported host/client and parent/delegate paths. A static
 review or prior receipt does not discharge a newly documented live procedure.
 Unavailable host/client verification remains an explicit unmet criterion.
 
-The expanded deliveries in tasks 10–18 preserve those prior completion records.
-Each functional repair includes its own input controls, effective runtime
-readback, operator guidance and integration acceptance. Rerun earlier cases
+The integration deliveries in tasks 10–18 include input controls, effective
+runtime readback, operator guidance and integration acceptance. Rerun earlier cases
 affected by that repair; final reconciliation combines the consumed outcomes
 rather than deferring their first verification to the end. Update owning issue
 criteria against the selected outcomes before claiming closure, including #43's
-now-explicit automatic connection setup. Specification synchronization and
-archiving follow completion of the expanded scope as separate finalization work.
+automatic connection setup. Specification synchronization and archiving follow
+acceptance and criterion reconciliation as separate finalization work.
 
 Canonical guidance and its consumers land through their owning repository gates.
 Instruction-authoring adherence and the required reader-proxy reviews apply to
@@ -374,6 +373,10 @@ that the desktop or a delegate uses the required approval path.
 
 ## Changelog
 
+- 2026-10-16: The original 35 tasks have completed acceptance; selected integration
+  deliveries remain subject to their own evidence. Confined completion and
+  supersession history to this section. The programme assigns restoration and
+  final reconciliation authors verification PRs for their task-state updates.
 - Owner scope review: Added verified restoration, installer #84, validator #67,
   publication integrity #72, automatic SSH connection setup #43 and the selected
   onboarding, authentication and runtime terminology deliveries. Preserved prior

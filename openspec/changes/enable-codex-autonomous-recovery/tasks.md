@@ -3,12 +3,11 @@
 Each numbered group is a functional delivery with its own activation,
 documentation, and acceptance. Repository PRs within a group may land separately;
 the group delivers only when the supported session consumes them together.
-Groups 1–5 cover the original runtime deliveries; groups 6–8 delivered the original
-selected documentation and canonical prerequisites, and group 9 reconciled that
-scope. Preserve their 35 checked tasks and prior evidence. The owner's
-[expanded selection](proposal.md#selected-integration-follow-ups) adds groups
-10–18; prior completion does not establish these new outcomes. The capability
-specs describe the expanded complete change.
+Groups 1–5 cover runtime recovery and adoption; groups 6–8 cover reproducible
+documentation and canonical prerequisites, and group 9 reconciles their
+consumption. Groups 10–18 cover the
+[selected integration outcomes](proposal.md#selected-integration-follow-ups).
+Each completion mark requires its task's acceptance evidence.
 
 The [selected scope](proposal.md#selected-documentation-scope) and the
 [disposition inventory](https://github.com/hube/devcontainer/issues/96#issuecomment-6044021452)
@@ -16,7 +15,7 @@ govern groups 6–9. Feature documentation lives in
 `.devcontainer/local-features/codex/NOTES.md` and `MAINTAINERS.md`; canonical
 procedures live in hube/claude-home. Each task includes its required verification;
 an unavailable live check remains outstanding. Keep task progress in these marks
-and evidence in the owning PRs, without converting prior receipts into new runs.
+and evidence in the owning PRs, without treating prior receipts as new runs.
 Groups 10–18 also use the README and owning agent-skills, Claude and GitHub CLI
 feature homes as their outcomes require. Group 10 waits for the owner's stated
 restoration action. Independent software and documentation work may proceed;
@@ -215,7 +214,10 @@ programme sequence, referring to these owning procedures.
   mounts, consumption by a fresh parent and delegate, and protected configuration,
   authentication and history readback. Retain this run's results separately from
   prior receipts; a listing or unavailable owner action leaves verification
-  pending. This task adds no preventive mount redesign.
+  pending. Publish the report on issue #102 and carry this task's evidence-backed
+  mark in that unit's independently reviewed, owner-merged verification PR;
+  reconcile the merged mark before issue closure. Preventive mount redesign is
+  outside scope.
 
 ## 11. Deliver independent skills startup for both harnesses (#84)
 
@@ -351,7 +353,10 @@ programme sequence, referring to these owning procedures.
   Preserve #77 and other exclusions, #74–76's owner not-planned dispositions,
   programme ownership and prior completed-task evidence. Verify no selected task
   or host/client criterion remains unmet before declaring the expanded change
-  ready for separately authorized spec synchronization and archiving.
+  ready for separately authorized spec synchronization and archiving. Publish the
+  report on issue #108 and carry tasks 18.1–18.2's evidence-backed marks in that
+  unit's independently reviewed, owner-merged verification PR. Reconcile the
+  merged marks before closing the unit and programme.
 
 Spec synchronization and archiving follow completion of all selected deliveries
 as separately authorized finalization work.

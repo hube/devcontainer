@@ -75,17 +75,16 @@ merge's workflow run rather than the latest unrelated run. Decided (owner,
 2026-10-08:
 [separate selector selection](https://github.com/hube/devcontainer/issues/96#issuecomment-6074521646)).
 
-Tasks 6–9 delivered that original selection. The subsequent owner scope review
-selects the inventory's remaining accepted host workspace, host projects-directory,
-runtime terminology, token-wiring and credential-volume defects below. The
-inventory's merits declines remain intact. Canonical procedures retain one home;
-proposed net always-on growth still requires a concrete owner decision.
+Tasks 6–9 cover recovery documentation and canonical prerequisites. Host workspace,
+host projects-directory, runtime terminology, token-wiring and credential-volume
+repairs are included in the integration scope below. The inventory's merits
+declines remain outside scope. Canonical procedures retain one home; proposed
+net always-on growth requires a concrete owner decision.
 
 ### Selected integration follow-ups
 
-Decided (owner, in this change's scope review): keep this change open for the
-following deliveries, preserving the original 35 completed tasks and their actual
-acceptance evidence. New tasks remain outstanding until separately verified.
+Decided (owner, in this change's scope review): the following outcomes belong
+to this change. Each task requires its own acceptance evidence.
 
 | Delivery | Selected outcome |
 | --- | --- |
@@ -100,25 +99,27 @@ acceptance evidence. New tasks remain outstanding until separately verified.
 
 The four functional repairs are separate deliveries with their own guidance and
 verification. The three documentation groups retain their owning feature homes.
-Automatic SSH allocation supersedes the earlier documented-manual-selection-only
-choice for #43; it is a functional delivery rather than part of onboarding prose.
+Automatic SSH allocation and connection refresh form #43's functional delivery;
+onboarding guidance consumes that connection path.
 
 Coordinate setup references with
 [agent-skills #114](https://github.com/hube/agent-skills/issues/114) and
 [#39](https://github.com/hube/agent-skills/issues/39). This repository owns the
 bootstrap and feature procedures; that programme consumes them under its existing
-scope and sequence. Its completed installer-payload repair
-[#156](https://github.com/hube/agent-skills/issues/156) does not discharge #84.
+scope and sequence. Installer payload copying is owned by
+[#156](https://github.com/hube/agent-skills/issues/156); #84 owns the startup
+caller's explicit harness selection and independent attempts.
 Its attribution fallback work retains its own unit and canonical authority.
-Specification synchronization and archiving follow the expanded deliveries.
+Specification synchronization and archiving follow delivery acceptance and
+criterion reconciliation.
 
 Private Git administration, a custom command broker, blanket full access,
 additional Codex client support, and eliminating all upstream sandbox defects
 remain outside scope. Alias lifecycle #77 stays separate unless a concrete
-supported-flow blocker is established. The expansion adds no new durability
-guarantee for unmounted sibling directories, custom port allocator, standing
-service, general dependency-upgrade programme, attribution-enforcement policy,
-signing redesign or test-infrastructure redesign.
+supported-flow blocker is established. Durability guarantees for unmounted
+sibling directories, a custom port allocator, a standing service, general
+dependency upgrades, attribution-enforcement policy, signing redesign and
+test-infrastructure redesign are outside scope.
 
 ## Rigor Levels
 
@@ -213,8 +214,8 @@ establish those original criteria as implemented.
 Issues #84, #67, #72, #30 and #43 require criterion-by-criterion reconciliation
 against their selected outcomes; merge alone does not close them. Issue #43's
 automatic-allocation and connection-lifecycle outcome is defined above. The
-remaining accepted issue #96 defects are now selected, while its merits declines
-remain separate. [Alias issue #77](https://github.com/hube/devcontainer/issues/77)
+host onboarding, authentication and runtime terminology defects in issue #96
+are in scope; its merits declines remain separate. [Alias issue #77](https://github.com/hube/devcontainer/issues/77)
 retains independent closure criteria. Broader gate enforcement (#69/#73), signing
 extraction/design (#32/#71), test infrastructure (#62), XDG migration (#29), naming
 conventions (#34) and unproven shell-prompt work (#12) are not admitted here.
