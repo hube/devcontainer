@@ -6,6 +6,9 @@ The [approved proposal](proposal.md)
 defines the execution scope and rigor. This design divides that scope into
 usable deliveries rather than separate configuration, instruction, and testing
 phases. Each delivery includes the wiring and verification its outcome needs.
+The [selected integration outcomes](proposal.md#selected-integration-follow-ups)
+cover restoration, skills startup, validator liveness, publication integrity,
+SSH connection setup and reproducible owning documentation.
 
 ## Goals
 
@@ -18,6 +21,8 @@ phases. Each delivery includes the wiring and verification its outcome needs.
 - Supply executable acceptance recipes and discoverable prerequisites for the
   selected recovery flows, preserving the distinction between disposable probes
   and supported desktop integration acceptance.
+- Make installation, check termination, publication integrity and SSH connection
+  setup usable through their selected failure cases and consumer lifecycles.
 
 ## Non-goals
 
@@ -93,9 +98,9 @@ that outcome's unit; it is not postponed to the adoption unit. Adoption expands
 coverage beyond already-compatible installations rather than making earlier
 units deployable for the first time.
 
-The order follows task execution so each extension consumes the preceding
-outcome. Independent validator liveness and alias lifecycle work remain outside
-this chain unless a concrete dependency blocks an outcome.
+The runtime delivery order follows task execution so each extension consumes
+the preceding outcome. Validator liveness has its own delivery below; alias
+lifecycle is outside the proposal's selected boundary.
 
 ### Reproducible documentation and acceptance
 
@@ -132,6 +137,139 @@ standing enforcement, an ownership registry, or a broader supported runtime.
 Any net always-on guidance growth requires a concrete owner decision; canonical
 producer detail uses an on-demand home where sufficient.
 
+### Restore the existing instruction activation
+
+The owner performs the documented host-source restoration and container
+recreation after the scope discussion. Afterward, verify the actual mounted
+always-on file and bulk corpus, new parent/delegate consumption, and the existing
+configuration, authentication and history boundaries. A directory listing alone
+cannot establish restoration. Retain captured failures and the actual verification
+result; do not reuse earlier restoration receipts as this run's evidence.
+
+This is verification of the existing restoration procedure. Preventing future
+stale single-file binds or redesigning mounts is not selected. Isolated software
+work can proceed independently; acceptance requiring restored mounted guidance
+remains pending until the owner action and readback succeed.
+
+### Install skills independently for both harnesses
+
+The agent-skills post-start hook invokes the maintained installer once with
+`claude` and once with `codex`, retaining its existing clone/ref-refresh behavior
+and non-blocking container startup. Attempt both targets even if one fails, and
+report the affected target, consequence and installer remedy. Reuse the installer's
+state-conflict checks; do not replace user configuration or another marketplace
+registration to force success.
+
+Focused tests check our argument and failure-aggregation wiring against the
+actual installer contract, naming any CLI stubs. Normal fresh, existing and
+repeated installations supply separate installed-state readback for both harnesses.
+The installer payload contract is owned by agent-skills #156. This delivery
+owns the caller's harness selection and independent attempts. Feature NOTES owns
+the startup behavior; agent-skills #114/#39 links that source.
+
+### Bound attribution validation without weakening it
+
+Use the existing trailer-parser subprocess boundary with a finite deadline and
+termination of its task-owned child. Separate timeout from missing executable
+and ordinary nonzero exit in the diagnosis. Timeout remains unsuccessful
+validation in every mode and rejects a hook-invoked commit. Its remedy identifies
+the failed validation and supported recovery; it must not suggest that the
+message was checked or that attribution can be omitted.
+
+A controlled hanging child and an outer test watchdog prove bounded return and
+our diagnostic, including a failing control without the fix. Normal parsing and
+other error paths remain covered. Verify the affected sandbox invocation and its
+exact supported approved continuation separately; do not infer a kernel-policy
+fix from a timeout fixture. Rebuild the committed bundle and use the repository's
+existing byte-comparison gate. No new attribution-presence or identity policy is
+introduced by sharing this implementation boundary with #69/#73.
+
+### Supply a corrected jq image input
+
+Pin the official jq 1.8.2 release, which contains the
+[raw-input slurping fix](https://github.com/jqlang/jq/pull/3421), in a feature-owned
+image installation input. Verify release artifacts and digests for the published
+image architecture, retain the package-owned binary, and ensure the corrected
+binary is selected earlier on the effective PATH. This corrects an existing
+runtime tool; it does not introduce a new runtime service.
+
+Verify our selected version, artifact and PATH wiring with focused controls.
+Then exercise the effective image binary using a self-contained multibyte-boundary
+fixture and a representative large payload through stdin and file arguments.
+Decode the resulting JSON and compare the text exactly; exit zero alone is not
+acceptance. A known-affected binary must reject that equality assertion, and a
+working control must pass. Keep publication body readback in the supported flow;
+no dependency on private historical fixture contents or tests of jq internals is
+introduced. Document activation through image rebuild/adoption and the existing
+safe payload route while an installation is still affected.
+
+### Allocate SSH ports natively and refresh a stable alias
+
+Use a string `appPort` mapping such as `127.0.0.1::2222`: Docker chooses the host
+port while the container listener remains 2222. The
+[Dev Containers CLI](https://github.com/devcontainers/cli/blob/main/src/spec-node/singleContainer.ts)
+passes string entries to Docker unchanged; an integer instead requests a fixed
+mapping. Native allocation removes the manual port search without a custom
+allocator or a check-then-bind race.
+
+Provide a host-side connection helper in this repository, invoked by the
+documented create/recreate entry path on the Docker Desktop host. Use the
+container identity returned by that lifecycle and verify its selected consuming
+workspace before inspecting its actual loopback mapping. Diagnose missing,
+ambiguous or stale identity/mapping inputs rather than selecting another running
+container. Report underlying Docker and SSH failures with their actual results.
+
+Maintain a generated SSH configuration fragment for the consumer's stable,
+concrete alias. Integrate it through an explicit host SSH include, preserve
+unrelated configuration, and refuse conflicting user-owned aliases or fragments.
+Refresh only that managed entry after successful discovery on creation/recreation;
+do not require manual port editing. Keep normal SSH authentication and host-key
+verification. Trust failures need their normal diagnosis rather than disabling
+checks or replacing credentials. The helper is an invoked host tool, not a
+container process editing host configuration or a standing service.
+
+Docker mapping readback establishes allocation only. Verify two simultaneous
+consumers while the conventional host port is occupied, correct alias-to-consumer
+selection, and recreation with a changed mapping. Then prove SSH and actual
+supported desktop reconnection using those aliases. Official
+[remote-connection guidance](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host)
+establishes concrete SSH aliases as the client input; it does not establish hot
+reload or reconnection after a changed mapping. Preserve other listeners, aliases,
+user state and the unrelated consumer throughout this acceptance.
+
+### Deliver three documentation groups at their owning homes
+
+**Host onboarding.** README identifies the consuming project and makes startup
+and shell entry target the same workspace, distinguishing image consumption from
+developing this repository. Claude feature NOTES supplies missing host projects-
+directory preparation, preserving existing bytes and diagnosing wrong-type paths.
+Explain persistence from the actual consumer mounts: host binds and named volumes
+retain their existing behavior; unmounted sibling directories remain disposable.
+Locate required recreation backups/notes on existing persistent storage. Reference
+the automatic SSH connection delivery instead of retaining contradictory static
+port examples. Verify the route in a disposable consumer and link its owning
+source from agent-skills #39 through that programme's own delivery.
+
+**GitHub authentication.** GitHub CLI feature NOTES supplies the host-variable and
+remoteEnv example or exact configuration reference, keeps GH_TOKEN precedence,
+and provides remote authentication readback. Keep this distinct from SSH Git
+transport. Resolve the selected consumer's actual mounted GitHub CLI volume
+read-only before the existing removal procedure; diagnose missing/ambiguous
+targets and prove discrimination against a decoy. Retain the logout alternative.
+Synthetic token-input tests name their authentication stubs; live readback
+establishes the existing authorized account without exposing or deleting real
+credentials.
+
+**Runtime terminology.** Define control, treatment, omission, restoration and final
+result labels at the Codex maintainer acceptance entry, including how the wrapper
+proves selection of system Bubblewrap. Compare definitions with the maintained
+script; operator NOTES links to that explanation. This group does not change
+runtime settings, backend support or the existing matrix execution policy.
+
+Each group carries its own focused verification and required reader review.
+Canonical procedures remain in their owning corpus; do not add duplicate
+agent-skills setup documentation or change that programme's sequence here.
+
 ### Alternatives
 
 **Change all configuration first.** Rejected: the feature already selects an
@@ -147,6 +285,14 @@ functional delivery.
 **Deliver all Git, SSH, Node, adoption, and publication support together.**
 Rejected: the first useful improvement then depends on every operation class.
 A startup slice provides value while the remaining integrations are delivered.
+
+**Finalize runtime recovery separately from the selected integration outcomes.**
+Rejected: the owner selects one change for their combined consumption. Its
+finalization requires acceptance of every selected outcome.
+
+**Document manual port choice only.** Rejected: manual choice leaves collision
+avoidance and recreation refresh to the operator, while the selected outcome
+requires automatic allocation and a usable stable consumer alias.
 
 ## Acceptance and Rollout
 
@@ -169,7 +315,8 @@ compatible sessions may need to refresh their instruction context; the unit's
 operator guidance must describe that activation step. Rollback restores the
 changed guidance/configuration without clearing user state or other worktrees.
 
-Every later unit repeats the earlier supported scenarios and adds its new one.
+Each runtime extension repeats the preceding supported scenarios and adds
+its new one.
 It must identify its supported configuration subset and any remaining limitation;
 it must not claim closure of issues whose full acceptance criteria are unmet.
 
@@ -180,6 +327,14 @@ Run the revised disposable recipes with their failure controls and separately
 exercise the specified supported host/client and parent/delegate paths. A static
 review or prior receipt does not discharge a newly documented live procedure.
 Unavailable host/client verification remains an explicit unmet criterion.
+
+The integration deliveries in tasks 10–18 include input controls, effective
+runtime readback, operator guidance and integration acceptance. Rerun earlier cases
+affected by that repair; final reconciliation combines the consumed outcomes
+rather than deferring their first verification to the end. Update owning issue
+criteria against the selected outcomes before claiming closure, including #43's
+automatic connection setup. Specification synchronization and archiving follow
+acceptance and criterion reconciliation as separate finalization work.
 
 Canonical guidance and its consumers land through their owning repository gates.
 Instruction-authoring adherence and the required reader-proxy reviews apply to
@@ -199,6 +354,12 @@ verification and reconciliation as separately authorized finalization work.
   binds the consumed guidance and runtime together before announcing availability.
 - A retry can encounter partial setup. Inspect task-owned side effects and
   continue or stop without modifying another task's registered state.
+- Port discovery can become stale after recreation. Bind it to the intended
+  lifecycle result, refresh the managed alias, and verify actual reconnection.
+- A timeout or successful JSON-producing command can hide an unsuccessful
+  outcome. Verify bounded termination and exact content independently of status.
+- Host helpers can encounter user-owned SSH settings. Limit writes to the managed
+  fragment and explicit include; report conflicts without taking over aliases.
 
 ## Supporting Evidence
 
@@ -212,6 +373,14 @@ that the desktop or a delegate uses the required approval path.
 
 ## Changelog
 
+- 2026-10-16: The original 35 tasks have completed acceptance; selected integration
+  deliveries remain subject to their own evidence. Confined completion and
+  supersession history to this section. The programme assigns restoration and
+  final reconciliation authors verification PRs for their task-state updates.
+- Owner scope review: Added verified restoration, installer #84, validator #67,
+  publication integrity #72, automatic SSH connection setup #43 and the selected
+  onboarding, authentication and runtime terminology deliveries. Preserved prior
+  acceptance and deferred finalization until the expanded scope is complete.
 - 2026-10-08: Added the owner-selected recovery documentation, canonical
   prerequisite and publication-selector scope, with reproducibility and live
   verification boundaries.

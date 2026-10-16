@@ -3,10 +3,11 @@
 Each numbered group is a functional delivery with its own activation,
 documentation, and acceptance. Repository PRs within a group may land separately;
 the group delivers only when the supported session consumes them together.
-Groups 1–5 cover runtime deliveries; groups 6–8 deliver the selected reproducible
+Groups 1–5 cover runtime recovery and adoption; groups 6–8 cover reproducible
 documentation and canonical prerequisites, and group 9 reconciles their
-completion. The capability specs describe the complete change, not a claim that
-its first increment delivers every requirement.
+consumption. Groups 10–18 cover the
+[selected integration outcomes](proposal.md#selected-integration-follow-ups).
+Each completion mark requires its task's acceptance evidence.
 
 The [selected scope](proposal.md#selected-documentation-scope) and the
 [disposition inventory](https://github.com/hube/devcontainer/issues/96#issuecomment-6044021452)
@@ -14,7 +15,15 @@ govern groups 6–9. Feature documentation lives in
 `.devcontainer/local-features/codex/NOTES.md` and `MAINTAINERS.md`; canonical
 procedures live in hube/claude-home. Each task includes its required verification;
 an unavailable live check remains outstanding. Keep task progress in these marks
-and evidence in the owning PRs, without converting prior receipts into new runs.
+and evidence in the owning PRs, without treating prior receipts as new runs.
+Groups 10–18 also use the README and owning agent-skills, Claude and GitHub CLI
+feature homes as their outcomes require. Group 10 waits for the owner's stated
+restoration action. Independent software and documentation work may proceed;
+live checks requiring restored guidance remain pending until it is verified.
+Functional groups 11–14 are separate deliveries. Onboarding group 15 consumes
+the automatic SSH setup from group 14; groups 16 and 17 are separate documentation
+deliveries. Agent-skills #114/#39 retains its own documentation delivery and
+programme sequence, referring to these owning procedures.
 
 ## 1. Deliver autonomous isolated task startup
 
@@ -198,5 +207,156 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
   separately, and verify all selected procedures and canonical prerequisites are
   consumed together before claiming the repair delivery complete.
 
-Spec synchronization and archiving follow repair completion as separately
-authorized finalization work.
+## 10. Verify the owner's instruction restoration
+
+- [ ] 10.1 After the owner restores the existing host source through the
+  documented recreate/reconnect path, verify actual readable always-on and bulk
+  mounts, consumption by a fresh parent and delegate, and protected configuration,
+  authentication and history readback. Retain this run's results separately from
+  prior receipts; a listing or unavailable owner action leaves verification
+  pending. Publish the report on issue #102 and carry this task's evidence-backed
+  mark in that unit's independently reviewed, owner-merged verification PR;
+  reconcile the merged mark before issue closure. Preventive mount redesign is
+  outside scope.
+
+## 11. Deliver independent skills startup for both harnesses (#84)
+
+- [ ] 11.1 Update the post-start caller to invoke the maintained installer
+  explicitly for Claude and Codex, attempt each independently and retain
+  non-blocking startup with target-specific diagnoses. Verify argument wiring
+  against the actual installer contract and use named stubs to prove either
+  target's failure still permits the other attempt, without forcing state conflicts.
+- [ ] 11.2 Verify normal fresh, existing and repeated installations for both
+  harnesses using disposable consumers and installed-state readback. Compare
+  unrelated user-owned configuration before/after and exercise an installer
+  conflict that preserves the conflicting state; stubbed caller success alone
+  does not establish installation acceptance.
+- [ ] 11.3 Document the changed startup behavior, prerequisites, per-harness
+  failure remedies and activation at the owning feature home. Run the documented
+  route and required reader review; supply the resulting source reference for
+  agent-skills #114/#39 without duplicating its delivery or redoing #156.
+
+## 12. Deliver bounded attribution validation (#67)
+
+- [ ] 12.1 Bound trailer parsing and diagnose timeout separately from launch
+  failure and ordinary nonzero exit, preserving unsuccessful validation in every
+  mode and hook-invoked commit rejection. Verify normal parsing and these error
+  paths with a controlled hanging child, an outer watchdog and a failing control
+  without the repair; assert our actionable diagnosis rather than generic tooling text.
+- [ ] 12.2 Rebuild the committed validator bundle and run the repository's
+  typecheck, lint, tests, build and bundle comparison gates. Document the timeout's
+  consequence and supported recovery without weakening attribution, and verify
+  the instructions with the required reader review.
+- [ ] 12.3 Run the affected actual sandbox invocation under a bounded acceptance
+  watchdog, retain its outcome and verify the exact supported approved continuation.
+  Verify a hook timeout rejects the commit and successful validation still permits
+  an attributed commit. Keep timeout-fixture evidence distinct from runtime or
+  upstream-policy claims and rerun the publication checks affected by this repair.
+
+## 13. Deliver Unicode-preserving publication tooling (#72)
+
+- [ ] 13.1 Supply the pinned corrected jq release through a feature-owned image
+  installation input, validating release artifact/digest and the published
+  architecture. Verify our selected input and effective PATH with focused
+  controls, preserving the package-owned binary and avoiding unrelated dependency changes.
+- [ ] 13.2 Verify the effective built-image binary using a self-contained
+  multibyte-boundary case, representative large body and working control through
+  stdin and file paths. Compare decoded text exactly, demonstrate the same
+  assertion failing with a known-affected input, and retain binary/version readback;
+  a successful status or private historical fixture alone is insufficient.
+- [ ] 13.3 Document image activation/adoption and the safe publication route
+  while an installation remains affected. Verify the documented path, required
+  reader review and an authorized publication with exact body readback through
+  the corrected integration; rerun the earlier publication acceptance affected
+  by the changed image input without exposing credentials.
+
+## 14. Deliver automatic SSH allocation and connection refresh (#43)
+
+- [ ] 14.1 Replace the selected consumer's fixed SSH host mapping with native
+  automatic loopback allocation and keep the container listener unchanged. Verify
+  our consumer/CLI argument inputs with named stubs and demonstrate real mapping
+  readback, rather than unit-testing Docker's allocator as our implementation.
+- [ ] 14.2 Supply the host-side connection helper and managed SSH fragment/include
+  for a stable concrete consumer alias. Bind discovery to the lifecycle's container
+  identity and selected workspace; verify missing, ambiguous, stale and conflicting
+  inputs with controlled fixtures, preserving unrelated SSH settings, credentials,
+  host-key checks and listeners. Name Docker/SSH stubs and prove failing controls.
+- [ ] 14.3 Document the host helper's acquisition and create/recreate invocation,
+  alias setup, diagnosis and rollback/removal of only its managed settings. Replace
+  contradictory fixed-port examples in the consuming configuration and owning
+  guide. Verify the route as written and discharge the required reader review;
+  refresh after recreation must not require manual port editing.
+- [ ] 14.4 On the supported host/client integration, verify two independently
+  reachable consumers while the conventional port is occupied, exact alias-to-
+  consumer selection and recreation with a changed mapping. Verify actual SSH
+  and desktop reconnection and preserved unrelated aliases, listeners and user
+  state; Docker-only allocation or unexercised client refresh remains incomplete.
+
+## 15. Deliver reproducible host onboarding (#30 and issue #96)
+
+- [ ] 15.1 Make README startup and shell entry explicitly target the consuming
+  host workspace and distinguish image consumption from repository development.
+  Supply required host projects-directory preparation at the Claude feature home.
+  Verify missing/existing directory and wrong-type controls in disposable paths,
+  preserving existing bytes and establishing prerequisites before container startup.
+- [ ] 15.2 Explain persistence from the actual consumer mounts, distinguishing
+  persistent host binds/volumes from unmounted disposable sibling directories.
+  Identify persistent locations for required recreation backups and notes. Verify
+  the guidance against supported consumer mount readback, retaining the existing
+  persistence model and adding no new sibling-directory durability guarantee.
+- [ ] 15.3 Exercise the documented onboarding route in a disposable consuming
+  project, with startup and shell entry selecting the same workspace and the
+  delivered automatic SSH setup. Complete the group's required reader review,
+  resolve cross-reference inconsistencies and provide owning-source references
+  for agent-skills #39 through its existing programme boundary.
+
+## 16. Deliver reproducible GitHub authentication guidance (issue #96)
+
+- [ ] 16.1 Supply the host-token and remoteEnv wiring or exact configuration
+  reference, existing precedence and remote authentication readback at the GitHub
+  CLI feature home. Verify unset/set synthetic inputs and preservation of unrelated
+  accounts with named authentication stubs, distinguish SSH Git transport and
+  verify actual authorized remote status without printing tokens.
+- [ ] 16.2 Supply read-only identification of the intended consumer's actual
+  GitHub CLI credential volume before the existing removal procedure, retaining
+  the logout alternative. Verify exact selection with a disposable decoy volume
+  and missing/ambiguous-target controls. No real credential deletion is required
+  or authorized by this verification.
+- [ ] 16.3 Run the group's revised procedures as written and complete the
+  required reader review, discharging each finding at its owning home. Verify
+  references agree with consumer wiring and the delivered remote connection;
+  identify any unavailable live check rather than treating synthetic inputs as
+  remote authentication acceptance.
+
+## 17. Deliver interpretable runtime acceptance guidance (issue #96)
+
+- [ ] 17.1 Define control, treatment, omission, restoration and final matrix
+  labels/results and system-Bubblewrap instrumentation at the Codex maintainer
+  acceptance entry, with an operator NOTES link. Verify definitions and expected
+  outcomes against the maintained script, including omission versus restoration;
+  change no runtime setting, supported backend or acceptance guarantee.
+- [ ] 17.2 Complete the required reader review and verify the revised explanation
+  against actual script labels and the documented entry commands. Discharge each
+  finding and name which runtime checks were actually run, keeping documentation
+  verification separate from a newly executed Docker Desktop matrix.
+
+## 18. Reconcile the expanded recovery outcome
+
+- [ ] 18.1 Verify the selected functional repairs, restored guidance and owning
+  documentation are consumed together in supported fresh and persistent paths.
+  Rerun affected parent/delegate startup, retrieval, checks and signed attributed
+  publication scenarios, including exact Unicode body readback and connection
+  refresh. Retain actual approval decisions, protected-state comparisons and
+  explicit limits; cite prior receipts only for the cases they actually establish.
+- [ ] 18.2 Reconcile issues #84, #67, #72, #30, #43 and the newly selected #96
+  inventory entries against their landed outcomes and task-specific verification.
+  Preserve #77 and other exclusions, #74–76's owner not-planned dispositions,
+  programme ownership and prior completed-task evidence. Verify no selected task
+  or host/client criterion remains unmet before declaring the expanded change
+  ready for separately authorized spec synchronization and archiving. Publish the
+  report on issue #108 and carry tasks 18.1–18.2's evidence-backed marks in that
+  unit's independently reviewed, owner-merged verification PR. Reconcile the
+  merged marks before closing the unit and programme.
+
+Spec synchronization and archiving follow completion of all selected deliveries
+as separately authorized finalization work.
