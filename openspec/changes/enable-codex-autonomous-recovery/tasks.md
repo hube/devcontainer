@@ -154,7 +154,7 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
   live-state capture method. Exclude credential contents and account for active
   history writes. Verify protected synthetic bytes with the same comparator;
   separately verify fresh/persistent host/client adoption and rollback state.
-- [ ] 6.11 Run the required reader-proxy reviews of the repaired operator and
+- [x] 6.11 Run the required reader-proxy reviews of the repaired operator and
   maintainer paths and explicitly discharge each finding. Verify revised
   procedures as written and record host/client-only checks still outstanding;
   review conclusions and disposable fixtures cannot replace live acceptance.
@@ -191,7 +191,7 @@ and evidence in the owning PRs, without converting prior receipts into new runs.
 
 ## 9. Reconcile the selected repairs
 
-- [ ] 9.1 Reconcile every selected inventory entry on issue 96 with its landed
+- [x] 9.1 Reconcile every selected inventory entry on issue 96 with its landed
   repair and task-specific verification, naming any unmet host/client criterion.
   Preserve unselected accepted gaps and merits declines as recorded separate
   work. Rerun affected earlier acceptance, record exact checks and prior receipts
