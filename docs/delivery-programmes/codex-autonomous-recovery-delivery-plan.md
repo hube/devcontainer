@@ -55,8 +55,11 @@ one, following that protocol's “The candidate register”.
 ### Unit directory name
 
 Role context lives outside repositories in the common checkout parent's
-`.delivery-programme-context/devcontainer/` directory, under the directory named
-for the programme's GitHub ledger issue. Dispatched units use `NN-<slug>`, assigned
+`.delivery-programme-context/codex-autonomous-recovery/issue-101/` directory.
+The programme-title parent is Decided (owner, 2026-10-20:
+[naming direction](https://github.com/hube/devcontainer/pull/109#discussion_r4331803987)),
+a programme-specific override of the `<repo>` segment in the canonical
+orchestration protocol's “The context ledgers”. Dispatched units use `NN-<slug>`, assigned
 at author-dispatch preparation and never renumbered afterward. An onboarding
 vehicle gets one context pair for its one PR. Verification deliveries follow
 the same unit context convention.
