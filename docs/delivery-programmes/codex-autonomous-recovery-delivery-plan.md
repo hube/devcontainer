@@ -142,8 +142,9 @@ define the selected outcomes:
 - Startup skills installation covers Claude and Codex independently.
 - A validator timeout is unsuccessful validation and rejects a hook-invoked
   commit with an actionable diagnosis.
-- Publication integrity includes the affected jq image input and exact Unicode
-  preservation.
+- Publication integrity uses a dedicated local jq compatibility Feature with
+  exact Unicode preservation and the OpenSpec design's maintainer-run retirement
+  acceptance across supported published images/architectures.
 - SSH setup includes native automatic localhost allocation, actual discovery,
   stable alias refresh and supported desktop reconnection after recreation.
 - Onboarding retains the existing persistence model. Authentication and runtime
@@ -166,7 +167,7 @@ establishes integration behavior. Neither replaces the other.
 
 | Unit | Work issue / boundary | OpenSpec tasks | Outcome |
 | --- | --- | --- | --- |
-| Publication integrity | Existing #72; separate PR | 13.1–13.3 | Corrected effective jq input preserves the complete Unicode payload. |
+| Publication integrity | Existing #72; separate PR | 13.1–13.3 | Dedicated local jq Feature preserves complete Unicode publication, with evidence-based retirement. |
 | Skills startup | Existing #84; separate PR | 11.1–11.3 | Both harnesses are configured independently, preserving unrelated state. |
 | Validator liveness | Existing #67; separate PR | 12.1–12.3 | Parsing terminates within its bound and failure remains actionable. |
 | Automatic SSH setup | Existing #43; separate PR | 14.1–14.4 | Native allocation and stable aliases reach the intended consumer across recreation. |

@@ -171,11 +171,13 @@ introduced by sharing this implementation boundary with #69/#73.
 ### Supply a corrected jq image input
 
 Pin the official jq 1.8.2 release, which contains the
-[raw-input slurping fix](https://github.com/jqlang/jq/pull/3421), in a feature-owned
-image installation input. Verify release artifacts and digests for the published
-image architecture, retain the package-owned binary, and ensure the corrected
-binary is selected earlier on the effective PATH. This corrects an existing
-runtime tool; it does not introduce a new runtime service.
+[raw-input slurping fix](https://github.com/jqlang/jq/pull/3421), through a dedicated local
+`jq` compatibility Feature. The Feature owns the pinned artifact, digest and
+architecture selection and the overlay selected earlier on the effective PATH,
+preserving the package-owned binary. Decided (owner, 2026-10-20:
+[Feature ownership and retirement](https://github.com/hube/devcontainer/pull/109#issuecomment-6309879893)).
+The publication prerequisite serves multiple harnesses and tools; consumer-owned
+installation would couple its adoption and retirement to one consumer.
 
 Verify our selected version, artifact and PATH wiring with focused controls.
 Then exercise the effective image binary using a self-contained multibyte-boundary
@@ -186,6 +188,17 @@ working control must pass. Keep publication body readback in the supported flow;
 no dependency on private historical fixture contents or tests of jq internals is
 introduced. Document activation through image rebuild/adoption and the existing
 safe payload route while an installation is still affected.
+
+The Feature's NOTES.md owns activation and the safe route. Its MAINTAINERS.md
+owns acceptance and retirement, following the repository's
+[documentation split](../../../docs/feature-authoring.md#documentation-split-notesmd-and-maintainersmd).
+Retire the overlay and its consumer declaration only after package-provided jq,
+without the Feature, passes the same multibyte-boundary and representative large-
+body cases through stdin and files, plus authorized publication with exact body
+readback, on every supported published image/architecture. Maintainers run this
+acceptance when image inputs change; version readback identifies the input but
+does not replace behavioral acceptance. No runtime poller or automatic
+self-disable mechanism is required.
 
 ### Allocate SSH ports natively and refresh a stable alias
 
@@ -356,6 +369,9 @@ runtime policy and guidance before adding another default; it does not prove
 that the desktop or a delegate uses the required approval path.
 
 ## Changelog
+
+- 2026-10-20: Owner [selects a dedicated local jq Feature and evidence-based
+  retirement](https://github.com/hube/devcontainer/pull/109#issuecomment-6309879893).
 
 - 2026-10-16: Owner [excludes instruction restoration](https://github.com/hube/devcontainer/pull/109#discussion_r4299256157)
   from the programme; remove its standalone verification requirement and task.

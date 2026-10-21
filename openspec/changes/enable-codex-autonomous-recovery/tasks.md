@@ -242,10 +242,11 @@ programme sequence, referring to these owning procedures.
 
 ## 13. Deliver Unicode-preserving publication tooling (#72)
 
-- [ ] 13.1 Supply the pinned corrected jq release through a feature-owned image
-  installation input, validating release artifact/digest and the published
-  architecture. Verify our selected input and effective PATH with focused
-  controls, preserving the package-owned binary and avoiding unrelated dependency changes.
+- [ ] 13.1 Supply the pinned corrected jq release through a dedicated local
+  `jq` compatibility Feature and its consumer declaration, validating release
+  artifact/digest and the published architecture. Verify our selected input and
+  effective PATH with focused controls, preserving the package-owned binary and
+  avoiding unrelated dependency changes.
 - [ ] 13.2 Verify the effective built-image binary using a self-contained
   multibyte-boundary case, representative large body and working control through
   stdin and file paths. Compare decoded text exactly, demonstrate the same
@@ -255,7 +256,12 @@ programme sequence, referring to these owning procedures.
   while an installation remains affected. Verify the documented path, required
   reader review and an authorized publication with exact body readback through
   the corrected integration; rerun the earlier publication acceptance affected
-  by the changed image input without exposing credentials.
+  by the changed image input without exposing credentials. Put activation and the
+  safe route in the Feature's NOTES.md and acceptance/retirement in MAINTAINERS.md.
+  Document maintainer-run retirement acceptance at image-input changes: remove
+  the overlay and consumer declaration only when package-provided jq without the
+  Feature passes the same Unicode and exact-publication cases on every supported
+  published image/architecture; a version number alone is insufficient.
 
 ## 14. Deliver automatic SSH allocation and connection refresh (#43)
 

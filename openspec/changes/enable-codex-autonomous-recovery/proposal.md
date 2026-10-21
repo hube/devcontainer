@@ -89,7 +89,7 @@ to this change. Each task requires its own acceptance evidence.
 | --- | --- |
 | [Installer #84](https://github.com/hube/devcontainer/issues/84) | Startup explicitly installs for both Claude and Codex, attempts each independently, diagnoses each failure and preserves user-owned state on fresh and repeated setup. |
 | [Validator #67](https://github.com/hube/devcontainer/issues/67) | Bound trailer-parser waits. Timeout is unsuccessful validation and rejects a hook-invoked commit with an actionable diagnosis, retaining supported recovery and attribution requirements. |
-| [Publication integrity #72](https://github.com/hube/devcontainer/issues/72) | Supply a corrected jq image input and verify exact Unicode preservation in the supported JSON publication path. |
+| [Publication integrity #72](https://github.com/hube/devcontainer/issues/72) | Supply a corrected image input through a dedicated local jq compatibility Feature, verify exact Unicode publication, and retire the overlay only after package-provided jq meets that contract across supported published images/architectures. |
 | [SSH connection setup #43](https://github.com/hube/devcontainer/issues/43) | Use native automatic localhost port allocation, reliably discover the intended container's mapping, and maintain a stable SSH alias across creation and recreation, with actual desktop reconnection acceptance. |
 | Host onboarding | Repair explicit consuming-workspace selection and required host projects-directory preparation; explain [rebuild persistence #30](https://github.com/hube/devcontainer/issues/30) using the existing mount/persistence model. |
 | GitHub authentication | Supply host-token and remoteEnv wiring, authentication readback, and exact credential-volume identification with missing/ambiguous-target diagnosis. Verification requires no real credential deletion. |
@@ -189,8 +189,9 @@ None.
 ## Impact
 
 Affected areas include the Codex and agent-skills feature wiring, attribution
-validator and committed bundle, effective jq image input, host-side SSH connection
-helper, consumer configuration, and README and owning feature guidance. Existing
+validator and committed bundle, local jq compatibility Feature and consumer input,
+host-side SSH connection helper, consumer configuration, and README and owning
+feature guidance. Existing
 runtime tools are corrected or reused; no new service is proposed. Host SSH
 configuration changes must be limited to the selected consumer's managed entry,
 preserving unrelated settings. Canonical instruction changes belong to

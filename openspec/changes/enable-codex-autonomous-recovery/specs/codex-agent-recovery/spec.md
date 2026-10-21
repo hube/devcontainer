@@ -176,6 +176,12 @@ establishing this delivery's acceptance.
 - **THEN** authoritative body readback agrees exactly with the intended content
   before publication success is claimed
 
+#### Scenario: A maintainer retires the jq compatibility overlay
+- **WHEN** the dedicated local jq Feature is considered for removal
+- **THEN** package-provided jq without the overlay meets the same Unicode and
+  exact-publication acceptance on every supported published image/architecture
+  before the overlay and consumer declaration are removed
+
 ### Requirement: GitHub authentication prerequisites are reproducible
 The GitHub CLI feature guidance SHALL supply the host-token and remoteEnv wiring,
 existing token precedence and remote authentication completion check. It SHALL
