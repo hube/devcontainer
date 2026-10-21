@@ -1,5 +1,5 @@
 {
-  "image": "ubuntu:rolling",
+  "image": "ubuntu:26.04",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true,
