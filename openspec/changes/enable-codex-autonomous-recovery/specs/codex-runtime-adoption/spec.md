@@ -78,23 +78,6 @@ SHALL NOT be presented as fresh or persistent desktop integration acceptance.
   exercised separately from synthetic fixtures, and any unavailable host/client
   verification remains explicitly unmet
 
-### Requirement: Instruction restoration is verified in the consuming session
-The documented owner-performed restoration SHALL be verified through readable
-mounted always-on and bulk guidance, consumption by a fresh parent and delegate,
-and preservation of existing configuration, authentication and history. Until
-those checks complete, restoration SHALL remain unverified. This requirement
-adds no preventive mount-lifecycle guarantee.
-
-#### Scenario: An instruction mount is listed but unreadable
-- **WHEN** the always-on path is visible in a directory listing but cannot be read
-- **THEN** activation is not reported restored from the listing and the documented
-  host-source restoration and recreation path remains the completion dependency
-
-#### Scenario: The owner completes the documented restoration
-- **WHEN** the consuming container is recreated and fresh sessions are opened
-- **THEN** parent and delegate consume the readable restored guidance and existing
-  persistent configuration, authentication and history retain their protected state
-
 ### Requirement: Startup installs skills independently for both harnesses
 Container startup SHALL invoke the maintained skills installer explicitly for
 Claude and Codex and attempt both independently. A failure SHALL identify its

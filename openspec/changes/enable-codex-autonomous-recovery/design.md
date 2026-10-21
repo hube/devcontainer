@@ -7,7 +7,7 @@ defines the execution scope and rigor. This design divides that scope into
 usable deliveries rather than separate configuration, instruction, and testing
 phases. Each delivery includes the wiring and verification its outcome needs.
 The [selected integration outcomes](proposal.md#selected-integration-follow-ups)
-cover restoration, skills startup, validator liveness, publication integrity,
+cover skills startup, validator liveness, publication integrity,
 SSH connection setup and reproducible owning documentation.
 
 ## Goals
@@ -136,20 +136,6 @@ These recipes implement the existing acceptance goals. They do not introduce
 standing enforcement, an ownership registry, or a broader supported runtime.
 Any net always-on guidance growth requires a concrete owner decision; canonical
 producer detail uses an on-demand home where sufficient.
-
-### Restore the existing instruction activation
-
-The owner performs the documented host-source restoration and container
-recreation after the scope discussion. Afterward, verify the actual mounted
-always-on file and bulk corpus, new parent/delegate consumption, and the existing
-configuration, authentication and history boundaries. A directory listing alone
-cannot establish restoration. Retain captured failures and the actual verification
-result; do not reuse earlier restoration receipts as this run's evidence.
-
-This is verification of the existing restoration procedure. Preventing future
-stale single-file binds or redesigning mounts is not selected. Isolated software
-work can proceed independently; acceptance requiring restored mounted guidance
-remains pending until the owner action and readback succeed.
 
 ### Install skills independently for both harnesses
 
@@ -328,7 +314,7 @@ exercise the specified supported host/client and parent/delegate paths. A static
 review or prior receipt does not discharge a newly documented live procedure.
 Unavailable host/client verification remains an explicit unmet criterion.
 
-The integration deliveries in tasks 10–18 include input controls, effective
+The integration deliveries in tasks 11–18 include input controls, effective
 runtime readback, operator guidance and integration acceptance. Rerun earlier cases
 affected by that repair; final reconciliation combines the consumed outcomes
 rather than deferring their first verification to the end. Update owning issue
@@ -373,6 +359,8 @@ that the desktop or a delegate uses the required approval path.
 
 ## Changelog
 
+- 2026-10-16: Owner [excludes instruction restoration](https://github.com/hube/devcontainer/pull/109#discussion_r4299256157)
+  from the programme; remove its standalone verification requirement and task.
 - 2026-10-16: The original 35 tasks have completed acceptance; selected integration
   deliveries remain subject to their own evidence. Confined completion and
   supersession history to this section. The programme assigns restoration and

@@ -5,7 +5,7 @@ documentation, and acceptance. Repository PRs within a group may land separately
 the group delivers only when the supported session consumes them together.
 Groups 1–5 cover runtime recovery and adoption; groups 6–8 cover reproducible
 documentation and canonical prerequisites, and group 9 reconciles their
-consumption. Groups 10–18 cover the
+consumption. Groups 11–18 cover the
 [selected integration outcomes](proposal.md#selected-integration-follow-ups).
 Each completion mark requires its task's acceptance evidence.
 
@@ -16,10 +16,9 @@ govern groups 6–9. Feature documentation lives in
 procedures live in hube/claude-home. Each task includes its required verification;
 an unavailable live check remains outstanding. Keep task progress in these marks
 and evidence in the owning PRs, without treating prior receipts as new runs.
-Groups 10–18 also use the README and owning agent-skills, Claude and GitHub CLI
-feature homes as their outcomes require. Group 10 waits for the owner's stated
-restoration action. Independent software and documentation work may proceed;
-live checks requiring restored guidance remain pending until it is verified.
+Groups 11–18 also use the README and owning agent-skills, Claude and GitHub CLI
+feature homes as their outcomes require. Live acceptance requires readable,
+effective mounted guidance; restoring an instruction mount is outside this scope.
 Functional groups 11–14 are separate deliveries. Onboarding group 15 consumes
 the automatic SSH setup from group 14; groups 16 and 17 are separate documentation
 deliveries. Agent-skills #114/#39 retains its own documentation delivery and
@@ -207,18 +206,6 @@ programme sequence, referring to these owning procedures.
   separately, and verify all selected procedures and canonical prerequisites are
   consumed together before claiming the repair delivery complete.
 
-## 10. Verify the owner's instruction restoration
-
-- [ ] 10.1 After the owner restores the existing host source through the
-  documented recreate/reconnect path, verify actual readable always-on and bulk
-  mounts, consumption by a fresh parent and delegate, and protected configuration,
-  authentication and history readback. Retain this run's results separately from
-  prior receipts; a listing or unavailable owner action leaves verification
-  pending. Publish the report on issue #102 and carry this task's evidence-backed
-  mark in that unit's independently reviewed, owner-merged verification PR;
-  reconcile the merged mark before issue closure. Preventive mount redesign is
-  outside scope.
-
 ## 11. Deliver independent skills startup for both harnesses (#84)
 
 - [ ] 11.1 Update the post-start caller to invoke the maintained installer
@@ -342,7 +329,7 @@ programme sequence, referring to these owning procedures.
 
 ## 18. Reconcile the expanded recovery outcome
 
-- [ ] 18.1 Verify the selected functional repairs, restored guidance and owning
+- [ ] 18.1 Verify the selected functional repairs, effective guidance and owning
   documentation are consumed together in supported fresh and persistent paths.
   Rerun affected parent/delegate startup, retrieval, checks and signed attributed
   publication scenarios, including exact Unicode body readback and connection

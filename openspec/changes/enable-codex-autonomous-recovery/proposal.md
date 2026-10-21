@@ -48,8 +48,7 @@ persistent user state, and shared repository state.
   skills installation, bounded attribution validation, Unicode-preserving JSON
   publication, and automatic SSH port allocation with usable connection settings
   after container recreation.
-- Finish host onboarding, GitHub authentication and runtime acceptance guidance,
-  and verify the owner's restoration of the existing instruction mount.
+- Finish host onboarding, GitHub authentication and runtime acceptance guidance.
 
 ### Selected documentation scope
 
@@ -88,7 +87,6 @@ to this change. Each task requires its own acceptance evidence.
 
 | Delivery | Selected outcome |
 | --- | --- |
-| Instruction restoration | The owner restores the existing host instruction source after the discussion; verify readable guidance consumed by a fresh parent and delegate and preservation of persistent state. Preventive mount redesign is outside this decision. |
 | [Installer #84](https://github.com/hube/devcontainer/issues/84) | Startup explicitly installs for both Claude and Codex, attempts each independently, diagnoses each failure and preserves user-owned state on fresh and repeated setup. |
 | [Validator #67](https://github.com/hube/devcontainer/issues/67) | Bound trailer-parser waits. Timeout is unsuccessful validation and rejects a hook-invoked commit with an actionable diagnosis, retaining supported recovery and attribution requirements. |
 | [Publication integrity #72](https://github.com/hube/devcontainer/issues/72) | Supply a corrected jq image input and verify exact Unicode preservation in the supported JSON publication path. |
@@ -182,7 +180,7 @@ later design; they are not implementation commitments.
   prerequisites are reproducible.
 - `codex-runtime-adoption`: Fresh and existing devcontainer installations expose
   verifiable effective Codex execution settings and an adoption path that
-  preserves user configuration and persistent state, with restored guidance,
+  preserves user configuration and persistent state, with
   independent skills setup for both harnesses, reproducible host onboarding and
   automatic SSH connection setup across recreation.
 

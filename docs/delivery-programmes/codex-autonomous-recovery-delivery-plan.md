@@ -8,7 +8,7 @@ Supported desktop remote agents and delegates must be able to complete authorize
 work, recover eligible sandbox failures, publish intact attributed output and
 reconnect to the intended consumer while preserving protected state.
 
-This programme covers task groups 10–18. Acceptance evidence establishes only
+This programme covers task groups 11–18. Acceptance evidence establishes only
 the scenarios actually exercised; a prior receipt does not establish a new run.
 
 ## Charter
@@ -88,17 +88,15 @@ design document is planned for those units under the selected OpenSpec approach;
 an author-originated architectural change requires the owning design decision
 before its implementation under the canonical PR workflow.
 
-Restoration #102 and combined reconciliation #108 are verification deliveries.
-The owner performs the documented restoration. Each unit's dispatched author
+Combined reconciliation #108 is a verification delivery. Its dispatched author
 publishes the actual acceptance report on its issue and opens a verification PR
-linking that report: #102's PR carries task 10.1; #108's PR carries tasks
-18.1–18.2. Each PR receives independent review and owner merge before the
-orchestrator reconciles its evidence and merged marks for unit closure. Keep an
-unavailable check unmarked. These PRs carry task-state updates and evidence
-references; runtime changes and spec synchronization/archive have their own
-delivery boundaries. Documentation units need no invented code phase. Final
-reconciliation verifies combined consumption after the individual deliveries'
-acceptance.
+linking that report and carrying tasks 18.1–18.2. The PR receives independent
+review and owner merge before the orchestrator reconciles its evidence and
+merged marks for unit closure. Keep an unavailable check unmarked. The PR carries
+task-state updates and evidence references; runtime changes and spec
+synchronization/archive have their own delivery boundaries. Documentation units
+need no invented code phase. Final reconciliation verifies combined consumption
+after the individual deliveries' acceptance.
 
 Owner merge and role dispatch remain governed by the canonical orchestration
 protocol. Programme-specific practices adopted by agent-skills #110 are not
@@ -111,9 +109,11 @@ implicitly adopted here.
 - Preserve the not-planned dispositions of #74–76 and the OpenSpec proposal's
   exclusions, including broader attribution enforcement, signing redesign,
   test-infrastructure machinery, XDG migration and unrelated naming changes.
-- Restore the instruction mount through the existing procedure. Preventive
-  mount redesign, new sibling-directory durability, a custom port allocator and
-  a standing service are not selected outcomes.
+- Instruction-mount restoration and preventive mount redesign are outside
+  scope. Decided (owner, 2026-10-16: [exclusion](https://github.com/hube/devcontainer/pull/109#discussion_r4299256157)).
+  Live acceptance consumes effective guidance as a prerequisite. New sibling-
+  directory durability, a custom port allocator and a standing service are
+  outside scope.
 - Keep real credentials, unrelated host SSH settings/listeners, shared refs and
   registrations protected. The credential-volume documentation verification
   requires selection evidence, not deletion of real authentication state.
@@ -147,8 +147,6 @@ The OpenSpec proposal's
 [selected follow-ups](../../openspec/changes/enable-codex-autonomous-recovery/proposal.md#selected-integration-follow-ups)
 define the selected outcomes:
 
-- Instruction restoration is owner-performed after the discussion; verified
-  restoration is sufficient.
 - Startup skills installation covers Claude and Codex independently.
 - A validator timeout is unsuccessful validation and rejects a hook-invoked
   commit with an actionable diagnosis.
@@ -176,7 +174,6 @@ establishes integration behavior. Neither replaces the other.
 
 | Unit | Work issue / boundary | OpenSpec tasks | Outcome |
 | --- | --- | --- | --- |
-| Restoration verification | [#102](https://github.com/hube/devcontainer/issues/102); verification PR | 10.1 | Owner-restored guidance is readable and consumed, with persistent-state readback. |
 | Publication integrity | Existing #72; separate PR | 13.1–13.3 | Corrected effective jq input preserves the complete Unicode payload. |
 | Skills startup | Existing #84; separate PR | 11.1–11.3 | Both harnesses are configured independently, preserving unrelated state. |
 | Validator liveness | Existing #67; separate PR | 12.1–12.3 | Parsing terminates within its bound and failure remains actionable. |
@@ -199,7 +196,6 @@ are bootstrap priorities, subject to owner override:
 
 | Preferred order | Unit | Priority and consequence | Dispatch prerequisites |
 | --- | --- | --- | --- |
-| Independent owner track | Restoration verification | P2: activation is unavailable until restored | Owner action before live restoration evidence; no product-code dependency |
 | 1 | #72 publication integrity | P1: successful tooling can silently corrupt published text | None beyond programme dispatch readiness |
 | 2 | #84 skills startup | P2: normal startup skips installation | None beyond programme dispatch readiness |
 | 3 | #67 validator liveness | P2: a check can stall, with supported approved execution available | None beyond programme dispatch readiness |
@@ -212,9 +208,7 @@ are bootstrap priorities, subject to owner override:
 P1 denotes silent incorrect protected output. P2 denotes recoverable failure or
 material operational friction. No active publication incident requiring a P0
 interrupt is claimed. Preferred order does not create artificial blocking edges
-between independent functional units. Restoration may wait on the owner while
-isolated code and documentation work proceeds; each unit's live acceptance must
-still obtain the environment its criteria require.
+between independent functional units. Each unit's live acceptance must obtain the environment its criteria require.
 
 ## Bootstrap and closure
 
