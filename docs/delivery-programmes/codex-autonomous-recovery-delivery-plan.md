@@ -44,18 +44,7 @@ GitHub issues, native sub-issues and native blocked-by relationships in
 `hube/devcontainer`. Reuse issues #72, #84, #67, #43 and #30 rather than creating
 duplicate repairs. Issue #96 remains the source inventory and reconciliation
 surface; it is not an extra delivery unit or a parent vehicle for separate PRs.
-No GitHub Project or parallel board is maintained by this programme. Create
-relationships through GitHub's native [sub-issue API](https://docs.github.com/en/rest/issues/sub-issues#add-sub-issue)
-and [blocked-by API](https://docs.github.com/en/rest/issues/issue-dependencies#add-a-dependency-an-issue-is-blocked-by):
-resolve the child/blocker's REST issue `id` with
-`GET /repos/hube/devcontainer/issues/NUMBER`. Add the child using
-`POST /repos/hube/devcontainer/issues/PARENT/sub_issues` with
-`{"sub_issue_id": CHILD_ID}`, or the blocker using
-`POST /repos/hube/devcontainer/issues/BLOCKED/dependencies/blocked_by` with
-`{"issue_id": BLOCKER_ID}`. Read back the parent's `sub_issues` or blocked unit's
-`dependencies/blocked_by` collection with `per_page=100` and pagination. Check
-the child's `parent` endpoint before placement; retain any other parent and
-diagnose the conflict rather than replacing it.
+No GitHub Project or parallel board is maintained by this programme.
 
 The programme ledger body is maintained by the current boundary orchestrator
 alone, as reserved by `~/.agents/instructions/orchestration-protocol.md`, “The
