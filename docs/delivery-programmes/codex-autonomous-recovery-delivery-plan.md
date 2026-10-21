@@ -1,0 +1,224 @@
+# Codex Autonomous Recovery — Delivery Plan
+
+## Goal
+
+Deliver the remaining integration, activation and documentation outcomes in
+[`enable-codex-autonomous-recovery`](../../openspec/changes/enable-codex-autonomous-recovery/proposal.md).
+Supported desktop remote agents and delegates must be able to complete authorized
+work, recover eligible sandbox failures, publish intact attributed output and
+reconnect to the intended consumer while preserving protected state.
+
+This programme covers task groups 11–18. Acceptance evidence establishes only
+the scenarios actually exercised; a prior receipt does not establish a new run.
+
+## Charter
+
+### Execution structure
+
+Use GitHub's native issue hierarchy. The programme ledger owns the live
+unit index. Standalone units are its direct sub-issues. The onboarding vehicle
+delivers three child work issues in one independently reviewed PR; its own
+acceptance criteria reference only those children. No child commit order is
+ruled. Native blocking edges represent dispatch prerequisites, not commit order.
+
+Programme ledger: [hube/devcontainer#101](https://github.com/hube/devcontainer/issues/101).
+
+- **Ledger-to-units hierarchy:** the programme ledger's native sub-issue graph.
+- **Acceptance criteria per unit:** the unit or vehicle issue body, mapped to
+  the OpenSpec tasks and capability requirements below.
+- **Sequencing discipline:** dispatch only an unblocked unit with current
+  criteria, settled scope/remedy/design obligations and both role contexts,
+  under the canonical orchestration protocol's “Dispatch readiness”. Preferred
+  completion order is given below; the owner may change it.
+
+The delivery plan owns structure. The OpenSpec proposal, design and capability
+specifications own the selected behavior contract; its tasks remain the
+implementation checklist. The GitHub ledger owns live programme state; each
+unit's issue and PR hold its verification evidence. The unit author includes its
+evidence-backed task marks in that unit's PR. At harvest, the orchestrator
+reconciles the merged marks and actual evidence before closing the unit.
+
+### Tracking substrate
+
+GitHub issues, native sub-issues and native blocked-by relationships in
+`hube/devcontainer`. Reuse issues #72, #84, #67, #43 and #30 rather than creating
+duplicate repairs. Issue #96 remains the source inventory and reconciliation
+surface; it is not an extra delivery unit or a parent vehicle for separate PRs.
+No GitHub Project or parallel board is maintained by this programme.
+
+The programme ledger body is maintained by the current boundary orchestrator
+alone, as reserved by `~/.agents/instructions/orchestration-protocol.md`, “The
+programme progress ledger”. Its transition comments remain with their authors.
+The candidate register is created only when the first process candidate needs
+one, following that protocol's “The candidate register”.
+
+### Unit directory name
+
+Role context lives outside repositories in the common checkout parent's
+`.delivery-programme-context/codex-autonomous-recovery/issue-101/` directory.
+The programme-title parent is Decided (owner, 2026-10-20:
+[naming direction](https://github.com/hube/devcontainer/pull/109#discussion_r4331803987)),
+a programme-specific override of the `<repo>` segment in the canonical
+orchestration protocol's “The context ledgers”. Dispatched units use `NN-<slug>`, assigned
+at author-dispatch preparation and never renumbered afterward. An onboarding
+vehicle gets one context pair for its one PR. Verification deliveries follow
+the same unit context convention.
+
+The boundary orchestrator's single `orchestrator.progress-ledger.md` lives at
+the programme context root. Author/reviewer context and progress-ledger names,
+privacy, creation preflight and read receipts follow the canonical protocol's
+“The context ledgers”. Create both dispatch contexts only when the owner is
+about to dispatch that unit's author. Bootstrap creates no queued role files.
+
+### Phase shape
+
+The OpenSpec design and this charter land before product delivery.
+Each functional unit then supplies its own operator guidance before the behavior
+it describes, implementation, meaningful controls, normal integration acceptance
+and final guidance reconciliation in its own reviewed PR. No additional standalone
+design document is planned for those units under the selected OpenSpec approach;
+an author-originated architectural change requires the owning design decision
+before its implementation under the canonical PR workflow.
+
+Combined reconciliation #108 is a verification delivery. Its dispatched author
+publishes the actual acceptance report on its issue and opens a verification PR
+linking that report and carrying tasks 18.1–18.2. The PR receives independent
+review and owner merge before the orchestrator reconciles its evidence and
+merged marks for unit closure. Keep an unavailable check unmarked. The PR carries
+task-state updates and evidence references; runtime changes and spec
+synchronization/archive have their own delivery boundaries. Documentation units
+need no invented code phase. Final reconciliation verifies combined consumption
+after the individual deliveries' acceptance.
+
+Owner merge and role dispatch remain governed by the canonical orchestration
+protocol. Programme-specific practices adopted by agent-skills #110 are not
+implicitly adopted here.
+
+### Exclusions and scope fences
+
+- Alias lifecycle #77 remains separate unless a supported-flow blocker is
+  established and the owner admits the resulting work.
+- Preserve the not-planned dispositions of #74–76 and the OpenSpec proposal's
+  exclusions, including broader attribution enforcement, signing redesign,
+  test-infrastructure machinery, XDG migration and unrelated naming changes.
+- Instruction-mount restoration and preventive mount redesign are outside
+  scope. Decided (owner, 2026-10-16: [exclusion](https://github.com/hube/devcontainer/pull/109#discussion_r4299256157)).
+  Live acceptance consumes effective guidance as a prerequisite. New sibling-
+  directory durability, a custom port allocator and a standing service are
+  outside scope.
+- Keep real credentials, unrelated host SSH settings/listeners, shared refs and
+  registrations protected. The credential-volume documentation verification
+  requires selection evidence, not deletion of real authentication state.
+- Keep agent-skills #114/#39's delivery and sequence under that programme's
+  ownership. Supply references to the feature procedures this programme owns.
+- Spec synchronization and archiving remain subsequent, separately authorized
+  finalization after the expanded delivery is complete. Programme bootstrap
+  neither implements the repairs nor closes their issues.
+
+### Identity line format
+
+Published programme artifacts begin with:
+
+```text
+Codex Recovery 1 <repo-qualified artifact> <model identifier or exposed label> <role> - <session id8>
+```
+
+`Codex Recovery 1` is the programme tag. The artifact reference identifies its
+issue or PR; the role is orchestrator, author, reviewer or programme designer.
+Obtain model and session inputs from the harness-specific producers in the
+shared always-on instructions and `~/.agents/instructions/committing.md`,
+“Resolve Codex attribution inputs” for Codex. Use the most precise exposed model
+identifier, or its display label when no identifier is exposed, and the verified
+session identifier's first eight characters. Commits use the canonical
+attribution trailers instead. Reader proxies publish
+through their designated reviewer under the canonical review protocol.
+
+### Owner scope decisions
+
+The OpenSpec proposal's
+[selected follow-ups](../../openspec/changes/enable-codex-autonomous-recovery/proposal.md#selected-integration-follow-ups)
+define the selected outcomes:
+
+- Startup skills installation covers Claude and Codex independently.
+- A validator timeout is unsuccessful validation and rejects a hook-invoked
+  commit with an actionable diagnosis.
+- Publication integrity uses a dedicated local jq compatibility Feature with
+  exact Unicode preservation and the OpenSpec design's maintainer-run retirement
+  acceptance across supported published images/architectures.
+- SSH setup includes native automatic localhost allocation, actual discovery,
+  stable alias refresh and supported desktop reconnection after recreation.
+- Onboarding retains the existing persistence model. Authentication and runtime
+  terminology remain separate documentation deliveries.
+
+Decisions made after bootstrap belong in the live programme ledger, with links
+to the owner's decision records, rather than accumulating in role contexts.
+
+## Governing rigor
+
+Inherit the OpenSpec proposal's
+[rigor levels](../../openspec/changes/enable-codex-autonomous-recovery/proposal.md#rigor-levels)
+with their existing decided/provisional statuses. Programme creation does not
+ratify provisional levels or authorize stronger machinery. Protected state stays
+protected; other partial task state remains re-doable under those prerequisites.
+Repository controls establish our wiring; real supported host/client acceptance
+establishes integration behavior. Neither replaces the other.
+
+## Delivery structure and OpenSpec coverage
+
+| Unit | Work issue / boundary | OpenSpec tasks | Outcome |
+| --- | --- | --- | --- |
+| Publication integrity | Existing #72; separate PR | 13.1–13.3 | Dedicated local jq Feature preserves complete Unicode publication, with evidence-based retirement. |
+| Skills startup | Existing #84; separate PR | 11.1–11.3 | Both harnesses are configured independently, preserving unrelated state. |
+| Validator liveness | Existing #67; separate PR | 12.1–12.3 | Parsing terminates within its bound and failure remains actionable. |
+| Automatic SSH setup | Existing #43; separate PR | 14.1–14.4 | Native allocation and stable aliases reach the intended consumer across recreation. |
+| Host onboarding | [#105](https://github.com/hube/devcontainer/issues/105) vehicle: [workspace selection #103](https://github.com/hube/devcontainer/issues/103), [projects-directory preparation #104](https://github.com/hube/devcontainer/issues/104) and existing #30 | 15.1–15.3 | One coherent entry path describes prerequisites and actual persistence. |
+| GitHub authentication | [#106](https://github.com/hube/devcontainer/issues/106); documentation PR | 16.1–16.3 | Token wiring, remote status and exact credential-volume selection are reproducible. |
+| Runtime terminology | [#107](https://github.com/hube/devcontainer/issues/107); documentation PR | 17.1–17.2 | Matrix labels and instrumentation evidence are interpretable. |
+| Combined reconciliation | [#108](https://github.com/hube/devcontainer/issues/108); verification PR | 18.1–18.2 | Selected outcomes are consumed together and every issue criterion is reconciled. |
+
+The onboarding vehicle's workspace and projects-directory child issues cover
+task 15.1; #30 covers task 15.2. Task 15.3 is their shared entry-path and reader
+acceptance within the vehicle. This overlap is deliberate integration coverage,
+not multiple assignments of implementation. Final task 18 verification spans
+units and lands its task marks through #108's verification PR.
+
+## Initial delivery sequence
+
+Default order reflects consequence and dependencies, not task numbering. These
+are bootstrap priorities, subject to owner override:
+
+| Preferred order | Unit | Priority and consequence | Dispatch prerequisites |
+| --- | --- | --- | --- |
+| 1 | #72 publication integrity | P1: successful tooling can silently corrupt published text | None beyond programme dispatch readiness |
+| 2 | #84 skills startup | P2: normal startup skips installation | None beyond programme dispatch readiness |
+| 3 | #67 validator liveness | P2: a check can stall, with supported approved execution available | None beyond programme dispatch readiness |
+| 4 | #43 automatic SSH setup | P2: manual port collisions impede connection setup | None beyond programme dispatch readiness |
+| 5 | Host onboarding vehicle | P2: entry prerequisites and rebuild behavior are unclear | #43 closed; the vehicle exercises its delivered connection path |
+| Independent documentation | GitHub authentication | P2: account/volume recovery inputs are incomplete | None beyond programme dispatch readiness |
+| Independent documentation | Runtime terminology | P2: acceptance evidence cannot be interpreted from the guide | None beyond programme dispatch readiness |
+| Final | Combined reconciliation | P2: expanded completion must be established from actual evidence | Every other top-level unit closed |
+
+P1 denotes silent incorrect protected output. P2 denotes recoverable failure or
+material operational friction. No active publication incident requiring a P0
+interrupt is claimed. Preferred order does not create artificial blocking edges
+between independent functional units. Each unit's live acceptance must obtain the environment its criteria require.
+
+## Bootstrap and closure
+
+Publish the root ledger and outcome-based unit bodies, then their native parent
+and blocked-by relationships. Keep issue #96's accepted findings and merits
+declines distinguishable; the three selected documentation deliveries receive
+their own tracking rather than treating #96 as one shared implementation PR.
+
+The bootstrap PR carries this plan and the updated OpenSpec artifacts. It is a
+planning delivery, not evidence that product criteria passed. No author/reviewer
+is dispatched and no unit is dispatch-ready merely because it is indexed here.
+The next boundary re-derives readiness after the owner reviews the plan and
+selects the unit to dispatch, then prepares only that unit's context pair.
+
+Close the programme only after #108's actual author report, independent PR
+verdict, owner merge and criterion reconciliation establish agreement between
+GitHub unit states and merged OpenSpec task marks. Preserve task evidence,
+verification limits, scope exclusions and cross-programme ownership in the final
+record. Spec synchronization and archive follow this closure boundary through
+separately authorized finalization.

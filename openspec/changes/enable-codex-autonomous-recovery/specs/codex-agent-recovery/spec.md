@@ -136,3 +136,93 @@ discovery and attribution producers SHALL retain their owning corpus home.
 - **THEN** the selected run matches that merge SHA, named workflow and main branch,
   and absent or ambiguous matches are diagnosed rather than replaced by the latest
   unrelated run
+
+### Requirement: Attribution validation terminates with an actionable outcome
+Attribution validation SHALL return within a documented finite bound when its
+trailer parser stalls. Timeout SHALL be unsuccessful validation in every
+enforcement mode, reject a hook-invoked commit, and identify the problem,
+consequence and supported recovery separately from unavailable tooling and an
+ordinary parser failure.
+
+#### Scenario: Trailer parsing stalls
+- **WHEN** the trailer parser does not complete within its finite bound
+- **THEN** validation terminates unsuccessfully with a distinct timeout diagnosis
+  rather than waiting indefinitely or reporting the message as checked
+
+#### Scenario: A commit hook encounters the timeout
+- **WHEN** hook-invoked validation times out
+- **THEN** the commit is rejected and the diagnosis preserves the attribution
+  requirement while identifying the supported recovery path
+
+#### Scenario: A valid message parses normally
+- **WHEN** a valid attributed message is parsed within the bound
+- **THEN** the existing attribution checks complete with their actual result
+
+### Requirement: JSON publication preserves Unicode content
+The effective image tooling for the supported JSON publication path SHALL
+preserve Unicode text exactly, including multibyte characters at input-buffer
+boundaries and large bodies supplied through standard input or files. A command's
+successful status SHALL NOT substitute for exact content verification when
+establishing this delivery's acceptance.
+
+#### Scenario: A multibyte publication body crosses an input boundary
+- **WHEN** the effective image tooling serializes such a body from standard input
+  or a file
+- **THEN** decoding the JSON yields the complete original text without replacement,
+  loss or alteration
+
+#### Scenario: Publication integrity is verified
+- **WHEN** the selected path publishes an authorized Unicode body
+- **THEN** authoritative body readback agrees exactly with the intended content
+  before publication success is claimed
+
+#### Scenario: A maintainer retires the jq compatibility overlay
+- **WHEN** the dedicated local jq Feature is considered for removal
+- **THEN** package-provided jq without the overlay meets the same Unicode and
+  exact-publication acceptance on every supported published image/architecture
+  before the overlay and consumer declaration are removed
+
+### Requirement: GitHub authentication prerequisites are reproducible
+The GitHub CLI feature guidance SHALL supply the host-token and remoteEnv wiring,
+existing token precedence and remote authentication completion check. It SHALL
+distinguish GitHub CLI account state from SSH Git transport and identify missing
+inputs without exposing credentials or replacing unrelated stored accounts.
+
+#### Scenario: A consumer configures runtime authentication
+- **WHEN** an operator follows the documented token-wiring path
+- **THEN** the required host and consumer inputs are obtainable, precedence is
+  explicit and remote authentication can be checked without printing a token
+
+#### Scenario: Authentication input is unavailable
+- **WHEN** the required runtime token is unset or empty
+- **THEN** the documented diagnosis identifies the consequence and remedy while
+  preserving unrelated stored accounts
+
+### Requirement: Credential recovery identifies the intended volume
+Credential-recovery guidance SHALL provide read-only identification of the GitHub
+CLI volume mounted by the intended consumer before its existing removal
+procedure. Missing or ambiguous targets SHALL be diagnosed without guessing.
+The existing account-logout alternative SHALL remain available; verification
+SHALL NOT require deletion of real credentials.
+
+#### Scenario: Another consumer has a similar credential volume
+- **WHEN** an operator identifies the selected consumer's mounted volume
+- **THEN** the result selects that exact volume and excludes the other consumer's
+  volume before any removal operation
+
+#### Scenario: A credential-volume target cannot be established
+- **WHEN** the selected consumer or matching mount is missing or ambiguous
+- **THEN** the procedure reports that unresolved target and does not supply a
+  guessed deletion target
+
+### Requirement: Runtime acceptance results are interpretable
+Maintainer guidance SHALL define the runtime matrix's control, treatment,
+omission, restoration and final result labels, their expected outcomes and the
+evidence of system Bubblewrap selection. Operator guidance SHALL link to that
+authority. These definitions SHALL agree with the maintained script without
+changing runtime settings, supported backends or acceptance guarantees.
+
+#### Scenario: A maintainer interprets a runtime result
+- **WHEN** a maintainer follows an emitted case label to its documented meaning
+- **THEN** the case, expected result and system-Bubblewrap selection evidence are
+  identifiable and agree with the maintained runtime script
