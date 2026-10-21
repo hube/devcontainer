@@ -104,10 +104,8 @@ Coordinate setup references with
 [agent-skills #114](https://github.com/hube/agent-skills/issues/114) and
 [#39](https://github.com/hube/agent-skills/issues/39). This repository owns the
 bootstrap and feature procedures; that programme consumes them under its existing
-scope and sequence. Installer payload copying is owned by
-[#156](https://github.com/hube/agent-skills/issues/156); #84 owns the startup
-caller's explicit harness selection and independent attempts.
-Its attribution fallback work retains its own unit and canonical authority.
+scope and sequence. Its attribution fallback work retains its own unit and
+canonical authority.
 Specification synchronization and archiving follow delivery acceptance and
 criterion reconciliation.
 

@@ -221,7 +221,7 @@ programme sequence, referring to these owning procedures.
 - [ ] 11.3 Document the changed startup behavior, prerequisites, per-harness
   failure remedies and activation at the owning feature home. Run the documented
   route and required reader review; supply the resulting source reference for
-  agent-skills #114/#39 without duplicating its delivery or redoing #156.
+  agent-skills #114/#39 without duplicating that programme's delivery.
 
 ## 12. Deliver bounded attribution validation (#67)
 

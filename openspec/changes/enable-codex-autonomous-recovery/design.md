@@ -149,9 +149,7 @@ registration to force success.
 Focused tests check our argument and failure-aggregation wiring against the
 actual installer contract, naming any CLI stubs. Normal fresh, existing and
 repeated installations supply separate installed-state readback for both harnesses.
-The installer payload contract is owned by agent-skills #156. This delivery
-owns the caller's harness selection and independent attempts. Feature NOTES owns
-the startup behavior; agent-skills #114/#39 links that source.
+Feature NOTES owns the startup behavior; agent-skills #114/#39 links that source.
 
 ### Bound attribution validation without weakening it
 
