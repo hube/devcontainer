@@ -915,9 +915,11 @@ publication_run=$(jq -er --arg sha "$publication_merge" '
 
 An absent match leaves publication for this merge unobserved: confirm the merge
 SHA and inspect the workflow's push trigger and Actions access, then repeat the
-selection. Ambiguous matches leave the run choice unresolved: inspect the
-returned run URLs and establish which run belongs to the intended publication.
-Do not watch a run until the selection is unambiguous.
+selection. Ambiguous matches leave the run choice unresolved. Ask the person requesting
+publication to identify the intended run URL; do not choose by recency. Set
+`publication_run` to the numeric run identifier in that selected URL, then run
+the identity readback below. Do not watch a run until the selection is explicit
+and its identity is verified.
 
 Read back that run through Actions and verify the workflow path as well as the
 commit and branch before watching it:
@@ -948,14 +950,48 @@ failed workflow means the reviewed commit is not known to be present in the
 published tag; inspect the run log, fix or rerun the publication job, and wait
 for a successful run.
 
-## Post-publication acceptance
-
-Pull the published tag explicitly so a cached pre-merge image cannot satisfy
-the consumer test, then exercise the original image-only consumer path:
+Read the successful selected attempt's push digest from its logs and retain an
+immutable image reference. This also selects an older merge after `latest`
+advances:
 
 ```bash
-docker pull ghcr.io/hube/devcontainer:latest
-bash .devcontainer/local-features/codex/test/test-image-consumer.sh ghcr.io/hube/devcontainer:latest
+publication_attempt=$(gh api \
+  "repos/hube/devcontainer/actions/runs/$publication_run" --jq '.run_attempt')
+publication_log=$(mktemp)
+gh run view "$publication_run" --repo hube/devcontainer \
+  --attempt "$publication_attempt" --log > "$publication_log"
+publication_digest=$(python3 - "$publication_log" <<'PYTHON'
+from pathlib import Path
+import re
+import sys
+log = Path(sys.argv[1]).read_text(encoding='utf-8')
+digests = set(re.findall(r'latest: digest: (sha256:[0-9a-f]{64}) size:', log))
+if len(digests) != 1:
+    raise SystemExit('Selected push log has no unique latest digest.\n'
+                     'The image for this publication is unresolved.\n'
+                     'Inspect the selected attempt and retain its push digest before adoption.')
+print(digests.pop())
+PYTHON
+)
+publication_image="ghcr.io/hube/devcontainer@$publication_digest"
+printf '%s\n' "$publication_image"
+```
+
+Continue only after each command succeeds. If the selected attempt has no unique
+push digest or the registry no longer retains it, this merge's image is not
+available through this route. Retain the output and have the maintainer restore
+or republish the intended image; do not substitute a newer `latest` image.
+
+## Post-publication acceptance
+
+Pull the immutable `publication_image` selected above, then exercise the
+image-only consumer path against that same reference:
+
+```bash
+docker pull "$publication_image"
+docker image inspect "$publication_image" --format '{{json .RepoDigests}}'
+bash \
+  .devcontainer/local-features/codex/test/test-image-consumer.sh "$publication_image"
 ```
 
 Close issue #36 only after both commands exit zero and the consumer test

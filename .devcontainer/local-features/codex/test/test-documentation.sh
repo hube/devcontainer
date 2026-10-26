@@ -148,8 +148,10 @@ required_maintainers = {
     "publication merge filter": '--commit "$publication_merge" --limit 2',
     "publication ambiguity rejection": 'elif length != 1 then error(',
     "publication workflow readback": '.path == ".github/workflows/publish.yaml"',
-    "published image pull": "docker pull ghcr.io/hube/devcontainer:latest",
-    "post-publication consumer": "test-image-consumer.sh ghcr.io/hube/devcontainer:latest",
+    "published image pull": 'docker pull "$publication_image"',
+    "post-publication consumer": 'test-image-consumer.sh "$publication_image"',
+    "immutable publication identity": 'publication_image="ghcr.io/hube/devcontainer@$publication_digest"',
+    "unique push digest": "if len(digests) != 1:",
     "issue closure gate": "Close issue #36 only after",
     "local image cleanup": "docker image rm -f codex-runtime-test:acceptance",
 }
@@ -328,7 +330,10 @@ assert_mutation_rejected \
   '.path == ".github/workflows/publish.yaml"'
 assert_mutation_rejected \
   "maintainer post-publication acceptance" "$MAINTAINERS" \
-  "test-image-consumer.sh ghcr.io/hube/devcontainer:latest"
+  'test-image-consumer.sh "$publication_image"'
+assert_mutation_rejected \
+  "immutable publication identity" "$MAINTAINERS" \
+  'publication_image="ghcr.io/hube/devcontainer@$publication_digest"'
 assert_mutation_rejected \
   "maintainer issue closure gate" "$MAINTAINERS" \
   "Close issue #36 only after"

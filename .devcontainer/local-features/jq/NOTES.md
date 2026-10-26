@@ -11,12 +11,25 @@ selecting a different executable.
 ## Activate the corrected image
 
 For repository development, rebuild the image from this repository's
-`.devcontainer/devcontainer.json`. Image consumers must pull the image built
-from the intended merge and recreate their consumer using that image; restarting
-an existing container does not change its installed executable. Select that
-publication with the
-[maintainer publication procedure](../codex/MAINTAINERS.md#publication).
-Preserve user state through the consumer's existing bind mounts and volumes.
+`.devcontainer/devcontainer.json`. For a published image, use the
+[publication procedure](../codex/MAINTAINERS.md#publication) to select the
+intended merge's successful run and obtain its immutable `publication_image`
+reference (`ghcr.io/hube/devcontainer@sha256:…`). A moving `latest` tag does not
+select an older merge.
+
+Set `CONSUMER_WORKSPACE` to the absolute path of the consuming project. Put the
+selected immutable reference in that project's `.devcontainer/devcontainer.json`
+`image` field, then run on its Docker Desktop host:
+
+```sh
+docker pull "$publication_image"
+devcontainer up --workspace-folder "$CONSUMER_WORKSPACE" \
+  --remove-existing-container
+```
+
+Recreation replaces the selected consumer's container filesystem. Preserve user
+state through its existing bind mounts and volumes before running it. Restarting
+an existing container does not change its installed executable.
 
 In the resulting container, run:
 
@@ -28,7 +41,17 @@ sha256sum /usr/local/bin/jq
 ```
 
 The effective executable must be `/usr/local/bin/jq`, report `jq-1.8.2`, and
-match the ARM64 digest pinned in this Feature's installer. A different path,
+match the official ARM64 artifact digest below:
+
+```sh
+printf '%s  %s\n' \
+  8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309 \
+  /usr/local/bin/jq | sha256sum --check -
+```
+
+This pin identifies `jq-linux-arm64` from the
+[official jq 1.8.2 release](https://github.com/jqlang/jq/releases/tag/jq-1.8.2).
+A different path,
 version or digest means this consumer has not adopted the corrected input;
 rebuild or select the intended image and recreate it, then repeat the readback.
 These identifiers establish selection; maintainers also run the exact-content
