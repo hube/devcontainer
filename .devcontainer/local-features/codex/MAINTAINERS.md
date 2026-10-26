@@ -956,7 +956,9 @@ advances:
 
 ```bash
 publication_attempt=$(gh api \
-  "repos/hube/devcontainer/actions/runs/$publication_run" --jq '.run_attempt')
+  "repos/hube/devcontainer/actions/runs/$publication_run" --jq '
+  if .status == "completed" and .conclusion == "success" then .run_attempt
+  else error("Selected publication attempt is not successfully completed") end')
 publication_log=$(mktemp)
 gh run view "$publication_run" --repo hube/devcontainer \
   --attempt "$publication_attempt" --log > "$publication_log"
