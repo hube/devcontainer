@@ -255,7 +255,7 @@ programme sequence, referring to these owning procedures.
   Evidence for 13.1–13.2: [publication-integrity PR](https://github.com/hube/devcontainer/pull/111),
   whose results identify the built image, effective artifact/PATH, exact-text
   probes, affected-binary control and fresh-consumer acceptance.
-- [ ] 13.3 Document image activation/adoption and the safe publication route
+- [x] 13.3 Document image activation/adoption and the safe publication route
   while an installation remains affected. Verify the documented path, required
   reader review and an authorized publication with exact body readback through
   the corrected integration; rerun the earlier publication acceptance affected
@@ -265,6 +265,8 @@ programme sequence, referring to these owning procedures.
   the overlay and consumer declaration only when package-provided jq without the
   Feature passes the same Unicode and exact-publication cases on every supported
   published image/architecture; a version number alone is insufficient.
+  Evidence: [reader dispositions and coverage reconciliation](https://github.com/hube/devcontainer/pull/111#issuecomment-6418783636)
+  and the PR's stamped image/adoption/publication results.
 
 ## 14. Deliver automatic SSH allocation and connection refresh (#43)
 
