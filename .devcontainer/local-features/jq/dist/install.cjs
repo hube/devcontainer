@@ -9,13 +9,21 @@ var import_node_path = require("node:path");
 var VERSION = "1.8.2";
 var DESTINATION = "/usr/local/bin/jq";
 function selectArtifact(architecture) {
-  if (architecture !== "arm64") {
-    throw new Error(`unsupported architecture ${architecture}; the published target is linux/arm64`);
-  }
+  const artifacts = {
+    arm64: {
+      name: "jq-linux-arm64",
+      sha256: "8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309"
+    },
+    x64: {
+      name: "jq-linux-amd64",
+      sha256: "b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f"
+    }
+  };
+  const artifact = Object.hasOwn(artifacts, architecture) ? artifacts[architecture] : void 0;
+  if (!artifact) throw new Error(`unsupported architecture ${architecture}; select arm64 or x64`);
   return {
-    name: "jq-linux-arm64",
-    url: `https://github.com/jqlang/jq/releases/download/jq-${VERSION}/jq-linux-arm64`,
-    sha256: "8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309"
+    ...artifact,
+    url: `https://github.com/jqlang/jq/releases/download/jq-${VERSION}/${artifact.name}`
   };
 }
 function verifyDigest(bytes, expected) {

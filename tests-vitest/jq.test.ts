@@ -12,7 +12,15 @@ describe('published jq input', () => {
     });
   });
 
-  it.each(['x64', 'arm', 's390x', ''])('rejects an unpublished target: %s', (architecture) => {
+  it('selects the official AMD64 artifact for the existing CI image build', () => {
+    expect(selectArtifact('x64')).toEqual({
+      name: 'jq-linux-amd64',
+      url: 'https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-linux-amd64',
+      sha256: 'b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f',
+    });
+  });
+
+  it.each(['arm', 's390x', '', 'toString'])('rejects an unsupported target: %s', (architecture) => {
     expect(() => selectArtifact(architecture)).toThrow('unsupported architecture');
   });
 

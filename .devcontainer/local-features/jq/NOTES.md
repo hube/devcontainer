@@ -3,8 +3,10 @@
 The jq compatibility Feature supplies official jq 1.8.2 ahead of the
 package-provided binary on PATH. It preserves `/usr/bin/jq`; removing the
 Feature does not require repairing the package. The image publication workflow
-currently targets Linux ARM64. Unsupported architectures fail installation
-rather than selecting a different executable.
+currently targets Linux ARM64. The Feature also selects the official AMD64
+artifact for the repository's existing CI image-build checks; that does not add
+an AMD64 published image. Other architectures fail installation rather than
+selecting a different executable.
 
 ## Activate the corrected image
 

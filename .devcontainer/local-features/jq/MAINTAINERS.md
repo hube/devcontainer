@@ -11,7 +11,9 @@ Run the repository checks from `package.json` and `.github/workflows/tests.yml`.
 Build this repository's `.devcontainer/devcontainer.json` with the Dev Containers
 CLI, naming the task-owned candidate image explicitly. The publication workflow
 in `.github/workflows/publish.yaml` uses `ubuntu-24.04-arm` without a platform
-matrix: its published target is Linux ARM64. Do not infer AMD64 acceptance.
+matrix: its published target is Linux ARM64. Existing CI install-order tests
+also build on AMD64; the Feature pins that artifact separately. CI build success
+does not establish AMD64 publication or fresh-consumer acceptance.
 
 ```sh
 devcontainer build --workspace-folder "$PWD" --image-name "$CANDIDATE_IMAGE"
