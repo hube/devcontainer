@@ -242,16 +242,19 @@ programme sequence, referring to these owning procedures.
 
 ## 13. Deliver Unicode-preserving publication tooling (#72)
 
-- [ ] 13.1 Supply the pinned corrected jq release through a dedicated local
+- [x] 13.1 Supply the pinned corrected jq release through a dedicated local
   `jq` compatibility Feature and its consumer declaration, validating release
   artifact/digest and the published architecture. Verify our selected input and
   effective PATH with focused controls, preserving the package-owned binary and
   avoiding unrelated dependency changes.
-- [ ] 13.2 Verify the effective built-image binary using a self-contained
+- [x] 13.2 Verify the effective built-image binary using a self-contained
   multibyte-boundary case, representative large body and working control through
   stdin and file paths. Compare decoded text exactly, demonstrate the same
   assertion failing with a known-affected input, and retain binary/version readback;
   a successful status or private historical fixture alone is insufficient.
+  Evidence for 13.1–13.2: [publication-integrity PR](https://github.com/hube/devcontainer/pull/111),
+  whose results identify the built image, effective artifact/PATH, exact-text
+  probes, affected-binary control and fresh-consumer acceptance.
 - [ ] 13.3 Document image activation/adoption and the safe publication route
   while an installation remains affected. Verify the documented path, required
   reader review and an authorized publication with exact body readback through
