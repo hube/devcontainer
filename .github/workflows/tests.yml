@@ -19,7 +19,7 @@ jobs:
       - run: npm test
       # A stale committed bundle fails here; this is what makes the
       # byte-identical-bundle claim enforceable.
-      - run: npm run build && git diff --exit-code -- .devcontainer/local-features/git-commit-attribution/dist/
+      - run: npm run build && git diff --exit-code -- .devcontainer/local-features/git-commit-attribution/dist/ .devcontainer/local-features/jq/dist/
 
   local-features:
     runs-on: ubuntu-latest
