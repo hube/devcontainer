@@ -130,8 +130,10 @@ comment, resolve its first-line identity from the active programme's
 [identity contract](../../../docs/delivery-programmes/codex-autonomous-recovery-delivery-plan.md#identity-line-format)
 and the current role/session inputs. End the body with a fenced metadata block
 containing `Harness`, `Harness-Version`, `Model` and `Skills`, in that order;
-use actual harness/model/skill values from the canonical attribution producer in
-[`committing.md`](https://github.com/hube/claude-home/blob/main/instructions/committing.md#resolve-codex-attribution-inputs).
+use actual harness/model/skill values. In Codex, resolve them through the
+[Codex attribution procedure](https://github.com/hube/claude-home/blob/main/instructions/committing.md#resolve-codex-attribution-inputs).
+For other harnesses, use the attribution producer specified by that harness's
+governing instructions.
 An unavailable identity input leaves agent publication unauthorized until that
 input is restored. Do not overwrite the PR body or unrelated
 content. Copy the generated large body into the corrected consumer, add its

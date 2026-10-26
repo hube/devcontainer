@@ -996,7 +996,7 @@ bash \
   .devcontainer/local-features/codex/test/test-image-consumer.sh "$publication_image"
 ```
 
-Close issue #36 only after both commands exit zero and the consumer test
+Close issue #36 only after all commands exit zero and the consumer test
 reports successful post-create health and sandboxed patch persistence. If the
 test fails, the problem is in the published-image consumer path; users may
 still be unable to start the image or persist Codex patches. Preserve the full
