@@ -16,6 +16,7 @@
     "./local-features/direnv": {},
     "./local-features/git-commit-attribution": {},
     "./local-features/github-cli-config": {},
+    "./local-features/jq": {},
     "./local-features/ssh": {},
     "./local-features/workspaces-permissions": {}
   },

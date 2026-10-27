@@ -18,3 +18,15 @@ await build({
 });
 chmodSync(OUTFILE, 0o755);
 console.log(`built ${OUTFILE}`);
+
+const JQ_OUTFILE = '.devcontainer/local-features/jq/dist/install.cjs';
+await build({
+  entryPoints: ['src/jq/cli.ts'],
+  outfile: JQ_OUTFILE,
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node24',
+  legalComments: 'none',
+});
+console.log(`built ${JQ_OUTFILE}`);

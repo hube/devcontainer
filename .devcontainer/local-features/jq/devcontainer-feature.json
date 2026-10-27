@@ -1,0 +1,9 @@
+{
+  "id": "jq",
+  "name": "Unicode-preserving jq",
+  "version": "1.0.0",
+  "description": "Pinned official jq 1.8.2 overlay preserving package-owned jq.",
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/node:2": {}
+  }
+}

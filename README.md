@@ -5,6 +5,8 @@ development dependencies so that they can be used across projects and
 development machines. The devcontainer in this repo includes:
 * Zsh and Oh My Zsh
 * Git
+* Unicode-preserving jq; activation and the safe publication route are in the
+  [jq feature notes](.devcontainer/local-features/jq/NOTES.md).
 * Claude Code; the shared agent instructions mount it expects is described in
   the [Claude feature notes](.devcontainer/local-features/claude/NOTES.md).
 * Codex; its supported runtime and operator guidance are in the
