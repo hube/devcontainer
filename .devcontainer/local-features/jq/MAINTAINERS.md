@@ -150,17 +150,8 @@ For a repeated run, inspect the previously recorded fixture comment you own
 and use `--method PATCH repos/hube/devcontainer/issues/comments/COMMENT_ID`
 with its actual identifier and the same payload file. Protect other comments.
 Read the returned comment's `url` directly with `gh api` into `readback.json`.
-Compare without newline translation:
-
-```sh
-python3 - <<'PYTHON'
-import json
-from pathlib import Path
-expected = Path('body.md').read_bytes().decode('utf-8')
-actual = json.loads(Path('readback.json').read_bytes())['body']
-assert actual == expected, 'authoritative publication body differs'
-PYTHON
-```
+Run the [operator comparison](NOTES.md#publish-safely-before-adoption) without
+newline translation.
 
 Before trusting the comparator, change one character in a disposable copy of
 the expected body and confirm the same assertion fails. Retain the exact
