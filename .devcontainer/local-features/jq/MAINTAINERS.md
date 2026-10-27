@@ -25,9 +25,10 @@ with its actual number. Both `validator` and `local-features` must succeed; the
 latter runs the local Feature shell suites, including install-order image builds.
 Retain their output and distinguish CI's explicit live-runtime skips from checks
 that ran.
-Build this repository's `.devcontainer/devcontainer.json` with the Dev Containers
-CLI. Assign an unused task-owned image tag to `CANDIDATE_IMAGE` before running
-the build commands below. The publication workflow
+For repository development, rebuild this repository's
+`.devcontainer/devcontainer.json` with the Dev Containers CLI. Assign an unused
+task-owned image tag to `CANDIDATE_IMAGE` before running the build commands
+below. The publication workflow
 in `.github/workflows/publish.yaml` uses `ubuntu-24.04-arm` without a platform
 matrix: its published target is Linux ARM64. Existing CI install-order tests
 also build on AMD64; the Feature pins that artifact separately. CI build success
