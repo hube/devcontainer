@@ -43,3 +43,15 @@ await build({
   legalComments: 'none',
 });
 console.log(`built ${SKILLS_OUTFILE}`);
+
+const SKILLS_ACCEPTANCE_OUTFILE = 'scripts/accept-agent-skills.mjs';
+await build({
+  entryPoints: ['src/agent-skills/acceptance.ts'],
+  outfile: SKILLS_ACCEPTANCE_OUTFILE,
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node24',
+  legalComments: 'none',
+});
+console.log(`built ${SKILLS_ACCEPTANCE_OUTFILE}`);

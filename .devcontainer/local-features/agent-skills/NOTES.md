@@ -26,11 +26,21 @@ user. A missing identity or unreachable remote prevents an initial clone.
 
 ## Activate and check skills
 
-Rebuild the consuming container after adopting an image containing this Feature
-change. Restart runs the installed hook again; it does not update an existing
-skills clone's working tree. To adopt a newer installer, update that clone
-through its own repository workflow before restarting. For an immediate retry
-inside the container, run:
+After adopting an image containing this Feature change, rebuild the consuming
+container. In VS Code connected to that workspace, open the Command Palette
+(F1) and choose **Dev Containers: Rebuild Container**. For the Dev Container CLI,
+run this on the Docker host, replacing the path with the consuming project whose
+`.devcontainer` configuration selects that image:
+
+```bash
+devcontainer up --workspace-folder /absolute/path/to/consumer \
+  --remove-existing-container
+```
+
+This recreates that consumer, so preserve any required container-local files
+first; the persistence boundary is described below. Restart runs the installed
+hook again and leaves an existing skills clone at its checked-out revision. For
+an immediate retry inside the container, run:
 
 ```bash
 ~/bin/devcontainer-feature/agent-skills/postStartScript.sh
