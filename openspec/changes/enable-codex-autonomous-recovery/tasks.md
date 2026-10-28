@@ -208,12 +208,12 @@ programme sequence, referring to these owning procedures.
 
 ## 11. Deliver independent skills startup for both harnesses (#84)
 
-- [ ] 11.1 Update the post-start caller to invoke the maintained installer
+- [x] 11.1 Update the post-start caller to invoke the maintained installer
   explicitly for Claude and Codex, attempt each independently and retain
   non-blocking startup with target-specific diagnoses. Verify argument wiring
   against the actual installer contract and use named stubs to prove either
   target's failure still permits the other attempt, without forcing state conflicts.
-- [ ] 11.2 Verify normal fresh, existing and repeated installations for both
+- [x] 11.2 Verify normal fresh, existing and repeated installations for both
   harnesses using disposable consumers and installed-state readback. Compare
   unrelated user-owned configuration before/after and exercise an installer
   conflict that preserves the conflicting state; stubbed caller success alone

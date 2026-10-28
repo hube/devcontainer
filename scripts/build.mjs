@@ -30,3 +30,16 @@ await build({
   legalComments: 'none',
 });
 console.log(`built ${JQ_OUTFILE}`);
+
+const SKILLS_OUTFILE =
+  '.devcontainer/local-features/agent-skills/bin/devcontainer-feature/agent-skills/install-skills.cjs';
+await build({
+  entryPoints: ['src/agent-skills/cli.ts'],
+  outfile: SKILLS_OUTFILE,
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node24',
+  legalComments: 'none',
+});
+console.log(`built ${SKILLS_OUTFILE}`);
