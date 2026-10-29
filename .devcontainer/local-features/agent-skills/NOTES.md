@@ -1,31 +1,93 @@
 ## Behavior
 
-On container start this feature clones the repo if the clone directory is
-absent, refreshes its remote refs with `git fetch` if it is already a clone, and
-then runs the repo's idempotent `setup.sh`. It never merges, so a working tree is
-never moved under an in-flight session.
+This Feature makes the hube-agent skills available to Claude Code and Codex.
+On container start it clones the configured repository if absent, or refreshes
+remote refs in an existing clone without merging or moving its working tree.
+It then runs `setup.sh claude` and `setup.sh codex` independently: either target
+can fail without preventing the other attempt or blocking container start.
 
 By default the remote is [`hube/agent-skills`][1] and the clone lands in
-`/workspaces/agent-skills`. Both are options, `repo` and `cloneDir`.
+`/workspaces/agent-skills`. Both are options, `repo` and `cloneDir`. The installer
+owns harness configuration and conflict checks; the Feature does not replace
+user-owned paths or another Codex marketplace registration to force success.
 
-Cloning uses the forwarded SSH agent. This feature depends on the `ssh` feature,
-whose own `postStartCommand` makes the agent socket writable and seeds
-`~/.ssh/known_hosts` — without the latter an SSH clone fails host key
-verification. It also depends on `workspaces-permissions`, which makes
-`/workspaces` writable by the container user.
+## Prerequisites
 
-## Failure handling
+Both harness CLIs must be available to the container user. Claude installation
+requires `claude --version` to succeed. Codex installation requires a working
+`codex` CLI with plugin marketplace support, plus Node.js for payload preparation
+and the Feature's bundled caller. The maintained [installer][2] owns the exact
+installation requirements.
 
-This feature never fails container start. If the SSH agent holds no identities,
-if the remote is unreachable, or if `setup.sh` fails, the container comes up
-anyway and the reason is written to stderr along with the underlying `git` or
-`setup.sh` message.
+Cloning uses the forwarded SSH agent. This Feature depends on the `ssh` Feature,
+which prepares the socket and `~/.ssh/known_hosts`, and on
+`workspaces-permissions`, which makes `/workspaces` writable by the container
+user. A missing identity or unreachable remote prevents an initial clone.
 
-## Caveats
+## Activate and check skills
+
+After adopting an image containing this Feature change, rebuild the consuming
+container. In VS Code connected to that workspace, open the Command Palette
+(F1) and choose **Dev Containers: Rebuild Container**. For the Dev Container CLI,
+run this on the Docker host, replacing the path with the consuming project whose
+`.devcontainer` configuration selects that image:
+
+```bash
+devcontainer up --workspace-folder /absolute/path/to/consumer \
+  --remove-existing-container
+```
+
+This recreates that consumer, so preserve any required container-local files
+first; the persistence boundary is described below. Restart runs the installed
+hook again and leaves an existing skills clone at its checked-out revision. For
+an immediate retry inside the container, run:
+
+```bash
+~/bin/devcontainer-feature/agent-skills/postStartScript.sh
+```
+
+Check the installed state as the container user:
+
+```bash
+readlink ~/.claude/skills/hube-agent
+codex plugin marketplace list --json
+codex plugin list --json
+```
+
+The Claude link should resolve to the configured clone. Codex should list the
+`hube-agent` marketplace rooted there and the installed `hube-agent` plugin.
+Restart Claude Code or use `/reload-plugins`; start a new Codex session to consume
+the installed plugin. The hook's zero exit status means startup can continue;
+use these readbacks and any diagnostics to establish installation success.
+
+## Recover a failed installation
+
+The hook reports the failing harness and captures the installer's output before
+its problem, consequence and remedy. A Claude failure means its skills may not
+load; repair the Claude CLI or the named conflicting path, preserve any content
+you need, then rerun `bash /workspaces/agent-skills/setup.sh claude`. A Codex
+failure means its plugin may not load; repair its CLI or marketplace configuration
+as directed, then rerun `bash /workspaces/agent-skills/setup.sh codex`. Substitute
+your configured `cloneDir` when different. Either retry changes only that target.
+
+For initial clone failures, restore the forwarded agent identity or repository
+access identified in the diagnostic, then rerun the hook. A fetch failure leaves
+remote refs stale but installation still uses the existing working tree. Repair
+network/repository access and rerun to refresh refs. Conflicting user paths remain
+untouched; the installer identifies them instead of silently overwriting them.
+
+## Rebuild persistence
 
 The clone is scratch space. `/workspaces/<project>` is a bind mount of the host
 directory you opened, but sibling directories such as `/workspaces/agent-skills`
 live on the container filesystem and are destroyed on rebuild. Edit the skills
-repo from its own workspace, where it is bind-mounted from the host.
+repository from its own workspace, where it is bind-mounted from the host.
+
+[Maintainer acceptance](MAINTAINERS.md) owns verification of Feature changes.
+This is the owning startup reference for
+[agent-skills #114](https://github.com/hube/agent-skills/issues/114) and
+[#39](https://github.com/hube/agent-skills/issues/39); that repository owns its
+installer and plugin documentation.
 
 [1]: https://github.com/hube/agent-skills
+[2]: https://github.com/hube/agent-skills/blob/main/setup.sh
