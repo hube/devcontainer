@@ -100,3 +100,18 @@ checks state rather than treating the hook's zero exit as installation success.
 
 Reconcile [NOTES.md](NOTES.md) with the exercised behavior and report any unrun
 image-rebuild or session-reload acceptance separately from installed-state results.
+
+## Retire the base bootstrap
+
+The contained [base Dockerfile](../../Dockerfile.node-runtime) owns the reason
+for its compatibility installation. To evaluate removal, delete that file in a
+candidate change and replace the consuming `build` block with
+`"image": "ubuntu:26.04"`, retaining the Node Feature declarations and LTS input.
+
+Remove the bootstrap only when the unmodified Ubuntu base with the selected
+Node Feature completes the existing image/install-order checks and the resulting
+image runs both `node --version` and `npm --version` on every architecture
+supported by the publication workflow. A package or Feature version alone does
+not meet the removal condition.
+After acceptance, delete the Dockerfile, restore the consumer image field and
+remove this retirement section.

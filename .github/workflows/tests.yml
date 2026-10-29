@@ -41,3 +41,19 @@ jobs:
             echo "== $t"
             bash "$t"
           done
+
+  image-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build the publication architecture and check Feature order
+        run: bash .devcontainer/local-features/agent-skills/test/test-install-order.sh
+      - name: Read back the image runtime
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect dc-order-assert:latest --format '{{.Architecture}}')" = arm64
+          docker run --rm --network none dc-order-assert:latest bash -lc \
+            'node --version && npm --version && dpkg-query -W libatomic1'

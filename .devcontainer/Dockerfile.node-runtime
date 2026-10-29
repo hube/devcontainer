@@ -1,0 +1,10 @@
+FROM ubuntu:26.04
+
+# Official Node 25+ Linux binaries require libatomic before the Node Feature
+# first invokes Node; dependent Feature installers run too late.
+# https://github.com/nodejs/node/blob/main/BUILDING.md
+# Removal condition and steps:
+# local-features/agent-skills/MAINTAINERS.md#retire-the-base-bootstrap
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
