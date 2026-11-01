@@ -234,7 +234,7 @@ programme sequence, referring to these owning procedures.
   typecheck, lint, tests, build and bundle comparison gates. Document the timeout's
   consequence and supported recovery without weakening attribution, and verify
   the instructions with the required reader review.
-- [ ] 12.3 Run the affected actual sandbox invocation under a bounded acceptance
+- [x] 12.3 Run the affected actual sandbox invocation under a bounded acceptance
   watchdog, retain its outcome and verify the exact supported approved continuation.
   Verify a hook timeout rejects the commit and successful validation still permits
   an attributed commit. Keep timeout-fixture evidence distinct from runtime or
