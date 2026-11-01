@@ -80,3 +80,25 @@ time — the fail-closed behavior described under *Behavior* above. When hook
 resolution runs outside a repository (e.g. `reference-transaction` firing
 mid-`git init`, before the repository is recognized), nothing is printed: the
 transient failure is not leaked to the user.
+
+## Recover from trailer-parser failure
+
+The gate gives `git interpret-trailers --parse` two seconds to finish. At the
+limit it kills its parser child and rejects validation in both modes; a hook
+invocation rejects the commit. Captured parser output appears before a distinct
+timeout, launch-failure or unsuccessful-exit diagnosis. No trailer check is
+reported successful when the parser cannot finish.
+
+Keep the complete attribution block when retrying. A launch failure requires
+restoring `git` on `PATH`; an unsuccessful exit requires resolving the reported
+git error. For a timeout, retry the same validation in an execution context that
+permits git to finish. In Codex, use its supported approved execution path under
+the [canonical recovery procedure](https://github.com/hube/claude-home/blob/main/instructions/setup-recovery.md).
+If the approved retry also times out, retain both results and report the failure
+to the integration maintainer. Removing attribution or skipping the hook does
+not establish successful validation.
+
+Consume a changed validator through an image/container rebuild: the Feature
+installs its committed bundle at image build. Rebuilding this repository's
+bundle alone does not replace the installed validator. Maintainer acceptance is
+in [MAINTAINERS.md](MAINTAINERS.md).

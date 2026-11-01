@@ -40,35 +40,47 @@ export interface Trailer {
   value: string;
 }
 
-/**
- * Delegates entirely to `git interpret-trailers --parse` (design, *Validation
- * Flow*): git's definition of a trailer block is the contract's definition,
- * so the hook can never disagree with the `git interpret-trailers --parse`
- * check the contract itself prescribes. This is why a blank line or a prose
- * line inside what looks like a trailer block silently drops trailers —
- * behavior verified directly against git, not reimplemented here.
- *
- * A non-zero git exit throws; the caller (Task 4) converts that into a
- * fail-closed rejection. Failure to launch `git` at all (e.g. missing from
- * `PATH`) is a distinct failure mode from a genuine non-zero exit — the
- * process never ran, so `result.status` is `null` and `result.stdout`/
- * `result.stderr` carry nothing useful, while `result.error` holds the one
- * diagnostic (e.g. `spawn git ENOENT`) that explains why. That case is
- * checked first so its message is never conflated with "exited with status
- * null".
- */
+export const TRAILER_PARSE_TIMEOUT_MS = 2_000;
+
+type ParserFailure = 'timeout' | 'launch' | 'exit';
+
+export class TrailerParseError extends Error {
+  constructor(
+    public readonly kind: ParserFailure,
+    message: string,
+    public readonly output: string[],
+  ) {
+    super(message);
+    this.name = 'TrailerParseError';
+  }
+}
+
+/** Git defines trailer semantics; an unsuccessful parse always fails closed. */
 export function parseTrailers(rawMessage: string): Trailer[] {
   const result = spawnSync('git', ['interpret-trailers', '--parse'], {
     input: rawMessage,
     encoding: 'utf8',
+    timeout: TRAILER_PARSE_TIMEOUT_MS,
+    // A parser that ignores SIGTERM must not keep the synchronous wait alive.
+    killSignal: 'SIGKILL',
   });
+  const output: string[] = [];
+  if (result.stdout) output.push(`git interpret-trailers --parse stdout:\n${result.stdout}`);
+  if (result.stderr) output.push(`git interpret-trailers --parse stderr:\n${result.stderr}`);
   if (result.error) {
-    throw new Error(`could not launch git interpret-trailers --parse: ${result.error.message}`);
+    output.push(`git interpret-trailers --parse error: ${result.error.message}`);
+    if ((result.error as NodeJS.ErrnoException).code === 'ETIMEDOUT') {
+      throw new TrailerParseError(
+        'timeout', `trailer parser timed out after ${TRAILER_PARSE_TIMEOUT_MS} ms`, output,
+      );
+    }
+    throw new TrailerParseError(
+      'launch', `could not launch git interpret-trailers --parse: ${result.error.message}`, output,
+    );
   }
   if (result.status !== 0) {
-    throw new Error(
-      `git interpret-trailers --parse exited with status ${result.status}: ${result.stderr}`,
-    );
+    const termination = result.signal ? `terminated by ${result.signal}` : `exited with status ${result.status}`;
+    throw new TrailerParseError('exit', `git interpret-trailers --parse ${termination}`, output);
   }
 
   return result.stdout

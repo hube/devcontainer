@@ -225,7 +225,7 @@ programme sequence, referring to these owning procedures.
 
 ## 12. Deliver bounded attribution validation (#67)
 
-- [ ] 12.1 Bound trailer parsing and diagnose timeout separately from launch
+- [x] 12.1 Bound trailer parsing and diagnose timeout separately from launch
   failure and ordinary nonzero exit, preserving unsuccessful validation in every
   mode and hook-invoked commit rejection. Verify normal parsing and these error
   paths with a controlled hanging child, an outer watchdog and a failing control

@@ -149,18 +149,48 @@ function triggers(rawMessage, spec) {
   }
   return false;
 }
+var TRAILER_PARSE_TIMEOUT_MS = 2e3;
+var TrailerParseError = class extends Error {
+  constructor(kind, message, output) {
+    super(message);
+    this.kind = kind;
+    this.output = output;
+    this.name = "TrailerParseError";
+  }
+  kind;
+  output;
+};
 function parseTrailers(rawMessage) {
   const result = (0, import_node_child_process.spawnSync)("git", ["interpret-trailers", "--parse"], {
     input: rawMessage,
-    encoding: "utf8"
+    encoding: "utf8",
+    timeout: TRAILER_PARSE_TIMEOUT_MS,
+    // A parser that ignores SIGTERM must not keep the synchronous wait alive.
+    killSignal: "SIGKILL"
   });
+  const output = [];
+  if (result.stdout) output.push(`git interpret-trailers --parse stdout:
+${result.stdout}`);
+  if (result.stderr) output.push(`git interpret-trailers --parse stderr:
+${result.stderr}`);
   if (result.error) {
-    throw new Error(`could not launch git interpret-trailers --parse: ${result.error.message}`);
+    output.push(`git interpret-trailers --parse error: ${result.error.message}`);
+    if (result.error.code === "ETIMEDOUT") {
+      throw new TrailerParseError(
+        "timeout",
+        `trailer parser timed out after ${TRAILER_PARSE_TIMEOUT_MS} ms`,
+        output
+      );
+    }
+    throw new TrailerParseError(
+      "launch",
+      `could not launch git interpret-trailers --parse: ${result.error.message}`,
+      output
+    );
   }
   if (result.status !== 0) {
-    throw new Error(
-      `git interpret-trailers --parse exited with status ${result.status}: ${result.stderr}`
-    );
+    const termination = result.signal ? `terminated by ${result.signal}` : `exited with status ${result.status}`;
+    throw new TrailerParseError("exit", `git interpret-trailers --parse ${termination}`, output);
   }
   return result.stdout.split("\n").filter((line) => line.length > 0).map((line) => {
     const separatorIndex = line.indexOf(": ");
@@ -332,12 +362,18 @@ function checkMessage(raw, spec, specPath, context = "hook") {
     trailerList = parseTrailers(raw);
   } catch (err) {
     const consequence = context === "range" ? "This commit could not be checked." : "The commit was not created.";
+    const remedies = {
+      timeout: "Retry the same validation in an execution context that permits git to finish (for Codex, use the supported approved execution path), keeping the complete attribution block. If it still times out, report both results to the integration maintainer.",
+      launch: "Restore git on PATH, then retry validation with the complete attribution block.",
+      exit: "Resolve the git failure shown above, then retry validation with the complete attribution block."
+    };
     return {
       exitCode: 1,
       stderr: [
+        ...err instanceof TrailerParseError ? err.output : [],
         `git-commit-attribution: could not validate commit-message trailers: ${err.message}.`,
         consequence,
-        "This validator could not run \u2014 check that git is installed and on PATH, or bypass once with git commit --no-verify.",
+        err instanceof TrailerParseError ? remedies[err.kind] : "Resolve the parser failure above, then retry validation with the complete attribution block.",
         "",
         `Spec: ${specPath}`
       ]
