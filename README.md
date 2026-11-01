@@ -21,8 +21,8 @@ Configurations that mount a volume over `/workspaces` itself are responsible for
 that mount's permissions.
 
 The [`agent-skills`](.devcontainer/local-features/agent-skills/NOTES.md) local
-feature clones a repo that provides skills for AI agents to use, and installs
-them on container start.
+Feature clones the skills repository and installs its plugin for Claude Code
+and Codex independently on container start.
 
 The [`github-cli-config`](.devcontainer/local-features/github-cli-config/NOTES.md)
 local feature persists `gh` authentication for processes that do not inherit

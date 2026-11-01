@@ -1,5 +1,7 @@
 {
-  "image": "ubuntu:26.04",
+  "build": {
+    "dockerfile": "Dockerfile.node-runtime"
+  },
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true,

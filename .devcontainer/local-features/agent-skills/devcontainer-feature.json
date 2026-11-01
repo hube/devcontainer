@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "dependsOn": {
     "./local-features/ssh": {},
-    "./local-features/workspaces-permissions": {}
+    "./local-features/workspaces-permissions": {},
+    "ghcr.io/devcontainers/features/node:2": {}
   },
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
   "options": {

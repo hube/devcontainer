@@ -59,10 +59,7 @@ if [[ ! -f "$clone_dir/setup.sh" ]]; then
   bail "$clone_dir/setup.sh is missing, so the installer cannot run. hube-agent skills will not load. Check that $repo still ships setup.sh."
 fi
 
-# Captured so a failure and its cause arrive as one message. Discards setup.sh's
-# success chatter, which nobody reads in container start logs.
-if ! output="$(bash "$clone_dir/setup.sh" 2>&1)"; then
-  warn "$clone_dir/setup.sh failed, so hube-agent skills may not load. setup.sh said: ${output:-no output}"
-fi
+# The bundled caller owns target selection and independent failure handling.
+node "$(dirname "${BASH_SOURCE[0]}")/install-skills.cjs" "$clone_dir"
 
 exit 0
