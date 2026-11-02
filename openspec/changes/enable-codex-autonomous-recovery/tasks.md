@@ -225,16 +225,18 @@ programme sequence, referring to these owning procedures.
 
 ## 12. Deliver bounded attribution validation (#67)
 
-- [ ] 12.1 Bound trailer parsing and diagnose timeout separately from launch
+- [x] 12.1 Bound trailer parsing and diagnose timeout separately from launch
   failure and ordinary nonzero exit, preserving unsuccessful validation in every
   mode and hook-invoked commit rejection. Verify normal parsing and these error
   paths with a controlled hanging child, an outer watchdog and a failing control
   without the repair; assert our actionable diagnosis rather than generic tooling text.
-- [ ] 12.2 Rebuild the committed validator bundle and run the repository's
+- [x] 12.2 Rebuild the committed validator bundle and run the repository's
   typecheck, lint, tests, build and bundle comparison gates. Document the timeout's
   consequence and supported recovery without weakening attribution, and verify
   the instructions with the required reader review.
-- [ ] 12.3 Run the affected actual sandbox invocation under a bounded acceptance
+  Evidence: [reader dispositions](https://github.com/hube/devcontainer/pull/116#issuecomment-6569490767)
+  and [revised-procedure/adherence assessment](https://github.com/hube/devcontainer/pull/116#issuecomment-6569491439).
+- [x] 12.3 Run the affected actual sandbox invocation under a bounded acceptance
   watchdog, retain its outcome and verify the exact supported approved continuation.
   Verify a hook timeout rejects the commit and successful validation still permits
   an attributed commit. Keep timeout-fixture evidence distinct from runtime or

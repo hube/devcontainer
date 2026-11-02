@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { parseSpec, type Spec } from './spec';
-import { compareSequence, parseTrailers, triggers } from './trailers';
+import { compareSequence, parseTrailers, TrailerParseError, triggers } from './trailers';
 
 export interface Outcome {
   exitCode: 0 | 1;
@@ -142,7 +142,7 @@ function warningOutcome(problems: string[], specPath: string): Outcome {
 /**
  * Full pipeline for one commit message: trigger, parse, compare, then apply
  * the spec's mode. `parseTrailers` shells to real git and throws on a spawn
- * failure or a non-zero exit (see trailers.ts); that is a distinct failure
+ * failure, timeout or a non-zero exit (see trailers.ts); that is a distinct failure
  * mode from a content violation — the validator itself could not run — so it
  * always fails closed (exit 1) regardless of `mode`.
  */
@@ -156,12 +156,18 @@ export function checkMessage(raw: string, spec: Spec, specPath: string, context:
     trailerList = parseTrailers(raw);
   } catch (err) {
     const consequence = context === 'range' ? 'This commit could not be checked.' : 'The commit was not created.';
+    const remedies = {
+      timeout: 'Retry the same validation in an execution context that permits git to finish (for Codex, use the supported approved execution path), keeping the complete attribution block. If it still times out, report both results to the integration maintainer.',
+      launch: 'Restore git on PATH, then retry validation with the complete attribution block.',
+      exit: 'Resolve the git failure shown above, then retry validation with the complete attribution block.',
+    };
     return {
       exitCode: 1,
       stderr: [
+        ...(err instanceof TrailerParseError ? err.output : []),
         `git-commit-attribution: could not validate commit-message trailers: ${(err as Error).message}.`,
         consequence,
-        'This validator could not run — check that git is installed and on PATH, or bypass once with git commit --no-verify.',
+        err instanceof TrailerParseError ? remedies[err.kind] : 'Resolve the parser failure above, then retry validation with the complete attribution block.',
         '',
         `Spec: ${specPath}`,
       ],
@@ -213,7 +219,7 @@ export function runCommitMsg(msgfile: string, specPath: string): Outcome {
  * violating commit's stderr lines are prefixed with its abbreviated sha so a
  * multi-commit report stays attributable; blank lines are left unprefixed to
  * keep the block readable. Exits 1 under `mode enforce` if any commit
- * violates; `mode warn` always exits 0 but still prints every diagnosis.
+ * violates; `mode warn` permits content violations but parser failures still exit 1.
  */
 export function runRange(range: string, specPath: string): Outcome {
   const loaded = loadSpec(specPath);

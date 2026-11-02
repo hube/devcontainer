@@ -80,3 +80,39 @@ time — the fail-closed behavior described under *Behavior* above. When hook
 resolution runs outside a repository (e.g. `reference-transaction` firing
 mid-`git init`, before the repository is recognized), nothing is printed: the
 transient failure is not leaked to the user.
+
+## Recover from trailer-parser failure
+
+The gate gives `git interpret-trailers --parse` two seconds to finish. At the
+limit it kills its parser child and rejects validation in both modes; a hook
+invocation rejects the commit. Captured parser output appears before a distinct
+timeout, launch-failure or unsuccessful-exit diagnosis. No trailer check is
+reported successful when the parser cannot finish.
+
+The attribution block ends the message as one paragraph, in this order:
+
+```text
+Harness: <harness name>
+Harness-Version: <harness version or unknown>
+Model: <exposed model identifier or label>
+Skills: <contributing skills, comma-separated, or none>
+Co-Authored-By: <model display name> <noreply address>
+```
+
+Use the actual authoring session's values, resolved through the
+[canonical attribution procedure](https://github.com/hube/claude-home/blob/main/instructions/committing.md#resolve-codex-attribution-inputs)
+for Codex. Keep this complete block when retrying. A launch failure requires
+restoring `git` on `PATH`; an unsuccessful exit requires resolving the reported
+git error. For a timeout, retry the same validation in an execution context that
+permits git to finish. In Codex, use its supported approved execution path under
+the [canonical recovery procedure](https://github.com/hube/claude-home/blob/main/instructions/setup-recovery.md).
+If the approved retry also times out, retain both results and report the failure
+to the integration maintainer. Removing attribution or skipping the hook does
+not establish successful validation.
+
+The Feature installs its committed bundle at image build. After adopting an
+image containing a validator change, rebuild the consuming container using the
+[existing VS Code or Dev Container CLI entry](../agent-skills/NOTES.md#activate-and-check-skills).
+That entry identifies the consuming workspace and the recreation/preservation
+boundary. Rebuilding this repository's bundle alone does not replace the
+installed validator. Maintainer acceptance is in [MAINTAINERS.md](MAINTAINERS.md).
