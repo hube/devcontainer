@@ -188,6 +188,8 @@ The host connection helper maintains a concrete SSH alias for a consumer. Docker
 allocates its loopback port, and the helper reads the mapping of the container
 returned by `devcontainer up`. Run it after every create or recreation so the
 same alias follows the consumer. It never changes credentials or host-key policy.
+The host needs Python 3, `jq`, the Docker CLI and OpenSSH; the helper runs on the
+Docker Desktop host where the container was created.
 
 Clone this repository on the Docker Desktop host to obtain its
 `scripts/refresh-ssh-alias.py` helper:
