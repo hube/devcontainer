@@ -9,7 +9,7 @@ reach the container's ssh server, e.g. by adding the following to the
 ```
 {
   ...
-  "appPort": ["127.0.0.1:2222:2222"]
+  "appPort": ["127.0.0.1::2222"]
 }
 ```
 
@@ -178,11 +178,56 @@ host. If unavailable, install it using the
 and repeat the version check before recreating:
 
 ```bash
-devcontainer up --workspace-folder "$PWD" --remove-existing-container
+up_result=$(devcontainer up --workspace-folder "$PWD" --remove-existing-container) &&
+  printf '%s\n' "$up_result"
 ```
 
 The command must exit successfully. It replaces the container, while the
 Feature's named Codex volume retains configuration, credentials and history.
+The host connection helper maintains a concrete SSH alias for a consumer. Docker
+allocates its loopback port, and the helper reads the mapping of the container
+returned by `devcontainer up`. Run it after every create or recreation so the
+same alias follows the consumer. It never changes credentials or host-key policy.
+
+Clone this repository on the Docker Desktop host to obtain its
+`scripts/refresh-ssh-alias.py` helper:
+
+```bash
+git clone https://github.com/hube/devcontainer.git "$HOME/devcontainer-tools"
+```
+
+Use an existing checkout instead if you already have one. Before the first
+invocation, add the following line near the beginning of the host's `~/.ssh/config`, before any
+`Host` or `Match` blocks. Keep existing configuration intact:
+
+```sshconfig
+Include ~/.ssh/codex-devcontainers/*.conf
+```
+
+Choose a unique alias and the configured container user. From the consuming
+workspace, extract the ID from the output above and refresh the alias after
+creation or recreation:
+
+```bash
+container_id=$(printf '%s\n' "$up_result" | jq -er '.containerId')
+python3 "$HOME/devcontainer-tools/scripts/refresh-ssh-alias.py" \
+  --workspace "$PWD" --container "$container_id" \
+  --alias codex-container --user devcontainer
+```
+
+Use your checkout path if it differs. Each command must succeed; stop on a
+failure rather than using an old result. The helper verifies the container's workspace label and loopback mapping; an unresolved identity,
+mapping, alias conflict or SSH configuration error stops refresh. Read its
+reported Docker or SSH output and remedy the stated cause before retrying. A
+failed refresh does not prove the alias reaches the recreated container. Normal
+SSH host-key checks remain active; diagnose a changed key through your usual
+trust procedure.
+
+To remove the managed alias, delete only
+`~/.ssh/codex-devcontainers/codex-container.conf`. Remove the Include line only
+when no managed aliases remain and you no longer need it. Leave other SSH
+configuration and keys intact.
+
 Check what the recreated container reads by running these commands inside it as
 its configured user:
 
@@ -196,17 +241,6 @@ All three reads must succeed. The always-on index must direct setup failures to
 `setup-recovery.md`, and the worktree instructions must reference that same
 recovery procedure. The recovery file must describe classification, inspection
 of task-owned partial effects, and the supported automatic approval path.
-
-Connect the desktop app to the recreated container using the SSH port published
-in the remote-control section. Add a concrete alias to the host machine's
-`~/.ssh/config`, substituting the configured container user if it differs:
-
-```sshconfig
-Host codex-container
-  HostName 127.0.0.1
-  Port 2222
-  User devcontainer
-```
 
 From that host, check the CLI through the container's login shell so it loads the
 installation's PATH:
