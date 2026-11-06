@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import shutil
 import tempfile
 import unittest
@@ -157,6 +158,38 @@ printf 'hostname %s\\nport 22\\nuser default\\n' \"$alias\"
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Port 45001\n', self.target.read_text())
+
+    def test_real_ssh_match_originalhost_connection_fields_are_conflicts(self):
+        real_ssh = shutil.which('ssh')
+        self.assertIsNotNone(real_ssh)
+        config = self.root / 'ssh_config'
+        (self.bin / 'ssh').write_text(f'#!/bin/sh\nexec "{real_ssh}" -F "{config}" "$@"\n')
+        for directive in ('Port 4422', 'User someoneelse'):
+            with self.subTest(directive=directive):
+                config.write_text(f'Include {self.home}/.ssh/codex-devcontainers/*.conf\nMatch originalhost demo\n  {directive}\n')
+                result = self.invoke()
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertIn('alias conflicts', result.stderr)
+                self.assertFalse(self.target.exists())
+
+    def test_missing_executables_are_diagnosed_at_launch(self):
+        self.data.write_text(json.dumps([self.container]))
+        empty = self.root / 'empty'
+        empty.mkdir()
+        args = [sys.executable, str(HELPER), '--workspace', str(self.workspace), '--container', ID, '--alias', 'demo', '--user', 'devcontainer']
+        env = dict(self.env, PATH=str(empty))
+        for executable in ('docker', 'ssh'):
+            with self.subTest(executable=executable):
+                if executable == 'ssh':
+                    stub = empty / 'docker'
+                    stub.write_text('#!/bin/sh\nexec /bin/cat "$DOCKER_FIXTURE"\n')
+                    stub.chmod(0o755)
+                result = subprocess.run(args, env=env, text=True, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f'{executable} could not be launched', result.stderr)
+                self.assertIn('alias was not refreshed', result.stderr)
+                self.assertIn(f'Make {executable} available and executable on PATH', result.stderr)
+                self.assertNotIn('managed SSH path', result.stderr)
 
     def test_directory_at_fragment_has_actionable_error(self):
         self.target.mkdir(parents=True)

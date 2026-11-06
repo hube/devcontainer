@@ -17,8 +17,17 @@ def fail(problem, consequence, remedy):
     raise RuntimeError(f'{problem} {consequence} {remedy}')
 
 
+def execute(args):
+    try:
+        return subprocess.run(args, text=True, capture_output=True)
+    except OSError as exc:
+        fail(f'{exc}\n{args[0]} could not be launched.',
+             'The alias was not refreshed.',
+             f'Make {args[0]} available and executable on PATH, then retry.')
+
+
 def run(args):
-    result = subprocess.run(args, text=True, capture_output=True)
+    result = execute(args)
     if result.returncode:
         fail(f'{args[0]} output:\n{result.stdout}{result.stderr}\n'
              f'{args[0]} failed (exit {result.returncode}).',
@@ -28,7 +37,7 @@ def run(args):
 
 def resolved(alias, managed=None, normalized=False):
     options = ['-o', 'HostName=127.0.0.1', '-o', 'Port=2222', '-o', 'User=codexprobe'] if normalized else []
-    command = subprocess.run(['ssh', '-vG', *options, alias], text=True, capture_output=True)
+    command = execute(['ssh', '-vG', *options, alias])
     if command.returncode:
         fail(f'ssh output:\n{command.stdout}{command.stderr}\n'
              f'ssh failed (exit {command.returncode}).',
@@ -114,6 +123,7 @@ def main():
         old_fields = {'hostname': ['127.0.0.1'], 'port': [match.group(2)], 'user': [match.group(3)]}
     before = resolved(args.alias, target)
     probe_alias = 'codex-probe-' + secrets.token_hex(12)
+    baseline_raw = resolved(probe_alias)
     baseline = resolved(probe_alias, normalized=True)
     comparable = resolved(args.alias, target, normalized=True)
     ignored = {'host', 'hostname', 'port', 'user'}
@@ -121,7 +131,7 @@ def main():
                                       for k, v in values.items() if k not in ignored}
     selected = {k: before[k] for k in ('hostname', 'port', 'user')}
     if (old_fields and selected != old_fields) or (not old_fields and
-            before['hostname'] != [args.alias]) or unrelated(comparable, args.alias) != unrelated(baseline, probe_alias):
+            (before['hostname'] != [args.alias] or any(before[k] != baseline_raw[k] for k in ('port', 'user')))) or unrelated(comparable, args.alias) != unrelated(baseline, probe_alias):
         fail('The alias conflicts with existing SSH configuration or its managed include is inactive.',
              'Existing settings were preserved.', 'Choose an unused alias and enable the documented Include before retrying.')
     content = f'{MARKER}Host {args.alias}\n  HostName 127.0.0.1\n  Port {port}\n  User {args.user}\n'
