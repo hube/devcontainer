@@ -60,6 +60,40 @@ def resolved(alias, managed=None, normalized=False):
     return result
 
 
+def equivalent_option(left, right, alias, probe):
+    """Compare unchanged text and corresponding original-host expansions."""
+    if left == right:
+        return True
+    pending = [(0, 0)]
+    visited = set()
+    while pending:
+        i, j = pending.pop()
+        if (i, j) in visited:
+            continue
+        visited.add((i, j))
+        if i == len(left) and j == len(right):
+            return True
+        if i < len(left) and j < len(right) and left[i] == right[j]:
+            pending.append((i + 1, j + 1))
+        if left.startswith(alias, i) and right.startswith(probe, j):
+            pending.append((i + len(alias), j + len(probe)))
+    return False
+
+
+def equivalent_settings(actual, baseline, alias, probe):
+    ignored = {'host', 'hostname', 'port', 'user'}
+    actual_keys = actual.keys() - ignored
+    baseline_keys = baseline.keys() - ignored
+    if actual_keys != baseline_keys:
+        return False
+    for key in actual_keys:
+        left, right = actual[key], baseline[key]
+        if len(left) != len(right) or any(
+                not equivalent_option(a, b, alias, probe) for a, b in zip(left, right)):
+            return False
+    return True
+
+
 def main():
     global managed_path, replacement_started, rollback_done
     parser = argparse.ArgumentParser(description=__doc__)
@@ -126,12 +160,9 @@ def main():
     baseline_raw = resolved(probe_alias)
     baseline = resolved(probe_alias, normalized=True)
     comparable = resolved(args.alias, target, normalized=True)
-    ignored = {'host', 'hostname', 'port', 'user'}
-    unrelated = lambda values, host: {k: [item.replace(host, '<original-host>') for item in v]
-                                      for k, v in values.items() if k not in ignored}
     selected = {k: before[k] for k in ('hostname', 'port', 'user')}
     if (old_fields and selected != old_fields) or (not old_fields and
-            (before['hostname'] != [args.alias] or any(before[k] != baseline_raw[k] for k in ('port', 'user')))) or unrelated(comparable, args.alias) != unrelated(baseline, probe_alias):
+            (before['hostname'] != [args.alias.lower()] or any(before[k] != baseline_raw[k] for k in ('port', 'user')))) or not equivalent_settings(comparable, baseline, args.alias, probe_alias):
         fail('The alias conflicts with existing SSH configuration or its managed include is inactive.',
              'Existing settings were preserved.', 'Choose an unused alias and enable the documented Include before retrying.')
     content = f'{MARKER}Host {args.alias}\n  HostName 127.0.0.1\n  Port {port}\n  User {args.user}\n'

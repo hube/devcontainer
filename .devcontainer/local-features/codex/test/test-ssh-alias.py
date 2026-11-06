@@ -41,9 +41,9 @@ print('hostname ' + alias + '\\nport 22\\nuser default') if not path.exists() el
         self.env = dict(os.environ, HOME=str(self.home), DOCKER_FIXTURE=str(self.data), PATH=str(self.bin) + ':' + os.environ['PATH'])
         self.target = self.home / '.ssh/codex-devcontainers/demo.conf'
 
-    def invoke(self):
+    def invoke(self, alias='demo'):
         self.data.write_text(json.dumps([self.container]))
-        return subprocess.run(['python3', str(HELPER), '--workspace', str(self.workspace), '--container', ID, '--alias', 'demo', '--user', 'devcontainer'], env=self.env, text=True, capture_output=True)
+        return subprocess.run(['python3', str(HELPER), '--workspace', str(self.workspace), '--container', ID, '--alias', alias, '--user', 'devcontainer'], env=self.env, text=True, capture_output=True)
 
     def test_refresh_and_preserve_another_alias(self):
         self.assertEqual(self.invoke().returncode, 0)
@@ -159,6 +159,18 @@ printf 'hostname %s\\nport 22\\nuser default\\n' \"$alias\"
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Port 45001\n', self.target.read_text())
 
+    def test_real_ssh_short_aliases_and_mixed_expansion(self):
+        real_ssh = shutil.which('ssh')
+        self.assertIsNotNone(real_ssh)
+        config = self.root / 'ssh_config'
+        config.write_text(f"Include {self.home}/.ssh/codex-devcontainers/*.conf\nHost *\n  ControlMaster auto\n  ControlPath /tmp/ssh-%n-%r@%h:%p\n")
+        (self.bin / 'ssh').write_text(f'#!/bin/sh\nexec "{real_ssh}" -F "{config}" "$@"\n')
+        for alias in ('dev', 'ssh', 'a', 'codex', 'MixedCase', 'fresh-consumer'):
+            with self.subTest(alias=alias):
+                result = self.invoke(alias)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('Port 45001\n', self.target.with_name(alias + '.conf').read_text())
+
     def test_real_ssh_match_originalhost_connection_fields_are_conflicts(self):
         real_ssh = shutil.which('ssh')
         self.assertIsNotNone(real_ssh)
@@ -171,6 +183,19 @@ printf 'hostname %s\\nport 22\\nuser default\\n' \"$alias\"
                 self.assertNotEqual(result.returncode, 0, result.stderr)
                 self.assertIn('alias conflicts', result.stderr)
                 self.assertFalse(self.target.exists())
+
+    def test_real_ssh_alias_specific_identity_is_a_conflict(self):
+        real_ssh = shutil.which('ssh')
+        self.assertIsNotNone(real_ssh)
+        config = self.root / 'ssh_config'
+        config.write_text(f'Include {self.home}/.ssh/codex-devcontainers/*.conf\nMatch originalhost demo\n  IdentityFile /different/key\n')
+        (self.bin / 'ssh').write_text(f'#!/bin/sh\nexec "{real_ssh}" -F "{config}" "$@"\n')
+        original_config = config.read_bytes()
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('alias conflicts', result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertEqual(config.read_bytes(), original_config)
 
     def test_missing_executables_are_diagnosed_at_launch(self):
         self.data.write_text(json.dumps([self.container]))
