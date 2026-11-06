@@ -199,8 +199,8 @@ git clone https://github.com/hube/devcontainer.git "$HOME/devcontainer-tools"
 ```
 
 Use an existing checkout instead if you already have one. Before the first
-invocation, add the following line near the beginning of the host's `~/.ssh/config`, before any
-`Host` or `Match` blocks. Keep existing configuration intact:
+invocation, add the following line near the beginning of the host's
+`~/.ssh/config`, before any `Host` or `Match` blocks. Keep existing configuration intact:
 
 ```sshconfig
 Include ~/.ssh/codex-devcontainers/*.conf
@@ -222,8 +222,28 @@ failure rather than using an old result. The helper verifies the container's wor
 mapping, alias conflict or SSH configuration error stops refresh. Read its
 reported Docker or SSH output and remedy the stated cause before retrying. A
 failed refresh does not prove the alias reaches the recreated container. Normal
-SSH host-key checks remain active; diagnose a changed key through your usual
-trust procedure.
+SSH host-key checks remain active. If SSH reports a changed host key, verify the
+new key from the intended container through Docker before accepting it:
+
+```bash
+ssh_port=$(ssh -G codex-container 2>/dev/null | awk '$1 == "port" {print $2; exit}')
+ssh-keygen -F "[127.0.0.1]:$ssh_port"
+docker exec "$container_id" ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Compare the container fingerprint with the new ED25519 fingerprint shown by
+SSH. Investigate a mismatch before connecting. If you have verified the new key
+and identified the old entry as stale, remove that port's old entry and reconnect
+with ED25519 selected so the prompt can be compared:
+
+```bash
+ssh-keygen -R "[127.0.0.1]:$ssh_port"
+ssh -o HostKeyAlgorithms=ssh-ed25519 codex-container
+```
+
+Accept the prompt only if its fingerprint matches the container's. Removal
+changes the entry for that loopback port, which may also be used by another
+local connection.
 
 To remove the managed alias, delete only
 `~/.ssh/codex-devcontainers/codex-container.conf`. Remove the Include line only

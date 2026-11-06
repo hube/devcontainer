@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 
@@ -116,10 +117,11 @@ print('hostname ' + alias + '\\nport 22\\nuser default') if not path.exists() el
 
     def test_alias_specific_options_are_conflicts(self):
         (self.bin / 'ssh').write_text("""#!/bin/sh
-if [ \"$2\" = demo ]; then
+for alias do :; done
+if [ \"$alias\" = demo ]; then
   printf 'hostname demo\\nport 22\\nuser default\\nidentityfile /private/key\\n'
 else
-  printf 'hostname %s\\nport 22\\nuser default\\nidentityfile /default/key\\n' \"$2\"
+  printf 'hostname %s\\nport 22\\nuser default\\nidentityfile /default/key\\n' \"$alias\"
 fi
 """)
         result = self.invoke()
@@ -135,15 +137,80 @@ fi
 
     def test_explicit_host_entry_is_a_conflict_even_with_default_values(self):
         (self.bin / 'ssh').write_text("""#!/bin/sh
-if [ \"$2\" = demo ]; then
+for alias do :; done
+if [ \"$alias\" = demo ]; then
   printf 'debug1: /home/example/.ssh/config line 2: Applying options for demo\\n' >&2
 fi
-printf 'hostname %s\\nport 22\\nuser default\\n' \"$2\"
+printf 'hostname %s\\nport 22\\nuser default\\n' \"$alias\"
 """)
         result = self.invoke()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('existing SSH Host entry names', result.stderr)
         self.assertFalse(self.target.exists())
+
+    def test_real_ssh_inherited_controlpath(self):
+        real_ssh = shutil.which('ssh')
+        self.assertIsNotNone(real_ssh)
+        config = self.root / 'ssh_config'
+        config.write_text(f"Include {self.home}/.ssh/codex-devcontainers/*.conf\nHost *\n  ControlMaster auto\n  ControlPath /tmp/ssh-%n-%r@%h:%p\n")
+        (self.bin / 'ssh').write_text(f'#!/bin/sh\nexec "{real_ssh}" -F "{config}" "$@"\n')
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Port 45001\n', self.target.read_text())
+
+    def test_directory_at_fragment_has_actionable_error(self):
+        self.target.mkdir(parents=True)
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('managed SSH path', result.stderr)
+        self.assertIn('was not refreshed', result.stderr)
+        self.assertIn('regular file', result.stderr)
+        self.assertTrue(self.target.is_dir())
+
+    def test_replace_failure_reports_preserved_state(self):
+        hooks = self.root / 'hooks'
+        hooks.mkdir()
+        (hooks / 'sitecustomize.py').write_text("""import os, sys
+if sys.argv[0].endswith('refresh-ssh-alias.py'):
+    def fail_replace(*args):
+        raise PermissionError('fixture replace denied')
+    os.replace = fail_replace
+""")
+        self.env['PYTHONPATH'] = str(hooks)
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fixture replace denied', result.stderr)
+        self.assertIn('managed SSH path', result.stderr)
+        self.assertIn('alias was not refreshed', result.stderr.lower())
+        self.assertIn('regular file', result.stderr)
+        self.assertFalse(self.target.exists())
+
+    def test_rollback_failure_reports_both_failures(self):
+        hooks = self.root / 'hooks'
+        hooks.mkdir()
+        (hooks / 'sitecustomize.py').write_text("""import os, sys
+if sys.argv[0].endswith('refresh-ssh-alias.py'):
+    original = os.unlink
+    def guarded(path, *args, **kwargs):
+        if str(path).endswith('/demo.conf'):
+            raise PermissionError('fixture rollback denied')
+        return original(path, *args, **kwargs)
+    os.unlink = guarded
+""")
+        self.env['PYTHONPATH'] = str(hooks)
+        (self.bin / 'ssh').write_text('#!/bin/sh\nprintf "hostname demo\\nport 22\\nuser default\\n"\n')
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('SSH does not select the managed alias', result.stderr)
+        self.assertIn('fixture rollback denied', result.stderr)
+        self.assertIn('may still contain the new mapping', result.stderr)
+        self.assertTrue(self.target.exists())
+
+    def test_independent_bad_inputs_are_reported_together(self):
+        result = subprocess.run(['python3', str(HELPER), '--workspace', str(self.root / 'absent'), '--container', 'bad', '--alias', 'bad alias', '--user', 'bad user'], env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        for phrase in ('alias', 'user', 'container ID', 'workspace'):
+            self.assertIn(phrase, result.stderr)
 
     def test_docker_failure_is_relayed(self):
         (self.bin / 'docker').write_text('#!/bin/sh\nprintf "fixture daemon failure\\n" >&2\nexit 7\n')
