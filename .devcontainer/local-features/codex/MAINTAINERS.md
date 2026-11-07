@@ -812,7 +812,7 @@ and an existing installation retaining its persistent Codex volume. Follow the
 adoption steps in `NOTES.md` on each path. To prepare the fresh path on the
 Docker Desktop host, use a new disposable consumer directory outside Git
 repositories. Complete the CLI and host-mount prerequisites in `NOTES.md` first.
-Choose an unused local SSH port in place of `UNUSED_LOCAL_PORT`:
+Docker allocates the loopback SSH port:
 
 ```bash
 fresh_root=$(mktemp -d "$HOME/codex-recovery-fresh.XXXXXX")
@@ -820,13 +820,13 @@ mkdir "$fresh_root/.devcontainer"
 cat > "$fresh_root/.devcontainer/devcontainer.json" <<'JSON'
 {
   "image": "ghcr.io/hube/devcontainer:latest",
-  "appPort": ["127.0.0.1:UNUSED_LOCAL_PORT:2222"]
+  "appPort": ["127.0.0.1::2222"]
 }
 JSON
 printf '%s\n' "$fresh_root"
 ```
 
-Replace the port placeholder in that task-created file, then run
+Run
 `devcontainer up --workspace-folder "$fresh_root"`. Retain its successful
 `containerId` as `fresh_container`. On the host, read the attached Codex volume:
 
