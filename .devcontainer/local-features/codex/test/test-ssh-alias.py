@@ -197,6 +197,43 @@ printf 'hostname %s\\nport 22\\nuser default\\n' \"$alias\"
         self.assertFalse(self.target.exists())
         self.assertEqual(config.read_bytes(), original_config)
 
+    def test_explicit_config_and_output_isolate_desktop_bridge(self):
+        real_ssh = shutil.which('ssh')
+        self.assertIsNotNone(real_ssh)
+        fragment_dir = self.root / 'fragments'
+        fragment_dir.mkdir()
+        key = self.root / 'test-key'
+        known = self.root / 'test-known-hosts'
+        private_config = self.root / 'test-config'
+        private_config.write_text(f'Include {fragment_dir}/*.conf\nHost *\n  IdentityFile {key}\n  UserKnownHostsFile {known}\n  IdentitiesOnly yes\n')
+        main_config = self.root / 'desktop-config'
+        main_config.write_text(f'Host demo other-test\n  Include {private_config}\nHost *\n  LogLevel ERROR\n')
+        (self.bin / 'ssh').write_text(f'#!/bin/sh\nexec "{real_ssh}" "$@"\n')
+        self.data.write_text(json.dumps([self.container]))
+        args = ['python3', str(HELPER), '--workspace', str(self.workspace), '--container', ID, '--alias', 'demo', '--user', 'devcontainer', '--ssh-config', str(private_config), '--output-dir', str(fragment_dir)]
+        result = subprocess.run(args, env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertIn('Port 45001', (fragment_dir / 'demo.conf').read_text())
+        def config_for(alias):
+            return subprocess.run([real_ssh, '-G', '-F', str(main_config), alias], text=True, capture_output=True, check=True).stdout
+        selected, unrelated = config_for('demo'), config_for('unrelated')
+        self.assertIn(f'identityfile {key}', selected)
+        self.assertIn(f'userknownhostsfile {known}', selected)
+        self.assertIn('port 45001', selected)
+        self.assertNotIn(str(key), unrelated)
+        self.assertNotIn(str(known), unrelated)
+
+    def test_explicit_config_requires_paired_absolute_paths(self):
+        self.data.write_text(json.dumps([self.container]))
+        args = ['python3', str(HELPER), '--workspace', str(self.workspace), '--container', ID, '--alias', 'demo', '--user', 'devcontainer']
+        for extra in (['--ssh-config', str(self.root / 'config')], ['--output-dir', str(self.root / 'out')], ['--ssh-config', 'relative', '--output-dir', 'relative'], ['--ssh-config', '', '--output-dir', '']):
+            with self.subTest(extra=extra):
+                result = subprocess.run(args + extra, env=self.env, text=True, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('SSH config and output directory', result.stderr)
+                self.assertFalse(self.target.exists())
+
     def test_missing_executables_are_diagnosed_at_launch(self):
         self.data.write_text(json.dumps([self.container]))
         empty = self.root / 'empty'

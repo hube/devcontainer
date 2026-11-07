@@ -35,9 +35,10 @@ def run(args):
     return result.stdout
 
 
-def resolved(alias, managed=None, normalized=False):
+def resolved(alias, managed=None, normalized=False, ssh_config=None):
     options = ['-o', 'HostName=127.0.0.1', '-o', 'Port=2222', '-o', 'User=codexprobe'] if normalized else []
-    command = execute(['ssh', '-vG', *options, alias])
+    config_options = ['-F', str(ssh_config)] if ssh_config is not None else []
+    command = execute(['ssh', '-vG', *config_options, *options, alias])
     if command.returncode:
         fail(f'ssh output:\n{command.stdout}{command.stderr}\n'
              f'ssh failed (exit {command.returncode}).',
@@ -99,6 +100,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('workspace', 'container', 'alias', 'user'):
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--ssh-config')
+    parser.add_argument('--output-dir')
     args = parser.parse_args()
     problems = []
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', args.alias):
@@ -110,6 +113,12 @@ def main():
     workspace = Path(args.workspace)
     if not workspace.is_absolute() or not workspace.is_dir():
         problems.append('workspace: supply an existing absolute consuming workspace path')
+    if args.ssh_config is not None or args.output_dir is not None:
+        if (not args.ssh_config or not args.output_dir or
+                not Path(args.ssh_config).is_absolute() or not Path(args.output_dir).is_absolute() or
+                not Path(args.ssh_config).is_file() or Path(args.ssh_config).is_symlink() or
+                not Path(args.output_dir).is_dir() or Path(args.output_dir).is_symlink()):
+            problems.append('SSH config and output directory: supply both as existing absolute regular paths')
     if problems:
         fail('Invalid inputs: ' + '; '.join(problems) + '.', 'No configuration was changed.',
              'Correct all listed inputs and retry.')
@@ -141,7 +150,8 @@ def main():
         fail(f'Container inspection is unresolved: {exc}.', 'No mapping was selected.',
              'Recreate the intended workspace and pass its returned container ID.')
 
-    directory = Path.home() / '.ssh' / 'codex-devcontainers'
+    directory = Path(args.output_dir) if args.output_dir else Path.home() / '.ssh' / 'codex-devcontainers'
+    ssh_config = Path(args.ssh_config) if args.ssh_config else None
     target = directory / (args.alias + '.conf')
     managed_path = target
     if directory.is_symlink() or target.is_symlink():
@@ -155,11 +165,11 @@ def main():
             fail('The alias fragment is not a recognized managed entry.',
                  'It was preserved.', 'Choose another alias or resolve the existing fragment.')
         old_fields = {'hostname': ['127.0.0.1'], 'port': [match.group(2)], 'user': [match.group(3)]}
-    before = resolved(args.alias, target)
+    before = resolved(args.alias, target, ssh_config=ssh_config)
     probe_alias = 'codex-probe-' + secrets.token_hex(12)
-    baseline_raw = resolved(probe_alias)
-    baseline = resolved(probe_alias, normalized=True)
-    comparable = resolved(args.alias, target, normalized=True)
+    baseline_raw = resolved(probe_alias, ssh_config=ssh_config)
+    baseline = resolved(probe_alias, normalized=True, ssh_config=ssh_config)
+    comparable = resolved(args.alias, target, normalized=True, ssh_config=ssh_config)
     selected = {k: before[k] for k in ('hostname', 'port', 'user')}
     if (old_fields and selected != old_fields) or (not old_fields and
             (before['hostname'] != [args.alias.lower()] or any(before[k] != baseline_raw[k] for k in ('port', 'user')))) or not equivalent_settings(comparable, baseline, args.alias, probe_alias):
@@ -174,7 +184,7 @@ def main():
         os.replace(temp, target)
         replacement_started = True
         try:
-            after = resolved(args.alias, target)
+            after = resolved(args.alias, target, ssh_config=ssh_config)
             if {k: after[k] for k in ('hostname', 'port', 'user')} != {'hostname': ['127.0.0.1'], 'port': [str(port)], 'user': [args.user]}:
                 fail('SSH does not select the managed alias.', 'The refreshed fragment cannot be used.',
                      'Place the documented Include before conflicting Host or Match settings and retry.')

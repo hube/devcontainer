@@ -218,7 +218,13 @@ python3 "$HOME/devcontainer-tools/scripts/refresh-ssh-alias.py" \
 ```
 
 Use your checkout path if it differs. Each command must succeed; stop on a
-failure rather than using an old result. The helper verifies the container's workspace label and loopback mapping; an unresolved identity,
+failure rather than using an old result. To isolate a test's SSH state, pass
+both `--ssh-config /absolute/path/to/config` and
+`--output-dir /absolute/path/to/fragments`. Both paths must already exist, and
+the selected config must include that fragments directory. The helper evaluates
+it and writes only there. Without these options the helper uses the host's normal
+SSH configuration and managed directory. The helper verifies the container's
+workspace label and loopback mapping; an unresolved identity,
 mapping, alias conflict or SSH configuration error stops refresh. Read its
 reported Docker or SSH output and remedy the stated cause before retrying. A
 failed refresh does not prove the alias reaches the recreated container. Normal
